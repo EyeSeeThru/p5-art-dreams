@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fracture</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #080808;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// FRACTURE
+// Recursive line division
+// Black and red - cracks appearing in structure
+// Not fractals in the pretty sense. Something breaking.
+
+let t = 0;
+let fractures = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize with a few seed fractures
+  for (let i = 0; i < 5; i++) {
+    fractures.push(createFracture(random(width), random(height), random(200, 400)));
+  }
+}
+
+function createFracture(x, y, len) {
+  let angle = random(TWO_PI);
+  return {
+    x: x,
+    y: y,
+    len: len,
+    angle: angle,
+    children: [],
+    depth: 0,
+    hue: random(340, 380) % 360,
+    age: 0,
+    dead: false
+  };
+}
+
+function draw() {
+  background(0, 0, 3);
+  
+  t += 0.008;
+  
+  // Update and draw fractures
+  for (let f of fractures) {
+    updateFracture(f);
+  }
+  
+  // Remove dead fractures and spawn new ones
+  fractures = fractures.filter(f => !f.dead);
+  
+  // Occasionally spawn new fracture
+  if (fractures.length < 15 && random() < 0.02) {
+    let x = random(width);
+    let y = random(height);
+    fractures.push(createFracture(x, y, random(100, 300)));
+  }
+  
+  // Add subtle grain
+  addGrain();
+}
+
+function updateFracture(f) {
+  f.age++;
+  
+  let endX = f.x + cos(f.angle) * f.len;
+  let endY = f.y + sin(f.angle) * f.len;
+  
+  // Draw the fracture line
+  let alpha = map(f.age, 0, 500, 80, 20);
+  if (f.age > 500) alpha = max(20, alpha - (f.age - 500) * 0.5);
+  
+  strokeWeight(map(f.depth, 0, 4, 3, 0.5));
+  stroke(f.hue, 70, 90, alpha);
+  line(f.x, f.y, endX, endY);
+  
+  // End point
+  noStroke();
+  fill(f.hue, 60, 80, alpha * 0.5);
+  ellipse(endX, endY, map(f.depth, 0, 4, 8, 2));
+  
+  // Branch - chance to split
+  if (f.age > 30 && f.depth < 4 && random() < 0.015) {
+    let branchAngle = f.angle + random(PI * 0.3, PI * 0.7) * (random() > 0.5 ? 1 : -1);
+    let newLen = f.len * random(0.4, 0.7);
+    
+    let child = {
+      x: endX,
+      y: endY,
+      len: newLen,
+      angle: branchAngle,
+      children: [],
+      depth: f.depth + 1,
+      hue: (f.hue + random(-20, 20) + 360) % 360,
+      age: 0,
+      dead: false
+    };
+    f.children.push(child);
+  }
+  
+  // Update children
+  for (let child of f.children) {
+    updateFracture(child);
+  }
+  
+  // Filter dead children
+  f.children = f.children.filter(c => !c.dead);
+  
+  // Kill old fractures
+  if (f.age > 800 && f.children.length === 0) {
+    f.dead = true;
+  }
+}
+
+function addGrain() {
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 25) {
+    if (random() < 0.015) {
+      let n = random(-12, 12);
+      pixels[i] = constrain(pixels[i] + n, 0, 255);
+      pixels[i+1] = constrain(pixels[i+1] + n * 0.4, 0, 255);
+      pixels[i+2] = constrain(pixels[i+2] + n * 0.2, 0, 255);
+    }
+  }
+  updatePixels();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Create explosion of fractures from click
+  let count = floor(random(5, 10));
+  for (let i = 0; i < count; i++) {
+    let angle = TWO_PI * i / count + random(-0.3, 0.3);
+    let len = random(100, 250);
+    let f = {
+      x: mouseX,
+      y: mouseY,
+      len: len,
+      angle: angle,
+      children: [],
+      depth: 0,
+      hue: random(320, 400) % 360,
+      age: 0,
+      dead: false
+    };
+    fractures.push(f);
+  }
+}
+</script>
+</body>
+</html>

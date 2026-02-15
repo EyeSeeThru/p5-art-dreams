@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echoes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><style>
+    *</script>
+   { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// ECHOES
+// Feedback loop visualization
+// Black, red, crimson - depth through repetition
+// Nothing repeats exactly. Everything echoes.
+
+let t = 0;
+let feedbackGraphics;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Create offscreen graphics for feedback
+  feedbackGraphics = createGraphics(width, height);
+  feedbackGraphics.colorMode(HSB, 360, 100, 100, 100);
+  feedbackGraphics.background(0, 0, 0);
+  feedbackGraphics.noStroke();
+}
+
+function draw() {
+  t += 0.02;
+  
+  // Sample from feedback with displacement
+  feedbackGraphics.loadPixels();
+  
+  // Create new layer
+  let newLayer = createGraphics(width, height);
+  newLayer.colorMode(HSB, 360, 100, 100, 100);
+  newLayer.noStroke();
+  
+  // Draw shapes that will feed back
+  let shapeCount = 3;
+  for (let i = 0; i < shapeCount; i++) {
+    let angle = t * 0.5 + i * TWO_PI / shapeCount;
+    let radius = 100 + sin(t + i) * 50;
+    
+    let cx = width/2 + cos(angle) * radius * 0.3;
+    let cy = height/2 + sin(angle * 0.7) * radius * 0.3;
+    
+    let hue = (340 + sin(t * 0.3 + i) * 20 + i * 30) % 360;
+    let size = 30 + sin(t * 2 + i * 0.5) * 20;
+    
+    newLayer.fill(hue, 80, 90, 15);
+    newLayer.noStroke();
+    
+    // Distorted circle
+    newLayer.beginShape();
+    for (let a = 0; a < TWO_PI; a += 0.2) {
+      let r = size * (1 + sin(a * 5 + t + i) * 0.3);
+      let x = cx + cos(a) * r;
+      let y = cy + sin(a) * r;
+      newLayer.vertex(x, y);
+    }
+    newLayer.endShape(CLOSE);
+  }
+  
+  // Composite: shrink and darken the feedback, then add new layer
+  let shrunk = feedbackGraphics.get(50, 50, width - 100, height - 100);
+  
+  feedbackGraphics.background(0, 0, 0, 8); // Fade
+  image(shrunk, 50, 50, width - 100, height - 100);
+  
+  // Add new layer with blend
+  feedbackGraphics.blendMode(ADD);
+  feedbackGraphics.image(newLayer, 0, 0);
+  feedbackGraphics.blendMode(BLEND);
+  
+  // Draw to main canvas
+  background(0, 0, 0, 20);
+  image(feedbackGraphics, 0, 0);
+  
+  // Add noise overlay
+  addNoise();
+  
+  // Vignette
+  drawVignette();
+}
+
+function addNoise() {
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 8) {
+    if (random() < 0.02) {
+      let n = random(-20, 20);
+      pixels[i] = constrain(pixels[i] + n, 0, 255);
+      pixels[i+1] = constrain(pixels[i+1] + n * 0.3, 0, 255);
+      pixels[i+2] = constrain(pixels[i+2] + n * 0.1, 0, 255);
+    }
+  }
+  updatePixels();
+}
+
+function drawVignette() {
+  noFill();
+  for (let r = 0; r < 8; r++) {
+    let radius = (min(width, height) * 0.4) + r * 40;
+    let alpha = map(r, 0, 7, 30, 0);
+    stroke(0, 0, 0, alpha);
+    strokeWeight(30);
+    ellipse(width/2, height/2, radius * 2);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  let oldFeedback = feedbackGraphics;
+  feedbackGraphics = createGraphics(width, height);
+  feedbackGraphics.colorMode(HSB, 360, 100, 100, 100);
+  feedbackGraphics.background(0, 0, 0);
+  feedbackGraphics.image(oldFeedback, 0, 0, width, height);
+}
+
+function mousePressed() {
+  // Add energy burst to feedback
+  for (let i = 0; i < 20; i++) {
+    let angle = random(TWO_PI);
+    let dist = random(50, 150);
+    let x = mouseX + cos(angle) * dist;
+    let y = mouseY + sin(angle) * dist;
+    
+    feedbackGraphics.fill(random(320, 400) % 360, 90, 100, 30);
+    feedbackGraphics.ellipse(x, y, random(20, 60));
+  }
+}
+</script>
+</body>
+</html>

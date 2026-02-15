@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Axiom</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #050505;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// AXIOM
+// Truchet-inspired geometric recursion
+// Black and red - structural, architectural
+// Not tiles. Not patterns. Something that builds itself.
+
+let t = 0;
+let cells = [];
+let cellSize = 40;
+let cols, rows;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  cols = ceil(width / cellSize);
+  rows = ceil(height / cellSize);
+  
+  initCells();
+}
+
+function initCells() {
+  cells = [];
+  for (let x = 0; x < cols; x++) {
+    cells[x] = [];
+    for (let y = 0; y < rows; y++) {
+      cells[x][y] = {
+        state: floor(random(4)),
+        age: random(1000),
+        hue: random(340, 380) % 360
+      };
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 5);
+  
+  t += 0.01;
+  
+  // Update and draw cells
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let cell = cells[x][y];
+      let px = x * cellSize;
+      let py = y * cellSize;
+      
+      cell.age++;
+      
+      // State transitions - cellular automaton-ish
+      let neighbors = countNeighbors(x, y);
+      
+      // Slow state change based on neighbors and time
+      if (cell.age > 50 && random() < 0.001) {
+        let oldState = cell.state;
+        cell.state = (cell.state + floor(random(1, 3))) % 4;
+        
+        // Hue shifts when state changes
+        if (cell.state !== oldState) {
+          cell.hue = (cell.hue + random(-15, 15) + 360) % 360;
+        }
+        cell.age = 0;
+      }
+      
+      drawCell(px, py, cell);
+    }
+  }
+  
+  // Inter-cell connections - the underlying structure
+  strokeWeight(1);
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let cell = cells[x][y];
+      let px = x * cellSize + cellSize/2;
+      let py = y * cellSize + cellSize/2;
+      
+      // Connect to right neighbor
+      if (x < cols - 1) {
+        let right = cells[x+1][y];
+        let rx = (x + 1) * cellSize + cellSize/2;
+        let ry = py;
+        let alpha = map(sin(t + x + y), -1, 1, 2, 15);
+        stroke(cell.hue, 60, 60, alpha);
+        line(px, py, rx, ry);
+      }
+      
+      // Connect to bottom neighbor
+      if (y < rows - 1) {
+        let bottom = cells[x][y+1];
+        let bx = px;
+        let by = (y + 1) * cellSize + cellSize/2;
+        let alpha = map(cos(t + x - y), -1, 1, 2, 15);
+        stroke(cell.hue, 60, 60, alpha);
+        line(px, py, bx, by);
+      }
+    }
+  }
+  
+  // Global pulse
+  if (frameCount % 300 === 0 && frameCount > 0) {
+    // Reset some cells dramatically
+    for (let i = 0; i < 20; i++) {
+      let x = floor(random(cols));
+      let y = floor(random(rows));
+      cells[x][y].state = floor(random(4));
+      cells[x][y].age = 0;
+      cells[x][y].hue = random(320, 400) % 360;
+    }
+  }
+}
+
+function drawCell(px, py, cell) {
+  let half = cellSize / 2;
+  let cx = px + half;
+  let cy = py + half;
+  
+  let state = cell.state;
+  let hue = cell.hue;
+  
+  noFill();
+  strokeWeight(2);
+  
+  // Each state is a different geometric configuration
+  // Not random - each has purpose
+  
+  if (state === 0) {
+    // Arc diagonal
+    stroke(hue, 70, 80, 60);
+    noFill();
+    arc(px, py + cellSize, cellSize, cellSize, -HALF_PI, 0);
+    arc(px + cellSize, py, cellSize, cellSize, PI, HALF_PI + PI);
+  } else if (state === 1) {
+    // Other diagonal
+    stroke(hue, 70, 80, 60);
+    arc(px + cellSize, py + cellSize, cellSize, cellSize, -HALF_PI, 0);
+    arc(px, py, cellSize, cellSize, PI, HALF_PI + PI);
+  } else if (state === 2) {
+    // Circle at corner
+    stroke(hue, 80, 90, 50);
+    noFill();
+    ellipse(cx, cy, cellSize * 0.6);
+  } else {
+    // Lines crossing
+    stroke(hue, 60, 70, 40);
+    line(px + cellSize * 0.2, py + cellSize * 0.2, px + cellSize * 0.8, py + cellSize * 0.8);
+    line(px + cellSize * 0.8, py + cellSize * 0.2, px + cellSize * 0.2, py + cellSize * 0.8);
+  }
+}
+
+function countNeighbors(x, y) {
+  let sum = 0;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      if (dx === 0 && dy === 0) continue;
+      let nx = (x + dx + cols) % cols;
+      let ny = (y + dy + rows) % rows;
+      sum += cells[nx][ny].state;
+    }
+  }
+  return sum;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = ceil(width / cellSize);
+  rows = ceil(height / cellSize);
+  initCells();
+}
+
+function mousePressed() {
+  // Disrupt cells near click
+  let cx = floor(mouseX / cellSize);
+  let cy = floor(mouseY / cellSize);
+  
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      let nx = (cx + dx + cols) % cols;
+      let ny = (cy + dy + rows) % rows;
+      cells[nx][ny].state = floor(random(4));
+      cells[nx][ny].age = 0;
+      cells[nx][ny].hue = random(300, 420) % 360;
+    }
+  }
+}
+</script>
+</body>
+</html>

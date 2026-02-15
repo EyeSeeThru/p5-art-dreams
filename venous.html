@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Venous</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// VENOUS
+// Domain warping - noise distorting noise
+// Black and red palette
+// Not veins. Not roots. Just the feeling of something living beneath.
+
+let t = 0;
+let cols, rows;
+let scale = 8;
+let particles = [];
+const PARTICLE_COUNT = 200;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+  
+  // Particles that swim through the warped space
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: 0,
+      vy: 0,
+      hue: random(340, 360), // Deep reds
+      size: random(1, 4),
+      life: random(1000)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 8); // Trails
+  
+  t += 0.003;
+  
+  // Domain warping - the core technique
+  // f(p) = noise(p + noise(p))
+  
+  for (let p of particles) {
+    // Get the warped coordinate
+    let warpX = p.x + noise(p.x * 0.002, p.y * 0.002, t) * 200 - 100;
+    let warpY = p.y + noise(p.x * 0.002 + 100, p.y * 0.002 + 100, t + 50) * 200 - 100;
+    
+    // Sample the noise field at warped position
+    let angle = noise(warpX * 0.003, warpY * 0.003, t * 0.5) * TWO_PI * 2;
+    let mag = noise(warpX * 0.003 + 500, warpY * 0.003 + 500, t * 0.5) * 2;
+    
+    // Steering
+    p.vx += cos(angle) * 0.1 * mag;
+    p.vy += sin(angle) * 0.1 * mag;
+    
+    // Damping
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+    
+    // Move
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Wrap
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    p.life--;
+    
+    // Respawn dead particles
+    if (p.life <= 0 || p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+      p.x = random(width);
+      p.y = random(height);
+      p.vx = 0;
+      p.vy = 0;
+      p.life = random(500, 1500);
+      p.hue = random(340, 380) % 360;
+    }
+    
+    // Draw - the particle becomes a vein
+    let vel = sqrt(p.vx * p.vx + p.vy * p.vy);
+    let alpha = map(vel, 0, 2, 20, 80);
+    
+    stroke(p.hue, 80, 90, alpha);
+    strokeWeight(p.size);
+    point(p.x, p.y);
+    
+    // Trail that follows
+    if (vel > 0.5) {
+      let trailLen = min(vel * 8, 30);
+      let tx = p.x - p.vx * trailLen;
+      let ty = p.y - p.vy * trailLen;
+      stroke(p.hue, 70, 70, alpha * 0.3);
+      strokeWeight(p.size * 0.5);
+      line(p.x, p.y, tx, ty);
+    }
+  }
+  
+  // Add subtle noise grain
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 20) {
+    if (random() < 0.03) {
+      let grain = random(-15, 15);
+      pixels[i] = constrain(pixels[i] + grain, 0, 255);
+      pixels[i+1] = constrain(pixels[i+1] + grain * 0.5, 0, 255);
+      pixels[i+2] = constrain(pixels[i+2] + grain * 0.2, 0, 255);
+    }
+  }
+  updatePixels();
+  
+  // Vignette
+  noStroke();
+  for (let r = 0; r < 5; r++) {
+    let radius = (width * 0.7) + r * 50;
+    let alpha = map(r, 0, 5, 0, 40);
+    fill(0, 0, 0, alpha);
+    ellipse(width/2, height/2, radius * 2);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+}
+
+function mousePressed() {
+  // Explosion from click
+  for (let p of particles) {
+    let d = dist(mouseX, mouseY, p.x, p.y);
+    if (d < 200) {
+      let angle = atan2(p.y - mouseY, p.x - mouseX);
+      p.vx += cos(angle) * 5;
+      p.vy += sin(angle) * 5;
+      p.hue = random(320, 400) % 360;
+    }
+  }
+}
+</script>
+</body>
+</html>
