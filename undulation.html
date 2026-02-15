@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Undulation — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0a; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Undulation — Wave displacement on vertex shapes
+// Black + red palette, no particles, no nature, no data viz
+
+let points = [];
+let time = 0;
+let numPoints = 12;
+let radius = 180;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noFill();
+  
+  // Initialize points in a ring
+  for (let i = 0; i < numPoints; i++) {
+    let angle = map(i, 0, numPoints, 0, TWO_PI);
+    points.push({
+      baseAngle: angle,
+      r: radius,
+      offset: random(1000)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 3, 0.15); // Almost black with trails
+  
+  translate(width / 2, height / 2);
+  
+  time += 0.008;
+  
+  // Draw multiple overlapping shapes
+  for (let layer = 0; layer < 5; layer++) {
+    let layerOffset = layer * 0.15;
+    let layerHue = (layer * 25 + 350) % 360; // Red variations
+    
+    beginShape();
+    strokeWeight(1.5 - layer * 0.2);
+    stroke(layerHue, 85, 90, 0.6 - layer * 0.08);
+    
+    for (let i = 0; i <= numPoints; i++) {
+      let idx = i % numPoints;
+      let p = points[idx];
+      
+      // Wave displacement
+      let wave1 = sin(time * 1.5 + p.offset + layerOffset) * 60;
+      let wave2 = cos(time * 0.7 + p.offset * 1.3) * 40;
+      let wave3 = sin(time * 2.1 + p.baseAngle * 3) * 20;
+      
+      let r = p.r + wave1 + wave2 + wave3;
+      
+      let x = cos(p.baseAngle + time * 0.1 * (layer + 1)) * r;
+      let y = sin(p.baseAngle + time * 0.1 * (layer + 1)) * r;
+      
+      curveVertex(x, y);
+    }
+    endShape(CLOSE);
+  }
+  
+  // Inner geometric tension
+  for (let i = 0; i < 3; i++) {
+    let innerR = 50 + i * 30;
+    let hue = (355 + i * 8) % 360;
+    
+    beginShape();
+    stroke(hue, 70, 80, 0.4);
+    strokeWeight(1);
+    
+    for (let j = 0; j <= 8; j++) {
+      let angle = map(j, 0, 8, 0, TWO_PI) + time * (i + 1) * 0.2;
+      let wobble = sin(time * 3 + j + i) * 15;
+      let x = cos(angle) * (innerR + wobble);
+      let y = sin(angle) * (innerR + wobble);
+      curveVertex(x, y);
+    }
+    endShape(CLOSE);
+  }
+  
+  // Click to disrupt
+  if (mouseIsPressed) {
+    for (let p of points) {
+      p.offset += random(5, 15);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  radius = min(width, height) * 0.25;
+  for (let p of points) {
+    p.r = radius;
+  }
+}
+
+// Click to disrupt the patterns
+function mousePressed() {
+  for (let p of points) {
+    p.offset = random(1000);
+  }
+}
+</script>
+</body>
+</html>
