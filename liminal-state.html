@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liminal State</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #0a0a0a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// LIMINAL STATE - Things that exist between states
+// No particles. No nature. No music visualization.
+// Just perceptual unease.
+
+let t = 0;
+let shapes = [];
+const SHAPE_COUNT = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  noStroke();
+  
+  for (let i = 0; i < SHAPE_COUNT; i++) {
+    shapes.push({
+      x: random(width),
+      y: random(height),
+      size: random(80, 200),
+      hue: random(360),
+      phase: random(TWO_PI),
+      driftX: random(-0.3, 0.3),
+      driftY: random(-0.3, 0.3)
+    });
+  }
+}
+
+function draw() {
+  background(10, 10, 12, 30); // Trails through opacity
+  
+  t += 0.003;
+  
+  for (let s of shapes) {
+    // Things that shouldn't move, drifting imperceptibly
+    s.x += s.driftX;
+    s.y += s.driftY;
+    
+    // Wrap around with slight offset to feel wrong
+    if (s.x < -s.size) s.x = width + s.size + random(-20, 20);
+    if (s.x > width + s.size) s.x = -s.size + random(-20, 20);
+    if (s.y < -s.size) s.y = height + s.size + random(-20, 20);
+    if (s.y > height + s.size) s.y = -s.size + random(-20, 20);
+    
+    // Calculate impossible overlap - shapes that are both here and there
+    let phaseShift = sin(t * 2 + s.phase) * 0.5 + 0.5;
+    
+    push();
+    translate(s.x, s.y);
+    
+    // The shape exists in multiple states simultaneously
+    for (let i = 0; i < 3; i++) {
+      let offset = sin(t + s.phase + i) * 30;
+      let alpha = map(sin(t * 0.5 + s.phase + i), -1, 1, 20, 80);
+      let sizeMod = map(sin(t * 0.3 + s.phase), -1, 1, 0.8, 1.2);
+      
+      fill(
+        (s.hue + i * 40 + offset) % 360,
+        70,
+        80,
+        alpha * phaseShift
+      );
+      
+      // Not quite a circle, not quite a square - liminal geometry
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.1) {
+        let r = s.size * sizeMod * (1 + sin(a * 3 + t + s.phase) * 0.15);
+        let x = cos(a) * r + offset * phaseShift;
+        let y = sin(a) * r + offset * (1 - phaseShift);
+        vertex(x, y);
+      }
+      endShape(CLOSE);
+    }
+    
+    // Connection lines that shouldn't exist
+    stroke(255, 5);
+    strokeWeight(0.5);
+    for (let other of shapes) {
+      if (other !== s) {
+        let d = dist(s.x, s.y, other.x, other.y);
+        if (d < 200 && d > 50) {
+          let alpha = map(d, 50, 200, 15, 0);
+          stroke(255, alpha);
+          line(s.x, s.y, other.x, other.y);
+        }
+      }
+    }
+    
+    pop();
+  }
+  
+  // Subtle grain overlay
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 40) {
+    let grain = random(-8, 8);
+    pixels[i] = constrain(pixels[i] + grain, 0, 255);
+    pixels[i+1] = constrain(pixels[i+1] + grain, 0, 255);
+    pixels[i+2] = constrain(pixels[i+2] + grain, 0, 255);
+  }
+  updatePixels();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Clicking creates a moment of clarity that fades
+  for (let s of shapes) {
+    s.driftX = random(-2, 2);
+    s.driftY = random(-2, 2);
+  }
+}
+</script>
+</body>
+</html>

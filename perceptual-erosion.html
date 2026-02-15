@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perceptual Erosion</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #050505;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// PERCEPTUAL EROSION
+// The longer you look, the less certain you become
+// Not a particle system. Not nature. Something that eats at perception.
+
+let anchors = [];
+let eroded = [];
+let t = 0;
+const ANCHOR_COUNT = 7;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  // Create anchor points that feel like they mean something
+  for (let i = 0; i < ANCHOR_COUNT; i++) {
+    let angle = map(i, 0, ANCHOR_COUNT, 0, TWO_PI);
+    let r = min(width, height) * 0.3;
+    anchors.push({
+      baseX: width/2 + cos(angle) * r,
+      baseY: height/2 + sin(angle) * r,
+      angle: angle,
+      radius: r,
+      hue: (i * 360 / ANCHOR_COUNT + 180) % 360,
+      size: random(60, 140),
+      phase: random(TWO_PI)
+    });
+    eroded.push(0);
+  }
+}
+
+function draw() {
+  background(5, 5, 8);
+  
+  t += 0.002;
+  
+  // Central impossible shape
+  push();
+  translate(width/2, height/2);
+  
+  noFill();
+  strokeWeight(2);
+  for (let ring = 0; ring < 5; ring++) {
+    let radius = 50 + ring * 40 + sin(t * 2) * 10;
+    let hue = (ring * 40 + t * 20) % 360;
+    
+    // The shape that can't decide what it is
+    beginShape();
+    for (let a = 0; a < TWO_PI; a += 0.05) {
+      let noiseVal = noise(
+        cos(a) * 2 + t, 
+        sin(a) * 2 + t, 
+        ring * 0.5
+      );
+      let r = radius + noiseVal * 30 - 15;
+      let x = cos(a + t * 0.1 * (ring % 2 ? 1 : -1)) * r;
+      let y = sin(a + t * 0.1 * (ring % 2 ? 1 : -1)) * r;
+      
+      // Colors that shouldn't work together
+      stroke(hue, 60, 80, 100 - ring * 15);
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+  }
+  pop();
+  
+  // Anchors with erosion effect
+  for (let i = 0; i < anchors.length; i++) {
+    let a = anchors[i];
+    
+    // Orbit that doesn't quite repeat
+    let orbitX = a.baseX + cos(t + a.phase) * 30;
+    let orbitY = a.baseY + sin(t * 0.7 + a.phase) * 30;
+    
+    // The erosion builds up - shapes losing their certainty
+    eroded[i] += 0.001;
+    let erosion = sin(eroded[i]) * 0.5 + 0.5;
+    
+    // Draw multiple potential states overlaid
+    push();
+    translate(orbitX, orbitY);
+    
+    for (let layer = 0; layer < 3; layer++) {
+      let rot = t * 0.2 * (layer - 1) + a.phase;
+      let size = a.size * (1 + layer * 0.3);
+      let alpha = map(layer, 0, 2, 60, 20);
+      
+      noFill();
+      strokeWeight(1.5);
+      stroke(a.hue + layer * 20, 50, 90, alpha);
+      
+      // Shape that morphs between states
+      beginShape();
+      for (let pt = 0; pt < 8; pt++) {
+        let angle = TWO_PI * pt / 8 + rot;
+        let r = size * (0.8 + erosion * 0.4);
+        
+        // Add impossible twist
+        let twist = sin(angle * 3 + t + layer) * size * 0.2;
+        let x = cos(angle) * r + twist;
+        let y = sin(angle) * r + twist;
+        
+        vertex(x, y);
+      }
+      endShape(CLOSE);
+    }
+    
+    // Connecting lines that create new shapes in negative space
+    stroke(a.hue, 40, 60, 30);
+    strokeWeight(0.5);
+    for (let j = i + 1; j < anchors.length; j++) {
+      let other = anchors[j];
+      let otherOrbitX = other.baseX + cos(t + other.phase) * 30;
+      let otherOrbitY = other.baseY + sin(t * 0.7 + other.phase) * 30;
+      
+      // Lines that breathe
+      let d = dist(orbitX, orbitY, otherOrbitX, otherOrbitY);
+      if (d < 400) {
+        let alpha = map(d, 0, 400, 40, 5);
+        stroke(a.hue, 50, 70, alpha);
+        line(orbitX, orbitY, otherOrbitX, otherOrbitY);
+        
+        // Midpoint disruption
+        let midX = (orbitX + otherOrbitX) / 2;
+        let midY = (orbitY + otherOrbitY) / 2;
+        let disruption = sin(t * 3 + i + j) * 20;
+        point(midX + disruption, midY + disruption);
+      }
+    }
+    
+    pop();
+  }
+  
+  // Vignette that breathes
+  let vignetteAlpha = map(sin(t), -1, 1, 20, 50);
+  loadPixels();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let d = dist(x, y, width/2, height/2);
+      let vignette = map(d, 0, width/2, 0, vignetteAlpha);
+      let idx = (y * width + x) * 4;
+      pixels[idx] = constrain(pixels[idx] - vignette, 0, 255);
+      pixels[idx+1] = constrain(pixels[idx+1] - vignette, 0, 255);
+      pixels[idx+2] = constrain(pixels[idx+2] - vignette, 0, 255);
+    }
+  }
+  updatePixels();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Recalculate anchor positions
+  for (let i = 0; i < anchors.length; i++) {
+    let angle = map(i, 0, ANCHOR_COUNT, 0, TWO_PI);
+    let r = min(width, height) * 0.3;
+    anchors[i].baseX = width/2 + cos(angle) * r;
+    anchors[i].baseY = height/2 + sin(angle) * r;
+    anchors[i].radius = r;
+  }
+}
+
+function mousePressed() {
+  // Reset erosion slightly
+  for (let i = 0; i < eroded.length; i++) {
+    eroded[i] -= 0.5;
+  }
+}
+</script>
+</body>
+</html>
