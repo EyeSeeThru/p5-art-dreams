@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Particle Weaving</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #080810;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// PARTICLE WEAVING - Thread-like particles trace flowing paths
+// Particles move in interlocking wave patterns, weaving colored
+// threads that create fabric-like visual textures over time.
+
+let particles = [];
+const NUM_PARTICLES = 400;
+let t = 0;
+
+class ThreadParticle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.pos = createVector(random(width), random(height));
+    this.prevPos = this.pos.copy();
+    this.vel = createVector(0, 0);
+    this.hue = random(180, 300);
+    this.speed = random(0.5, 2);
+    this.size = random(1, 3);
+    this.turbulence = random(0.002, 0.008);
+    this.angleOffset = random(TWO_PI);
+    this.life = 255;
+    this.maxLife = random(200, 400);
+  }
+  
+  update() {
+    this.prevPos = this.pos.copy();
+    
+    // Flow field based on multiple sine waves
+    let angle = sin(this.pos.x * this.turbulence + t + this.angleOffset) * 
+                cos(this.pos.y * this.turbulence * 0.7 + t * 0.5) * TWO_PI;
+    
+    angle += sin(this.pos.x * 0.005 + t * 0.3) * PI * 0.5;
+    
+    this.vel.x = cos(angle) * this.speed;
+    this.vel.y = sin(angle) * this.speed;
+    
+    this.pos.add(this.vel);
+    
+    // Wrap around edges
+    if (this.pos.x < 0) { this.pos.x = width; this.prevPos = this.pos.copy(); }
+    if (this.pos.x > width) { this.pos.x = 0; this.prevPos = this.pos.copy(); }
+    if (this.pos.y < 0) { this.pos.y = height; this.prevPos = this.pos.copy(); }
+    if (this.pos.y > height) { this.pos.y = 0; this.prevPos = this.pos.copy(); }
+    
+    // Life decay
+    this.life -= 0.5;
+    if (this.life <= 0) this.reset();
+  }
+  
+  draw() {
+    let alpha = map(this.life, 0, this.maxLife, 0, 200);
+    alpha = constrain(alpha, 0, 200);
+    
+    // Color based on position and hue
+    let sat = 70 + sin(this.pos.x * 0.01 + t) * 20;
+    let bri = 60 + sin(this.pos.y * 0.01 + t * 1.5) * 30;
+    
+    stroke(this.hue, sat, bri, alpha);
+    strokeWeight(this.size);
+    line(this.prevPos.x, this.prevPos.y, this.pos.x, this.pos.y);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 255);
+  background(240, 20, 3);
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new ThreadParticle());
+  }
+}
+
+function draw() {
+  // Very subtle fade for trails
+  noStroke();
+  fill(240, 20, 3, 8);
+  rect(0, 0, width, height);
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.update();
+    p.draw();
+  }
+  
+  // Add connecting lines between nearby particles
+  stroke(200, 40, 80, 5);
+  strokeWeight(0.5);
+  for (let i = 0; i < particles.length; i += 4) {
+    for (let j = i + 1; j < particles.length; j += 4) {
+      let d = dist(particles[i].pos.x, particles[i].pos.y, 
+                   particles[j].pos.x, particles[j].pos.y);
+      if (d < 40) {
+        let alpha = map(d, 0, 40, 15, 0);
+        stroke(200, 40, 80, alpha);
+        line(particles[i].pos.x, particles[i].pos.y, 
+             particles[j].pos.x, particles[j].pos.y);
+      }
+    }
+  }
+  
+  // Vignette
+  drawVignette();
+  
+  t += 0.01;
+}
+
+function drawVignette() {
+  let gradient = drawingContext.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, width * 0.7
+  );
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+  drawingContext.fillStyle = gradient;
+  drawingContext.fillRect(0, 0, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(240, 20, 3);
+}
+
+function mousePressed() {
+  // Burst of new particles at click
+  for (let i = 0; i < 20; i++) {
+    let p = new ThreadParticle();
+    p.pos = createVector(mouseX, mouseY);
+    p.prevPos = p.pos.copy();
+    p.life = p.maxLife;
+    particles.push(p);
+  }
+  
+  // Limit particles
+  while (particles.length > NUM_PARTICLES + 50) {
+    particles.shift();
+  }
+}
+</script>
+</body>
+</html>
