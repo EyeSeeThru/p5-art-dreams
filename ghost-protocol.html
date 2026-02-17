@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Protocol</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #050505;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// GHOST PROTOCOL - Data remnants that refuse to disappear
+// Not quite glitch. Not quite memory leak.
+// Just the trace of something that was here.
+
+let t = 0;
+let ghostGrid = [];
+const GRID_SIZE = 40;
+let cellW, cellH;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  cellW = width / GRID_SIZE;
+  cellH = height / GRID_SIZE;
+  
+  // Initialize ghost grid with dormant states
+  for (let i = 0; i < GRID_SIZE; i++) {
+    ghostGrid[i] = [];
+    for (let j = 0; j < GRID_SIZE; j++) {
+      ghostGrid[i][j] = {
+        energy: random(0.1, 0.3),
+        phase: random(TWO_PI),
+        decay: random(0.995, 0.999),
+        hue: random(-20, 20)
+      };
+    }
+  }
+}
+
+function draw() {
+  // Dark background with very slight trail
+  background(5, 5, 7, 40);
+  
+  t += 0.01;
+  
+  // Update and draw ghost cells
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      let cell = ghostGrid[i][j];
+      
+      // Energy fluctuates like a dying signal
+      let noiseVal = noise(i * 0.1, j * 0.1, t * 0.5);
+      cell.energy = cell.energy * cell.decay + noiseVal * 0.02;
+      
+      // Occasionally a cell flares up - memory surfacing
+      if (random(0.001) < 0.001) {
+        cell.energy = random(0.5, 1.0);
+      }
+      
+      // Calculate display position with jitter
+      let x = i * cellW + cellW/2;
+      let y = j * cellH + cellH/2;
+      
+      // Position ghosts slightly off-grid
+      let jitter = sin(t * 2 + cell.phase) * 3;
+      x += jitter;
+      y += cos(t * 1.5 + cell.phase) * 3;
+      
+      // Draw ghost trace
+      if (cell.energy > 0.05) {
+        let alpha = map(cell.energy, 0, 1, 10, 200);
+        let size = map(cell.energy, 0, 1, 2, cellW * 0.8);
+        
+        // Red/black palette with slight warmth variation
+        let hue = 0 + cell.hue + sin(t + cell.phase) * 10;
+        let sat = 80 + cell.energy * 20;
+        let bri = 30 + cell.energy * 70;
+        
+        colorMode(HSB, 360, 100, 100, 255);
+        
+        // Multiple overlapping ghosts for depth
+        noStroke();
+        
+        // Core
+        fill(hue, sat, bri, alpha);
+        ellipse(x, y, size, size * (0.8 + sin(t + cell.phase) * 0.2));
+        
+        // Outer glow
+        fill(hue, sat * 0.5, bri * 1.2, alpha * 0.3);
+        ellipse(x, y, size * 1.5, size * 1.5);
+        
+        // Connecting to neighbors (ghost network)
+        if (cell.energy > 0.3) {
+          stroke(hue, sat * 0.5, bri, alpha * 0.2);
+          strokeWeight(0.5);
+          
+          // Connect to energetic neighbors
+          let neighbors = [
+            [i-1, j], [i+1, j], [i, j-1], [i, j+1]
+          ];
+          
+          for (let n of neighbors) {
+            if (n[0] >= 0 && n[0] < GRID_SIZE && n[1] >= 0 && n[1] < GRID_SIZE) {
+              let neighbor = ghostGrid[n[0]][n[1]];
+              if (neighbor.energy > 0.2) {
+                let nx = n[0] * cellW + cellW/2;
+                let ny = n[1] * cellH + cellH/2;
+                line(x, y, nx, ny);
+              }
+            }
+          }
+        }
+        
+        colorMode(RGB, 255);
+      }
+    }
+  }
+  
+  // Occasional full-flash - data surfacing
+  if (random(0.0005) < 0.0005) {
+    fill(30, 5, 5, 15);
+    rect(0, 0, width, height);
+  }
+  
+  // Scanline artifact effect
+  stroke(0, 0, 0, 15);
+  strokeWeight(1);
+  for (let y = 0; y < height; y += 3) {
+    if (noise(y * 0.01, t) > 0.7) {
+      line(0, y, width, y);
+    }
+  }
+  
+  // Subtle noise grain
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 20) {
+    let grain = random(-5, 5);
+    pixels[i] = constrain(pixels[i] + grain, 0, 255);
+    pixels[i+1] = constrain(pixels[i+1] + grain, 0, 255);
+    pixels[i+2] = constrain(pixels[i+2] + grain, 0, 255);
+  }
+  updatePixels();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cellW = width / GRID_SIZE;
+  cellH = height / GRID_SIZE;
+}
+
+function mousePressed() {
+  // Mouse click releases stored energy
+  let mi = floor(mouseX / cellW);
+  let mj = floor(mouseY / cellH);
+  
+  // Explosion from click point
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      let d = dist(i, j, mi, mj);
+      if (d < 5) {
+        ghostGrid[i][j].energy = min(ghostGrid[i][j].energy + 0.5 / (d + 1), 1.0);
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
