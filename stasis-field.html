@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stasis Field</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #050508;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// STASIS FIELD - Standing wave interference patterns
+// Where sine waves intersect, reality briefly stabilizes.
+// Crystalline structures emerge from mathematical tension.
+// Move mouse to disturb the field.
+
+let t = 0;
+let waveNodes = [];
+const NUM_NODES = 12;
+
+class WaveNode {
+  constructor(x, y, freq, phase) {
+    this.origin = createVector(x, y);
+    this.pos = createVector(x, y);
+    this.freq = freq;
+    this.phase = phase;
+    this.amplitude = random(30, 80);
+    this.color = color(
+      random() > 0.5 ? random(40, 80) : random(280, 320),
+      random(60, 90),
+      random(70, 100)
+    );
+  }
+  
+  update(waveX, waveY) {
+    // Standing wave calculation
+    let d = dist(waveX, waveY, this.origin.x, this.origin.y);
+    let wave = sin(d * 0.02 - t * this.freq + this.phase) * this.amplitude;
+    
+    // Radial offset from origin
+    let angle = atan2(waveY - this.origin.y, waveX - this.origin.x);
+    this.pos.x = this.origin.x + cos(angle) * abs(wave);
+    this.pos.y = this.origin.y + sin(angle) * abs(wave);
+  }
+  
+  display(waveX, waveY) {
+    let d = dist(waveX, waveY, this.origin.x, this.origin.y);
+    let wave = sin(d * 0.02 - t * this.freq + this.phase);
+    let intensity = map(abs(wave), 0, 1, 30, 255);
+    
+    // Draw node
+    noStroke();
+    let nodeSize = map(abs(wave), 0, 1, 2, 8);
+    
+    // Glow
+    for (let i = 3; i > 0; i--) {
+      let alpha = intensity / (i * i) * 0.4;
+      fill(red(this.color), green(this.color), blue(this.color), alpha);
+      ellipse(this.pos.x, this.pos.y, nodeSize * (1 + i * 0.8));
+    }
+    
+    // Core
+    fill(red(this.color), green(this.color), blue(this.color), intensity);
+    ellipse(this.pos.x, this.pos.y, nodeSize);
+    
+    // Connecting line to cursor
+    if (mouseIsPressed) {
+      stroke(red(this.color), green(this.color), blue(this.color), intensity * 0.3);
+      strokeWeight(1);
+      line(this.pos.x, this.pos.y, waveX, waveY);
+    }
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  // Create wave nodes in a circular pattern
+  let radius = min(width, height) * 0.35;
+  for (let i = 0; i < NUM_NODES; i++) {
+    let angle = (TWO_PI / NUM_NODES) * i;
+    let x = width/2 + cos(angle) * radius;
+    let y = height/2 + sin(angle) * radius;
+    let freq = random(0.5, 1.5);
+    let phase = random(TWO_PI);
+    waveNodes.push(new WaveNode(x, y, freq, phase));
+  }
+}
+
+function draw() {
+  // Dark background with slight trail for movement
+  background(5, 5, 8, 40);
+  
+  let waveX = mouseX || width/2;
+  let waveY = mouseY || height/2;
+  
+  // Update nodes
+  for (let node of waveNodes) {
+    node.update(waveX, waveY);
+  }
+  
+  // Draw interference field - grid of points
+  let spacing = 25;
+  noStroke();
+  
+  for (let x = spacing/2; x < width; x += spacing) {
+    for (let y = spacing/2; y < height; y += spacing) {
+      // Calculate interference from all nodes
+      let totalWave = 0;
+      let closestDist = Infinity;
+      
+      for (let node of waveNodes) {
+        let d = dist(x, y, node.origin.x, node.origin.y);
+        let wave = sin(d * 0.02 - t * node.freq + node.phase);
+        totalWave += wave;
+        closestDist = min(closestDist, d);
+      }
+      
+      // Average and normalize
+      totalWave /= waveNodes.length;
+      
+      // Only draw where waves "crystallize" (cross zero)
+      let threshold = 0.15;
+      if (abs(totalWave) < threshold) {
+        let intensity = map(abs(totalWave), 0, threshold, 255, 0);
+        intensity *= map(closestDist, 0, width * 0.5, 1, 0.3);
+        
+        // Color based on position
+        let hue = map(x + y, 0, width + height, 180, 300);
+        fill(hue, 70, 80, intensity * 0.6);
+        
+        let size = map(abs(totalWave), 0, threshold, 4, 1);
+        ellipse(x, y, size);
+      }
+    }
+  }
+  
+  // Draw nodes on top
+  for (let node of waveNodes) {
+    node.display(waveX, waveY);
+  }
+  
+  // Draw connections between adjacent nodes
+  strokeWeight(0.5);
+  for (let i = 0; i < waveNodes.length; i++) {
+    let n1 = waveNodes[i];
+    let n2 = waveNodes[(i + 1) % waveNodes.length];
+    
+    let d = n1.pos.dist(n2.pos);
+    let alpha = map(d, 0, 200, 60, 0);
+    
+    stroke(red(n1.color), green(n1.color), blue(n1.color), alpha);
+    line(n1.pos.x, n1.pos.y, n2.pos.x, n2.pos.y);
+  }
+  
+  // Central orb
+  let centerWave = sin(t * 2) * 0.5 + 0.5;
+  noStroke();
+  for (let i = 5; i > 0; i--) {
+    let alpha = centerWave * 40 / i;
+    let size = 30 + i * 15 + sin(t * 3) * 10;
+    fill(200, 220, 255, alpha);
+    ellipse(width/2, height/2, size);
+  }
+  
+  // Vignette
+  drawVignette();
+  
+  // Subtle grain
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 30) {
+    let grain = random(-2, 2);
+    pixels[i] = constrain(pixels[i] + grain, 0, 255);
+    pixels[i+1] = constrain(pixels[i+1] + grain, 0, 255);
+    pixels[i+2] = constrain(pixels[i+2] + grain, 0, 255);
+  }
+  updatePixels();
+  
+  t += 0.03;
+}
+
+function drawVignette() {
+  let gradient = drawingContext.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, width * 0.7
+  );
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
+  drawingContext.fillStyle = gradient;
+  drawingContext.fillRect(0, 0, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Reposition nodes
+  let radius = min(width, height) * 0.35;
+  for (let i = 0; i < waveNodes.length; i++) {
+    let angle = (TWO_PI / NUM_NODES) * i;
+    waveNodes[i].origin.x = width/2 + cos(angle) * radius;
+    waveNodes[i].origin.y = height/2 + sin(angle) * radius;
+  }
+}
+
+function mousePressed() {
+  // Add a new wave node at click position
+  if (waveNodes.length < 20) {
+    let freq = random(0.5, 1.5);
+    let phase = random(TWO_PI);
+    waveNodes.push(new WaveNode(mouseX, mouseY, freq, phase));
+  }
+}
+</script>
+</body>
+</html>
