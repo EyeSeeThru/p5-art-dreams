@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interference</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #050508;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// INTERFERENCE - Wave interference pattern visualization
+// Multiple oscillating sources create interference patterns
+// like pond ripples meeting, forming complex moiré landscapes.
+// Each point in space responds to the sum of wave influences.
+
+let t = 0;
+let waves = [];
+const NUM_WAVES = 8;
+
+class WaveSource {
+  constructor() {
+    this.pos = createVector(random(width * 0.1, width * 0.9), random(height * 0.1, height * 0.9));
+    this.freq = random(0.02, 0.06);
+    this.amp = random(100, 200);
+    this.phaseSpeed = random(0.5, 1.5);
+    this.phase = random(TWO_PI);
+    this.color = random() > 0.5 ? 
+      color(random(40, 80), random(180, 240), random(200, 255)) : // cyan
+      color(random(180, 240), random(40, 100), random(200, 255)); // magenta
+  }
+  
+  update() {
+    this.phase += this.phaseSpeed * 0.02;
+  }
+  
+  getValue(x, y) {
+    let d = dist(x, y, this.pos.x, this.pos.y);
+    return sin(d * this.freq - this.phase) * this.amp;
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize wave sources in interesting positions
+  for (let i = 0; i < NUM_WAVES; i++) {
+    waves.push(new WaveSource());
+  }
+}
+
+function draw() {
+  // Very subtle trail for ethereal effect
+  background(230, 30, 5, 15);
+  
+  // Calculate interference at each pixel (lower resolution for performance)
+  let resolution = 4;
+  noStroke();
+  
+  for (let x = 0; x < width; x += resolution) {
+    for (let y = 0; y < height; y += resolution) {
+      
+      // Sum all wave influences
+      let interference = 0;
+      for (let w of waves) {
+        interference += w.getValue(x, y);
+      }
+      
+      // Normalize to 0-1 range
+      let norm = map(interference, -NUM_WAVES * 200, NUM_WAVES * 200, 0, 1);
+      norm = constrain(norm, 0, 1);
+      
+      // Create color based on interference pattern
+      let hue = map(norm, 0, 1, 200, 320);
+      let sat = map(norm, 0, 1, 20, 80);
+      let bri = map(norm, 0, 1, 3, map(norm, 0.4, 0.6, 60, 95));
+      
+      // Only draw significant values
+      if (bri > 10) {
+        fill(hue, sat, bri);
+        rect(x, y, resolution, resolution);
+      }
+    }
+  }
+  
+  // Update waves
+  for (let w of waves) {
+    w.update();
+  }
+  
+  // Draw wave sources as glowing points
+  for (let w of waves) {
+    let pulse = sin(w.phase * 2) * 0.3 + 1;
+    
+    // Glow
+    for (let i = 3; i > 0; i--) {
+      noStroke();
+      fill(hue(w.color), 80, 90, 20 / i);
+      ellipse(w.pos.x, w.pos.y, 20 * pulse * i, 20 * pulse * i);
+    }
+    
+    // Core
+    fill(0, 0, 100);
+    ellipse(w.pos.x, w.pos.y, 4 * pulse, 4 * pulse);
+  }
+  
+  // Vignette
+  drawVignette();
+  
+  // Subtle noise grain
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 20) {
+    let grain = random(-5, 5);
+    pixels[i] = constrain(pixels[i] + grain, 0, 255);
+    pixels[i+1] = constrain(pixels[i+1] + grain, 0, 255);
+    pixels[i+2] = constrain(pixels[i+2] + grain, 0, 255);
+  }
+  updatePixels();
+  
+  t += 0.01;
+}
+
+function drawVignette() {
+  let gradient = drawingContext.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, width * 0.7
+  );
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+  drawingContext.fillStyle = gradient;
+  drawingContext.fillRect(0, 0, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new wave source at click
+  let newWave = new WaveSource();
+  newWave.pos = createVector(mouseX, mouseY);
+  waves.push(newWave);
+  
+  // Limit number of waves
+  if (waves.length > 12) {
+    waves.shift();
+  }
+}
+</script>
+</body>
+</html>
