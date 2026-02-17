@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbital Decay</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #020204;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// ORBITAL DECAY
+// Particles in decaying orbits, spiraling toward gravity wells
+// Each orbit slowly loses energy, spiraling inward
+// Occasionally new particles enter the system
+
+let t = 0;
+let orbits = [];
+const NUM_ORBITS = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize orbital systems
+  for (let i = 0; i < NUM_ORBITS; i++) {
+    orbits.push(createOrbitalSystem());
+  }
+}
+
+function createOrbitalSystem() {
+  let numParticles = floor(random(30, 80));
+  let particles = [];
+  
+  // Gravity center
+  let cx = random(width * 0.2, width * 0.8);
+  let cy = random(height * 0.2, height * 0.8);
+  
+  // Multiple gravity wells per system
+  let wells = [];
+  let numWells = floor(random(1, 4));
+  for (let w = 0; w < numWells; w++) {
+    wells.push({
+      x: cx + random(-100, 100),
+      y: cy + random(-100, 100),
+      mass: random(50, 150),
+      decay: random(0.998, 0.9995)
+    });
+  }
+  
+  for (let i = 0; i < numParticles; i++) {
+    let angle = random(TWO_PI);
+    let dist = random(100, 300);
+    particles.push({
+      x: cx + cos(angle) * dist,
+      y: cy + sin(angle) * dist,
+      vx: -sin(angle) * random(1, 3),
+      vy: cos(angle) * random(1, 3),
+      size: random(2, 8),
+      energy: random(0.5, 1),
+      hue: random(180, 280), // Blues, purples
+      sat: random(60, 90),
+      well: floor(random(numWells))
+    });
+  }
+  
+  return {
+    cx, cy,
+    wells,
+    particles,
+    rotation: random(TWO_PI),
+    rotSpeed: random(0.002, 0.008)
+  };
+}
+
+function draw() {
+  // Deep space with slight trail
+  background(230, 30, 3, 15);
+  
+  t += 0.02;
+  
+  // Update and draw each orbital system
+  for (let orbit of orbits) {
+    // Rotate entire system slowly
+    orbit.rotation += orbit.rotSpeed;
+    
+    // Update particles
+    for (let p of orbit.particles) {
+      let well = orbit.wells[p.well];
+      
+      // Calculate gravitational pull
+      let dx = well.x - p.x;
+      let dy = well.y - p.y;
+      let d = sqrt(dx*dx + dy*dy);
+      d = max(d, 20); // Prevent extreme forces
+      
+      // Gravitational acceleration
+      let force = well.mass / (d * d) * 0.5;
+      let fx = (dx / d) * force;
+      let fy = (dy / d) * force;
+      
+      p.vx += fx;
+      p.vy += fy;
+      
+      // Orbital velocity component (perpendicular to radius)
+      // This creates the spiral decay effect
+      p.vx += -sin(atan2(dy, dx) + HALF_PI) * 0.02;
+      p.vy += cos(atan2(dy, dx) + HALF_PI) * 0.02;
+      
+      // Energy decay
+      p.energy *= well.decay;
+      
+      // Update position
+      p.x += p.vx;
+      p.y += p.vy;
+      
+      // Respawn if too close to center or too far
+      if (d < 15 || d > 600 || p.energy < 0.05) {
+        let angle = random(TWO_PI);
+        let dist = random(150, 350);
+        p.x = orbit.cx + cos(angle) * dist;
+        p.y = orbit.cy + sin(angle) * dist;
+        p.vx = -sin(angle) * random(1.5, 3);
+        p.vy = cos(angle) * random(1.5, 3);
+        p.energy = random(0.6, 1);
+      }
+    }
+    
+    // Draw gravity wells
+    for (let well of orbit.wells) {
+      let wobble = sin(t * 2 + well.mass) * 3;
+      
+      // Well glow
+      noStroke();
+      for (let r = well.mass * 2; r > 0; r -= 10) {
+        let alpha = map(r, 0, well.mass * 2, 15, 0);
+        fill(240, 60, 20, alpha);
+        ellipse(well.x, well.y + wobble, r, r);
+      }
+    }
+    
+    // Draw particles
+    for (let p of orbit.particles) {
+      if (p.energy > 0.05) {
+        let alpha = map(p.energy, 0, 1, 20, 90);
+        let size = p.size * (0.5 + p.energy * 0.8);
+        
+        // Color shifts as energy decays (blue -> cyan -> white)
+        let hueShift = map(p.energy, 1, 0, 0, 40);
+        let hue = (p.hue + hueShift + 360) % 360;
+        let bri = map(p.energy, 0, 1, 30, 100);
+        
+        // Outer glow
+        fill(hue, p.sat * 0.5, bri * 1.2, alpha * 0.3);
+        ellipse(p.x, p.y, size * 2.5, size * 2.5);
+        
+        // Core
+        fill(hue, p.sat, bri, alpha);
+        ellipse(p.x, p.y, size, size);
+        
+        // Bright center
+        fill(hue, p.sat * 0.3, 100, alpha * 0.8);
+        ellipse(p.x, p.y, size * 0.4, size * 0.4);
+      }
+    }
+    
+    // Draw orbital trails (recent path)
+    strokeWeight(1);
+    for (let i = 0; i < orbit.particles.length; i++) {
+      let p = orbit.particles[i];
+      if (p.energy > 0.2) {
+        let alpha = p.energy * 15;
+        stroke(p.hue, p.sat * 0.6, 60, alpha);
+        
+        // Trail based on velocity direction
+        let trailLen = 15;
+        line(p.x, p.y, p.x - p.vx * trailLen, p.y - p.vy * trailLen);
+      }
+    }
+  }
+  
+  // Occasional bright flash when particles merge
+  if (random(0.002) < 0.002) {
+    let orbit = random(orbits);
+    let well = random(orbit.wells);
+    fill(200, 20, 40, 8);
+    rect(0, 0, width, height);
+    
+    // Flash at well
+    noStroke();
+    fill(220, 40, 100, 20);
+    ellipse(well.x, well.y, 100, 100);
+  }
+  
+  // Star field background
+  randomSeed(42);
+  stroke(255, 8);
+  strokeWeight(1);
+  for (let i = 0; i < 100; i++) {
+    let sx = random(width);
+    let sy = random(height);
+    point(sx, sy);
+  }
+  
+  colorMode(RGB, 255);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add energy burst at click
+  for (let orbit of orbits) {
+    for (let p of orbit.particles) {
+      let d = dist(mouseX, mouseY, p.x, p.y);
+      if (d < 100) {
+        p.energy = min(p.energy + 0.3, 1);
+        // Push away slightly
+        let angle = atan2(p.y - mouseY, p.x - mouseX);
+        p.vx += cos(angle) * 2;
+        p.vy += sin(angle) * 2;
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
