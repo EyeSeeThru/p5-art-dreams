@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>void-geometry</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #010102; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// VOID GEOMETRY - Shapes that emerge from and dissolve into darkness
+let voids = [];
+let time = 0;
+const VOID_COUNT = 7;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < VOID_COUNT; i++) {
+    voids.push(createVoid(i));
+  }
+}
+
+function createVoid(index) {
+  let cx = random(width * 0.2, width * 0.8);
+  let cy = random(height * 0.2, height * 0.8);
+  
+  return {
+    cx, cy,
+    targetX: cx,
+    targetY: cy,
+    baseRadius: random(40, 120),
+    currentRadius: 0,
+    hue: random(240, 320),
+    phase: random(TWO_PI),
+    cycleSpeed: random(0.008, 0.018),
+    vertices: [],
+    vertexCount: floor(random(6, 14)),
+    noiseOffset: random(1000),
+    rotation: random(TWO_PI),
+    rotSpeed: random(-0.003, 0.003),
+    active: false,
+    birthTime: random(200)
+  };
+}
+
+function draw() {
+  background(240, 30, 0.8, 0.03);
+  
+  time += 1;
+  
+  // Sort voids by size for depth effect
+  voids.sort((a, b) => a.currentRadius - b.currentRadius);
+  
+  for (let v of voids) {
+    updateVoid(v);
+    drawVoid(v);
+  }
+  
+  // Draw connections between nearby voids
+  for (let i = 0; i < voids.length; i++) {
+    for (let j = i + 1; j < voids.length; j++) {
+      let d = dist(voids[i].cx, voids[i].cy, voids[j].cx, voids[j].cy);
+      if (d < 200) {
+        let alpha = map(d, 0, 200, 0.08, 0) * (voids[i].currentRadius / voids[i].baseRadius) * (voids[j].currentRadius / voids[j].baseRadius);
+        stroke((voids[i].hue + voids[j].hue) / 2, 30, 50, alpha);
+        strokeWeight(0.5);
+        line(voids[i].cx, voids[i].cy, voids[j].cx, voids[j].cy);
+      }
+    }
+  }
+}
+
+function updateVoid(v) {
+  // Life cycle: dormant → emerging → active → fading → dormant
+  let cyclePos = (time * v.cycleSpeed + v.phase) % 1;
+  
+  // Smooth radius based on cycle position
+  if (cyclePos < 0.1) {
+    v.currentRadius = lerp(v.currentRadius, 0, 0.05);
+    v.active = false;
+  } else if (cyclePos < 0.2) {
+    v.currentRadius = lerp(v.currentRadius, v.baseRadius * (cyclePos - 0.1) * 10, 0.08);
+    v.active = cyclePos > 0.15;
+  } else if (cyclePos < 0.8) {
+    v.currentRadius = lerp(v.currentRadius, v.baseRadius * (1 + sin(cyclePos * PI) * 0.2), 0.05);
+    v.active = true;
+  } else if (cyclePos < 0.9) {
+    v.currentRadius = lerp(v.currentRadius, v.baseRadius * (1 - (cyclePos - 0.8) * 10), 0.08);
+    v.active = cyclePos < 0.85;
+  } else {
+    v.currentRadius = lerp(v.currentRadius, 0, 0.05);
+    v.active = false;
+  }
+  
+  // Slow drift toward target
+  v.cx = lerp(v.cx, v.targetX, 0.01);
+  v.cy = lerp(v.cy, v.targetY, 0.01);
+  
+  // Occasionally pick new target
+  if (random() < 0.002) {
+    v.targetX = random(width * 0.15, width * 0.85);
+    v.targetY = random(height * 0.15, height * 0.85);
+  }
+  
+  // Update rotation
+  v.rotation += v.rotSpeed;
+  
+  // Generate vertices
+  v.vertices = [];
+  for (let i = 0; i < v.vertexCount; i++) {
+    let angle = map(i, 0, v.vertexCount, 0, TWO_PI) + v.rotation;
+    let noiseVal = noise(
+      cos(angle) * 2 + v.noiseOffset + time * 0.002,
+      sin(angle) * 2 + v.noiseOffset
+    );
+    let r = v.currentRadius * (0.5 + noiseVal * 0.8);
+    v.vertices.push({
+      x: v.cx + cos(angle) * r,
+      y: v.cy + sin(angle) * r,
+      angle: angle,
+      noiseVal: noiseVal
+    });
+  }
+}
+
+function drawVoid(v) {
+  if (v.currentRadius < 2) return;
+  
+  let alpha = map(v.currentRadius, 0, v.baseRadius, 0, 0.6);
+  
+  // Draw inverted glow (darker center)
+  noStroke();
+  for (let layer = 4; layer >= 0; layer--) {
+    let layerR = v.currentRadius * (1 + layer * 0.4);
+    let layerAlpha = alpha * (1 - layer * 0.2) * 0.15;
+    
+    fill(v.hue, 60, 10, layerAlpha);
+    ellipse(v.cx, v.cy, layerR * 2);
+  }
+  
+  // Draw the void boundary
+  noFill();
+  
+  // Outer glow
+  stroke(v.hue, 50, 30, alpha * 0.3);
+  strokeWeight(4);
+  drawVertexShape(v, 1.1);
+  
+  // Main boundary
+  stroke(v.hue, 60, 50, alpha * 0.8);
+  strokeWeight(1.5);
+  drawVertexShape(v, 1);
+  
+  // Inner bright edge
+  stroke((v.hue + 30) % 360, 40, 70, alpha * 0.5);
+  strokeWeight(0.8);
+  drawVertexShape(v, 0.85);
+  
+  // Core darkness
+  noStroke();
+  fill(v.hue, 70, 5, alpha * 0.8);
+  ellipse(v.cx, v.cy, v.currentRadius * 0.4);
+  
+  // Occasional energy pulses when active
+  if (v.active && random() < 0.05) {
+    let pulseAngle = random(TWO_PI);
+    let pulseDist = v.currentRadius * random(0.8, 1.2);
+    let px = v.cx + cos(pulseAngle) * pulseDist;
+    let py = v.cy + sin(pulseAngle) * pulseDist;
+    
+    fill(v.hue, 30, 80, 0.6);
+    ellipse(px, py, random(3, 8));
+  }
+}
+
+function drawVertexShape(v, scaleMult) {
+  beginShape();
+  for (let i = 0; i < v.vertices.length; i++) {
+    let vert = v.vertices[i];
+    let dx = vert.x - v.cx;
+    let dy = vert.y - v.cy;
+    vertex(v.cx + dx * scaleMult, v.cy + dy * scaleMult);
+  }
+  endShape(CLOSE);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  for (let v of voids) {
+    v.cx = random(width * 0.2, width * 0.8);
+    v.cy = random(height * 0.2, height * 0.8);
+    v.targetX = v.cx;
+    v.targetY = v.cy;
+  }
+}
+</script>
+</body>
+</html>
