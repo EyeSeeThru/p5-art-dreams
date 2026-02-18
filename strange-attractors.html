@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>strange-attractors</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020203; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// STRANGE ATTRACTORS - Chaotic attractor visualizations with particle traces
+let attractors = [];
+let time = 0;
+const ATTRACTOR_COUNT = 3;
+const TRAIL_LENGTH = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create multiple attractor systems
+  for (let i = 0; i < ATTRACTOR_COUNT; i++) {
+    let baseHue = (i * 120 + 180) % 360;
+    attractors.push({
+      // Lorenz-like parameters
+      sigma: 10,
+      rho: random(20, 40),
+      beta: random(2, 4),
+      // Initial position
+      x: random(-10, 10),
+      y: random(-10, 10),
+      z: random(20, 50),
+      // Trail
+      trail: [],
+      hue: baseHue,
+      speed: random(0.01, 0.025),
+      scale: random(8, 15),
+      offsetX: width/2 + random(-100, 100),
+      offsetY: height/2 + random(-100, 100)
+    });
+  }
+}
+
+function draw() {
+  background(240, 40, 1.5, 0.04);
+  
+  time += 0.01;
+  
+  for (let a of attractors) {
+    updateAttractor(a);
+    drawAttractor(a);
+  }
+}
+
+function updateAttractor(a) {
+  // Lorenz system equations with time-varying parameters
+  let sigma = a.sigma;
+  let rho = a.rho + sin(time * 0.1) * 5;
+  let beta = a.beta;
+  
+  // Slight parameter drift for variety
+  let dt = a.speed;
+  
+  let dx = sigma * (a.y - a.x) * dt;
+  let dy = (a.x * (rho - a.z) - a.y) * dt;
+  let dz = (a.x * a.y - beta * a.z) * dt;
+  
+  a.x += dx;
+  a.y += dy;
+  a.z += dz;
+  
+  // Add to trail
+  let sx = a.offsetX + a.x * a.scale;
+  let sy = a.offsetY + a.y * a.scale;
+  
+  a.trail.push({x: sx, y: sy});
+  
+  // Limit trail length
+  if (a.trail.length > TRAIL_LENGTH) {
+    a.trail.shift();
+  }
+  
+  // Reset if diverged too far
+  if (abs(a.x) > 100 || abs(a.y) > 100 || abs(a.z) > 100) {
+    a.x = random(-5, 5);
+    a.y = random(-5, 5);
+    a.z = random(20, 40);
+    a.trail = [];
+  }
+}
+
+function drawAttractor(a) {
+  // Draw glow layer
+  noStroke();
+  for (let i = 0; i < a.trail.length; i++) {
+    let pt = a.trail[i];
+    let progress = i / a.trail.length;
+    let alpha = progress * 0.15;
+    let size = progress * 3 + 1;
+    
+    fill(a.hue, 60, 80, alpha);
+    ellipse(pt.x, pt.y, size);
+  }
+  
+  // Draw core trail
+  for (let i = 1; i < a.trail.length; i++) {
+    let pt1 = a.trail[i-1];
+    let pt2 = a.trail[i];
+    let progress = i / a.trail.length;
+    
+    let hueShift = progress * 20;
+    let alpha = progress * 0.5;
+    let weight = progress * 2 + 0.5;
+    
+    stroke((a.hue + hueShift) % 360, 50, 90, alpha);
+    strokeWeight(weight);
+    line(pt1.x, pt1.y, pt2.x, pt2.y);
+  }
+  
+  // Draw head
+  if (a.trail.length > 0) {
+    let head = a.trail[a.trail.length - 1];
+    
+    // Head glow
+    fill(a.hue, 40, 100, 0.3);
+    ellipse(head.x, head.y, 20);
+    
+    // Head core
+    fill((a.hue + 30) % 360, 30, 100, 0.8);
+    ellipse(head.x, head.y, 6);
+  }
+  
+  // Draw attractor center marker
+  fill(a.hue, 30, 50, 0.1);
+  noStroke();
+  ellipse(a.offsetX, a.offsetY, 30);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Update offsets on resize
+  for (let a of attractors) {
+    a.offsetX = width/2 + random(-100, 100);
+    a.offsetY = height/2 + random(-100, 100);
+  }
+}
+</script>
+</body>
+</html>
