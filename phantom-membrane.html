@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>phantom-membrane</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050508; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// PHANTOM MEMBRANE - Translucent oscillating membranes with interference patterns
+let membranes = [];
+let time = 0;
+const MEMBRANE_COUNT = 8;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  for (let i = 0; i < MEMBRANE_COUNT; i++) {
+    membranes.push({
+      x: random(width * 0.2, width * 0.8),
+      y: random(height * 0.2, height * 0.8),
+      baseRadius: random(80, 200),
+      freq: random(0.01, 0.03),
+      amp: random(30, 80),
+      hue: random(300, 360),
+      phase: random(TWO_PI),
+      points: floor(random(20, 40)),
+      opacity: random(0.3, 0.6)
+    });
+  }
+}
+
+function draw() {
+  background(240, 20, 2, 0.08);
+  
+  time += 0.015;
+  
+  for (let m of membranes) {
+    drawMembrane(m);
+  }
+  
+  drawConnectionLines();
+}
+
+function drawMembrane(m) {
+  let pts = [];
+  
+  for (let i = 0; i < m.points; i++) {
+    let angle = map(i, 0, m.points, 0, TWO_PI);
+    let noiseVal = noise(
+      cos(angle) * 2 + m.phase + time * m.freq,
+      sin(angle) * 2 + m.phase,
+      time * 0.5
+    );
+    let r = m.baseRadius + map(noiseVal, 0, 1, -m.amp, m.amp);
+    pts.push({
+      x: m.x + cos(angle) * r,
+      y: m.y + sin(angle) * r
+    });
+  }
+  
+  // Draw membrane layers
+  for (let layer = 3; layer >= 0; layer--) {
+    let layerAlpha = m.opacity * (1 - layer * 0.2);
+    fill(m.hue + layer * 10, 70, 80, layerAlpha);
+    
+    beginShape();
+    for (let pt of pts) {
+      let nx = lerp(m.x, pt.x, 1 + layer * 0.3);
+      let ny = lerp(m.y, pt.y, 1 + layer * 0.3);
+      curveVertex(nx, ny);
+    }
+    for (let i = 0; i < 3; i++) {
+      curveVertex(pts[i].x, pts[i].y);
+    }
+    endShape(CLOSE);
+  }
+  
+  // Core glow
+  fill(m.hue, 50, 100, m.opacity * 0.5);
+  ellipse(m.x, m.y, m.baseRadius * 0.3);
+}
+
+function drawConnectionLines() {
+  for (let i = 0; i < membranes.length; i++) {
+    for (let j = i + 1; j < membranes.length; j++) {
+      let d = dist(membranes[i].x, membranes[i].y, membranes[j].x, membranes[j].y);
+      if (d < 300) {
+        let alpha = map(d, 0, 300, 0.15, 0);
+        let hue = (membranes[i].hue + membranes[j].hue) / 2;
+        stroke(hue, 60, 90, alpha);
+        strokeWeight(1);
+        line(membranes[i].x, membranes[i].y, membranes[j].x, membranes[j].y);
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
