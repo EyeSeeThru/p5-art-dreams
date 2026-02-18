@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>resonance-crystals</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// RESONANCE CRYSTALS - Growing crystalline structures from noise-driven resonance
+let crystals = [];
+let time = 0;
+const CRYSTAL_COUNT = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  // Initialize crystals at random positions
+  for (let i = 0; i < CRYSTAL_COUNT; i++) {
+    crystals.push({
+      x: random(width * 0.1, width * 0.9),
+      y: random(height * 0.1, height * 0.9),
+      size: random(20, 60),
+      hue: random(180, 280),
+      phase: random(TWO_PI),
+      growth: 0,
+      maxGrowth: random(0.5, 1.5)
+    });
+  }
+}
+
+function draw() {
+  // Deep space background with subtle nebula
+  background(240, 30, 5, 0.15);
+  
+  // Draw ambient glow
+  drawAmbientGlow();
+  
+  // Update and draw crystals
+  time += 0.008;
+  
+  for (let crystal of crystals) {
+    drawCrystal(crystal);
+  }
+  
+  // Connecting resonance lines
+  drawResonanceLines();
+}
+
+function drawAmbientGlow() {
+  // Subtle nebula effect
+  for (let i = 0; i < 5; i++) {
+    let nx = noise(time * 0.2, i * 100) * width;
+    let ny = noise(time * 0.2 + 500, i * 100) * height;
+    let size = noise(time * 0.1, i * 200) * 400 + 100;
+    
+    fill(260, 60, 15, 0.03);
+    ellipse(nx, ny, size, size * 0.6);
+  }
+}
+
+function drawCrystal(c) {
+  // Grow crystal over time
+  c.growth = min(c.growth + 0.003 * c.maxGrowth, c.maxGrowth);
+  
+  let currentSize = c.size * c.growth;
+  let pulse = sin(time * 2 + c.phase) * 0.15 + 1;
+  
+  // Outer glow
+  for (let i = 5; i > 0; i--) {
+    let alpha = map(i, 5, 0, 0.02, 0.15);
+    let size = currentSize * (1 + i * 0.3) * pulse;
+    fill(c.hue, 50, 40, alpha);
+    drawCrystalShape(c.x, c.y, size, 6);
+  }
+  
+  // Crystal core
+  fill(c.hue, 70, 70, 0.6);
+  drawCrystalShape(c.x, c.y, currentSize * 0.7 * pulse, 6);
+  
+  // Inner bright core
+  fill(c.hue, 30, 100, 0.8);
+  drawCrystalShape(c.x, c.y, currentSize * 0.2, 6);
+  
+  // Crystal facets
+  drawFacets(c.x, c.y, currentSize * 0.5, c.hue, c.phase);
+}
+
+function drawCrystalShape(x, y, size, points) {
+  push();
+  translate(x, y);
+  rotate(time * 0.3);
+  
+  beginShape();
+  for (let i = 0; i < points; i++) {
+    let angle = (TWO_PI / points) * i - HALF_PI;
+    let r = size;
+    vertex(cos(angle) * r, sin(angle) * r);
+    // Midpoint outward
+    let midAngle = angle + PI / points;
+    let midR = size * 0.4;
+    vertex(cos(midAngle) * midR, sin(midAngle) * midR);
+  }
+  endShape(CLOSE);
+  pop();
+}
+
+function drawFacets(x, y, size, hue, phase) {
+  // Crystal internal facets
+  let facetCount = 6;
+  for (let i = 0; i < facetCount; i++) {
+    let angle = (TWO_PI / facetCount) * i + time * 0.5;
+    let len = size * (0.3 + sin(time * 3 + phase + i) * 0.2);
+    
+    let x2 = x + cos(angle) * len;
+    let y2 = y + sin(angle) * len;
+    
+    stroke(hue, 40, 80, 0.3);
+    strokeWeight(1);
+    line(x, y, x2, y2);
+    noStroke();
+  }
+}
+
+function drawResonanceLines() {
+  // Draw lines between nearby crystals
+  for (let i = 0; i < crystals.length; i++) {
+    for (let j = i + 1; j < crystals.length; j++) {
+      let d = dist(crystals[i].x, crystals[i].y, crystals[j].x, crystals[j].y);
+      
+      if (d < 300) {
+        let alpha = map(d, 0, 300, 0.2, 0) * min(crystals[i].growth, crystals[j].growth);
+        let hue = (crystals[i].hue + crystals[j].hue) / 2;
+        
+        // Pulsing line
+        let pulse = sin(time * 4 + i + j) * 0.3 + 0.7;
+        
+        stroke(hue, 50, 70, alpha * pulse);
+        strokeWeight(map(d, 0, 300, 2, 0.5));
+        line(crystals[i].x, crystals[i].y, crystals[j].x, crystals[j].y);
+        noStroke();
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new crystal on click
+  crystals.push({
+    x: mouseX,
+    y: mouseY,
+    size: random(20, 60),
+    hue: random(180, 280),
+    phase: random(TWO_PI),
+    growth: 0,
+    maxGrowth: random(0.5, 1.5)
+  });
+}
+</script>
+</body>
+</html>
