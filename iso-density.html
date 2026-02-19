@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iso-Density</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Iso-Density - Noise-Driven
+// Technique: Perlin noise flow field with density islines
+
+let time = 0;
+let particles = [];
+const NUM_PARTICLES = 2000;
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.pos = createVector(random(width), random(height));
+    this.prevPos = this.pos.copy();
+    this.vel = createVector(0, 0);
+    this.speed = random(1, 3);
+    this.life = random(100, 300);
+    this.maxLife = this.life;
+    this.hue = random(360);
+  }
+  
+  update() {
+    this.prevPos = this.pos.copy();
+    
+    // Flow field from Perlin noise
+    let angle = noise(this.pos.x * 0.002, this.pos.y * 0.002, time) * TWO_PI * 2;
+    this.vel.x = cos(angle) * this.speed;
+    this.vel.y = sin(angle) * this.speed;
+    
+    this.pos.add(this.vel);
+    this.life--;
+    
+    if (this.life <= 0 || this.pos.x < 0 || this.pos.x > width || 
+        this.pos.y < 0 || this.pos.y > height) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    let lifeRatio = this.life / this.maxLife;
+    let alpha = lifeRatio * 150;
+    
+    // Iso-density effect - draw lines between current and previous position
+    let d = dist(this.pos.x, this.pos.y, this.prevPos.x, this.prevPos.y);
+    
+    if (d < 10) {
+      colorMode(HSB, 360, 100, 100, 255);
+      stroke(this.hue, 60, 80, alpha);
+      strokeWeight(1);
+      line(this.pos.x, this.pos.y, this.prevPos.x, this.prevPos.y);
+      colorMode(RGB, 255);
+    }
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  background(0);
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  // Very subtle trail
+  fill(0, 0, 0, 5);
+  noStroke();
+  rect(0, 0, width, height);
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Add new particles at mouse position if pressed
+  if (mouseIsPressed) {
+    for (let i = 0; i < 5; i++) {
+      let p = new Particle();
+      p.pos = createVector(mouseX + random(-20, 20), mouseY + random(-20, 20));
+      p.prevPos = p.pos.copy();
+      particles.push(p);
+    }
+  }
+  
+  // Limit particle count
+  if (particles.length > NUM_PARTICLES + 100) {
+    particles.splice(0, particles.length - NUM_PARTICLES);
+  }
+  
+  time += 0.003;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>
