@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>constraint-lattices</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020204; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// CONSTRAINT LATTICES - Geometric lattices that bend under forces
+let lattices = [];
+let time = 0;
+const LATTICE_COUNT = 4;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < LATTICE_COUNT; i++) {
+    lattices.push(createLattice(i));
+  }
+}
+
+function createLattice(index) {
+  let gridSize = floor(random(6, 10));
+  let spacing = random(40, 60);
+  let cx = random(width * 0.2, width * 0.8);
+  let cy = random(height * 0.2, height * 0.8);
+  
+  let nodes = [];
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
+      nodes.push({
+        bx: x - gridSize/2,  // base position
+        by: y - gridSize/2,
+        x: cx + (x - gridSize/2) * spacing,
+        y: cy + (y - gridSize/2) * spacing,
+        vx: 0,
+        vy: 0,
+        pinned: (x === 0 || y === 0 || x === gridSize-1 || y === gridSize-1)
+      });
+    }
+  }
+  
+  return {
+    nodes: nodes,
+    gridSize: gridSize,
+    spacing: spacing,
+    cx: cx,
+    cy: cy,
+    hue: random(280, 340),
+    stiffness: random(0.1, 0.3),
+    damping: random(0.85, 0.92),
+    forces: [],
+    phase: random(TWO_PI),
+    rotSpeed: random(-0.002, 0.002),
+    rotation: random(TWO_PI)
+  };
+}
+
+function draw() {
+  background(240, 25, 1.5, 0.04);
+  
+  time += 0.016;
+  
+  for (let lat of lattices) {
+    applyLatticeForces(lat);
+    solveConstraints(lat);
+    drawLattice(lat);
+  }
+}
+
+function applyLatticeForces(lat) {
+  let t = time + lat.phase;
+  
+  // Rotating force field
+  for (let n of lat.nodes) {
+    if (n.pinned) continue;
+    
+    // Distance from center
+    let dx = n.x - lat.cx;
+    let dy = n.y - lat.cy;
+    let d = sqrt(dx*dx + dy*dy);
+    
+    // Rotating force
+    let angle = atan2(dy, dx);
+    let forceAngle = angle + t * 0.5 + lat.rotation;
+    let forceMag = sin(d * 0.02 - t) * 0.5;
+    
+    n.vx += cos(forceAngle) * forceMag;
+    n.vy += sin(forceAngle) * forceMag;
+    
+    // Add noise turbulence
+    n.vx += (noise(n.bx * 0.5 + t, n.by * 0.5) - 0.5) * 0.3;
+    n.vy += (noise(n.bx * 0.5, n.by * 0.5 + t) - 0.5) * 0.3;
+  }
+  
+  // Apply velocity
+  for (let n of lat.nodes) {
+    if (n.pinned) continue;
+    n.x += n.vx;
+    n.y += n.vy;
+    n.vx *= lat.damping;
+    n.vy *= lat.damping;
+  }
+  
+  lat.rotation += lat.rotSpeed;
+}
+
+function solveConstraints(lat) {
+  // Spring constraints between adjacent nodes
+  for (let iter = 0; iter < 3; iter++) {
+    for (let y = 0; y < lat.gridSize; y++) {
+      for (let x = 0; x < lat.gridSize; x++) {
+        let idx = y * lat.gridSize + x;
+        let n = lat.nodes[idx];
+        
+        // Horizontal constraint
+        if (x < lat.gridSize - 1) {
+          let n2 = lat.nodes[idx + 1];
+          solvePair(n, n2, lat.spacing, lat.stiffness);
+        }
+        
+        // Vertical constraint
+        if (y < lat.gridSize - 1) {
+          let n2 = lat.nodes[idx + lat.gridSize];
+          solvePair(n, n2, lat.spacing, lat.stiffness);
+        }
+      }
+    }
+  }
+}
+
+function solvePair(n1, n2, restLength, stiffness) {
+  let dx = n2.x - n1.x;
+  let dy = n2.y - n1.y;
+  let d = sqrt(dx*dx + dy*dy);
+  
+  if (d < 0.1) return;
+  
+  let diff = (d - restLength) / d;
+  let offsetX = dx * diff * stiffness;
+  let offsetY = dy * diff * stiffness;
+  
+  if (!n1.pinned) {
+    n1.x += offsetX;
+    n1.y += offsetY;
+  }
+  if (!n2.pinned) {
+    n2.x -= offsetX;
+    n2.y -= offsetY;
+  }
+}
+
+function drawLattice(lat) {
+  // Draw nodes first
+  for (let y = 0; y < lat.gridSize; y++) {
+    for (let x = 0; x < lat.gridSize; x++) {
+      let idx = y * lat.gridSize + x;
+      let n = lat.nodes[idx];
+      
+       let size = n.pinned ? 4 : 2;
+      let alpha = n.pinned ? 0.6 : 0.4;
+      
+      // Glow
+      noStroke();
+      fill(lat.hue, 40, 60, alpha * 0.2);
+      ellipse(n.x, n.y, size * 4);
+      
+      // Core
+      fill(lat.hue, 50, 80, alpha);
+      ellipse(n.x, n.y, size);
+    }
+  }
+  
+  // Draw edges
+  strokeWeight(1);
+  for (let y = 0; y < lat.gridSize; y++) {
+    for (let x = 0; x < lat.gridSize; x++) {
+      let idx = y * lat.gridSize + x;
+      let n = lat.nodes[idx];
+      
+      // Horizontal edge
+      if (x < lat.gridSize - 1) {
+        let n2 = lat.nodes[idx + 1];
+        drawEdge(n, n2, lat);
+      }
+      
+      // Vertical edge
+      if (y < lat.gridSize - 1) {
+        let n2 = lat.nodes[idx + lat.gridSize];
+        drawEdge(n, n2, lat);
+      }
+    }
+  }
+  
+  // Diagonal edges for more structure
+  for (let y = 0; y < lat.gridSize - 1; y++) {
+    for (let x = 0; x < lat.gridSize - 1; x++) {
+      let idx = y * lat.gridSize + x;
+      let n = lat.nodes[idx];
+      let n2 = lat.nodes[idx + lat.gridSize + 1];
+      
+      stroke(lat.hue + 20, 30, 40, 0.15);
+      line(n.x, n.y, n2.x, n2.y);
+    }
+  }
+}
+
+function drawEdge(n1, n2, lat) {
+  let dx = n2.x - n1.x;
+  let dy = n2.y - n1.y;
+  let d = sqrt(dx*dx + dy*dy);
+  let strain = abs(d - lat.spacing) / lat.spacing;
+  
+  // Color based on strain
+  let hue = (lat.hue + strain * 60) % 360;
+  let alpha = 0.2 + strain * 0.5;
+  alpha = min(alpha, 0.6);
+  
+  // Glow
+  stroke(hue, 40, 50, alpha * 0.3);
+  strokeWeight(3);
+  line(n1.x, n1.y, n2.x, n2.y);
+  
+  // Core
+  stroke(hue, 50, 70, alpha);
+  strokeWeight(1);
+  line(n1.x, n1.y, n2.x, n2.y);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  for (let lat of lattices) {
+    lat.cx = random(width * 0.2, width * 0.8);
+    lat.cy = random(height * 0.2, height * 0.8);
+    // Reset node positions
+    for (let n of lat.nodes) {
+      n.x = lat.cx + n.bx * lat.spacing;
+      n.y = lat.cy + n.by * lat.spacing;
+    }
+  }
+}
+</script>
+</body>
+</html>
