@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>quantum-foam</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #010102; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// QUANTUM FOAM - Bubble-like structures that merge and separate
+let bubbles = [];
+let time = 0;
+const BUBBLE_COUNT = 20;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < BUBBLE_COUNT; i++) {
+    bubbles.push(createBubble());
+  }
+}
+
+function createBubble() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-0.5, 0.5),
+    vy: random(-0.5, 0.5),
+    radius: random(20, 80),
+    targetRadius: random(20, 80),
+    hue: random(280, 340),
+    phase: random(TWO_PI),
+    pulseSpeed: random(0.02, 0.05),
+    pulsePhase: random(TWO_PI),
+    opacity: random(0.3, 0.6),
+    merging: false,
+    mergeTarget: null
+  };
+}
+
+function draw() {
+  background(240, 30, 0.8, 0.04);
+  
+  time += 0.016;
+  
+  // Update bubbles
+  for (let b of bubbles) {
+    updateBubble(b);
+  }
+  
+  // Check for merges
+  handleMerges();
+  
+  // Draw bubbles (back to front by radius)
+  bubbles.sort((a, b) => a.radius - b.radius);
+  for (let b of bubbles) {
+    drawBubble(b);
+  }
+  
+  // Draw merge effects
+  drawMergeEffects();
+}
+
+function updateBubble(b) {
+  // Move
+  b.x += b.vx;
+  b.y += b.vy;
+  
+  // Bounce off edges
+  if (b.x < b.radius || b.x > width - b.radius) b.vx *= -1;
+  if (b.y < b.radius || b.y > height - b.radius) b.vy *= -1;
+  
+  // Keep in bounds
+  b.x = constrain(b.x, b.radius, width - b.radius);
+  b.y = constrain(b.y, b.radius, height - b.radius);
+  
+  // Pulsing size
+  let pulse = sin(frameCount * b.pulseSpeed + b.pulsePhase);
+  b.radius = lerp(b.radius, b.targetRadius * (1 + pulse * 0.15), 0.05);
+  
+  // Slight attraction to center
+  let toCenterX = width/2 - b.x;
+  let toCenterY = height/2 - b.y;
+  b.vx += toCenterX * 0.0001;
+  b.vy += toCenterY * 0.0001;
+  
+  // Damping
+  b.vx *= 0.99;
+  b.vy *= 0.99;
+}
+
+function handleMerges() {
+  for (let i = 0; i < bubbles.length; i++) {
+    for (let j = i + 1; j < bubbles.length; j++) {
+      let b1 = bubbles[i];
+      let b2 = bubbles[j];
+      
+      let d = dist(b1.x, b1.y, b2.x, b2.y);
+      let minDist = b1.radius + b2.radius;
+      
+      if (d < minDist * 0.6) {
+        // Merge!
+        if (b1.radius > b2.radius) {
+          b1.targetRadius = sqrt(b1.radius * b1.radius + b2.radius * b2.radius);
+          b1.hue = lerp(b1.hue, b2.hue, 0.3);
+          b2.targetRadius = 0;
+        } else {
+          b2.targetRadius = sqrt(b1.radius * b1.radius + b2.radius * b2.radius);
+          b2.hue = lerp(b2.hue, b1.hue, 0.3);
+          b1.targetRadius = 0;
+        }
+      } else if (d < minDist) {
+        // Repel slightly when overlapping
+        let force = (minDist - d) / minDist * 0.5;
+        let angle = atan2(b2.y - b1.y, b2.x - b1.x);
+        b1.vx -= cos(angle) * force;
+        b1.vy -= sin(angle) * force;
+        b2.vx += cos(angle) * force;
+        b2.vy += sin(angle) * force;
+      }
+    }
+  }
+  
+  // Remove bubbles that are too small
+  bubbles = bubbles.filter(b => b.targetRadius > 5);
+  
+  // Respawn if too few
+  while (bubbles.length < BUBBLE_COUNT) {
+    bubbles.push(createBubble());
+  }
+}
+
+function drawBubble(b) {
+  if (b.radius < 5) return;
+  
+  let alpha = b.opacity * map(b.radius, 20, 80, 0.3, 0.6);
+  
+  // Multiple layers for iridescent effect
+  noStroke();
+  
+  // Outer dark layer
+  fill(b.hue, 60, 10, alpha * 0.3);
+  ellipse(b.x, b.y, b.radius * 2.2);
+  
+  // Mid layer
+  fill(b.hue, 50, 30, alpha * 0.5);
+  ellipse(b.x, b.y, b.radius * 1.8);
+  
+  // Inner bright ring
+  noFill();
+  stroke(b.hue + 20, 40, 60, alpha * 0.6);
+  strokeWeight(2);
+  ellipse(b.x, b.y, b.radius * 1.4);
+  
+  // Highlight
+  noStroke();
+  let highlightX = b.x - b.radius * 0.3;
+  let highlightY = b.y - b.radius * 0.3;
+  fill(b.hue + 30, 20, 80, alpha * 0.4);
+  ellipse(highlightX, highlightY, b.radius * 0.4);
+  
+  // Core
+  fill(b.hue + 10, 30, 40, alpha * 0.3);
+  ellipse(b.x, b.y, b.radius * 0.6);
+  
+  // Shimmer
+  let shimmer = sin(frameCount * 0.1 + b.phase) * 0.5 + 0.5;
+  fill((b.hue + 40) % 360, 20, 90, shimmer * alpha * 0.3);
+  ellipse(b.x, b.y, b.radius * 0.2);
+}
+
+function drawMergeEffects() {
+  // Draw subtle connection lines between nearby bubbles
+  for (let i = 0; i < bubbles.length; i++) {
+    for (let j = i + 1; j < bubbles.length; j++) {
+      let b1 = bubbles[i];
+      let b2 = bubbles[j];
+      let d = dist(b1.x, b1.y, b2.x, b2.y);
+      
+      if (d < 150) {
+        let alpha = map(d, 0, 150, 0.08, 0);
+        let avgHue = (b1.hue + b2.hue) / 2;
+        
+        stroke(avgHue, 30, 40, alpha);
+        strokeWeight(0.5);
+        line(b1.x, b1.y, b2.x, b2.y);
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
