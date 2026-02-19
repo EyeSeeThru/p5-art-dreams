@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coriolis Field</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0d0d0d; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Coriolis Field - Physics simulation
+// Technique: Particle system with Coriolis force + drag
+
+const particles = [];
+const NUM_PARTICLES = 800;
+let time = 0;
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.life = random(100, 300);
+    this.maxLife = this.life;
+    this.size = random(2, 6);
+    
+    // Initial velocity burst
+    this.vel = p5.Vector.random2D().mult(random(0.5, 2));
+  }
+  
+  applyForce(force) {
+    this.acc.add(force);
+  }
+  
+  update() {
+    // Coriolis-like force (perpendicular to velocity)
+    let coriolis = createVector(-this.vel.y, this.vel.x);
+    coriolis.mult(0.02);
+    
+    // Central attraction
+    let center = createVector(width / 2, height / 2);
+    let dir = p5.Vector.sub(center, this.pos);
+    let dist = dir.mag();
+    dir.normalize();
+    dir.mult(0.05);
+    
+    // Drag
+    let drag = this.vel.copy();
+    drag.mult(-0.01);
+    
+    this.applyForce(coriolis);
+    this.applyForce(dir);
+    this.applyForce(drag);
+    
+    this.vel.add(this.acc);
+    this.vel.limit(4);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+    
+    this.life--;
+    
+    if (this.life <= 0 || this.pos.x < -50 || this.pos.x > width + 50 || 
+        this.pos.y < -50 || this.pos.y > height + 50) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    let lifeRatio = this.life / this.maxLife;
+    let alpha = lifeRatio * 200;
+    let hue = map(dist(this.pos.x, this.pos.y, width/2, height/2), 0, width/2, 180, 280);
+    
+    colorMode(HSB, 360, 100, 100, 255);
+    noStroke();
+    
+    // Glow
+    fill(hue, 70, 80, alpha * 0.3);
+    ellipse(this.pos.x, this.pos.y, this.size * 3);
+    
+    // Core
+    fill(hue, 60, 100, alpha);
+    ellipse(this.pos.x, this.pos.y, this.size);
+    
+    colorMode(RGB, 255);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+  
+  background(13, 13, 13);
+}
+
+function draw() {
+  // Trail effect
+  colorMode(RGB, 255);
+  fill(13, 13, 13, 30);
+  noStroke();
+  rect(0, 0, width, height);
+  
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  time += 0.01;
+  
+  // Central glow
+  let cx = width / 2;
+  let cy = height / 2;
+  let pulse = sin(time * 2) * 0.3 + 0.7;
+  
+  for (let i = 5; i > 0; i--) {
+    fill(200, 50, 30, 5 * pulse);
+    ellipse(cx, cy, i * 40);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(13, 13, 13);
+}
+</script>
+</body>
+</html>
