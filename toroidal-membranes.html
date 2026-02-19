@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>toroidal-membranes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020205; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// TOROIDAL MEMBRANES - Rotating torus shapes with oscillating cross-sections
+let toroids = [];
+let time = 0;
+const TOROID_COUNT = 6;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < TOROID_COUNT; i++) {
+    toroids.push(createToroid());
+  }
+}
+
+function createToroid() {
+  return {
+    majorR: random(100, 250),
+    minorR: random(20, 60),
+    x: random(width * 0.2, width * 0.8),
+    y: random(height * 0.2, height * 0.8),
+    rotX: random(TWO_PI),
+    rotY: random(TWO_PI),
+    rotSpeedX: random(-0.01, 0.01),
+    rotSpeedY: random(-0.01, 0.01),
+    hue: random(320, 370) % 360,
+    phase: random(TWO_PI),
+    pulseSpeed: random(0.02, 0.05),
+    opacity: random(0.3, 0.6),
+    tubeSegments: 24,
+    ringSegments: 36
+  };
+}
+
+function draw() {
+  background(240, 20, 0.6, 0.04);
+  
+  time += 0.016;
+  
+  // Sort by size for proper layering
+  toroids.sort((a, b) => a.majorR - b.majorR);
+  
+  for (let t of toroids) {
+    drawToroid(t);
+  }
+}
+
+function drawToroid(t) {
+  let pulse = sin(frameCount * t.pulseSpeed + t.phase);
+  let minorR = t.minorR * (1 + pulse * 0.2);
+  
+  // Update rotation
+  t.rotX += t.rotSpeedX;
+  t.rotY += t.rotSpeedY;
+  
+  push();
+  translate(t.x, t.y);
+  
+  // Draw torus as series of rings
+  noFill();
+  
+  for (let i = 0; i < t.ringSegments; i++) {
+    let angle = (i / t.ringSegments) * TWO_PI;
+    let nextAngle = ((i + 1) / t.ringSegments) * TWO_PI;
+    
+    // Calculate center positions of each ring segment
+    let x1 = t.majorR * cos(angle);
+    let y1 = t.majorR * sin(angle);
+    let x2 = t.majorR * cos(nextAngle);
+    let y2 = t.majorR * sin(nextAngle);
+    
+    // Draw ring cross-section
+    drawRingCrossSection(x1, y1, minorR, angle + t.rotX, t, i);
+    drawRingCrossSection(x2, y2, minorR, nextAngle + t.rotX, t, i);
+  }
+  
+  // Draw glowing core ring
+  stroke(t.hue, 40, 60, t.opacity * 0.8);
+  strokeWeight(2);
+  ellipse(0, 0, t.majorR * 2);
+  
+  // Center glow
+  for (let r = 40; r > 0; r -= 8) {
+    let alpha = map(r, 0, 40, 0.3, 0);
+    fill(t.hue, 50, 30, alpha);
+    noStroke();
+    ellipse(0, 0, r * 2);
+  }
+  
+  pop();
+}
+
+function drawRingCrossSection(cx, cy, r, angle, t, index) {
+  // Draw elliptical cross-section
+  let segments = 8;
+  
+  for (let i = 0; i < segments; i++) {
+    let a1 = (i / segments) * TWO_PI;
+    let a2 = ((i + 1) / segments) * TWO_PI;
+    
+    // Perspective scaling
+    let scale = abs(sin(angle + t.rotY));
+    let x1 = cx + r * cos(a1) * scale;
+    let y1 = cy + r * sin(a1);
+    let x2 = cx + r * cos(a2) * scale;
+    let y2 = cy + r * sin(a2);
+    
+    let alpha = t.opacity * map(index, 0, t.ringSegments, 0.3, 1);
+    stroke(t.hue, 50, 40, alpha);
+    strokeWeight(1);
+    line(x1, y1, x2, y2);
+  }
+  
+  // Highlight
+  let hlX = cx + r * 0.7 * abs(sin(angle + t.rotY));
+  let hlY = cy + r * 0.3;
+  stroke((t.hue + 20) % 360, 30, 70, t.opacity * 0.5);
+  strokeWeight(2);
+  point(hlX, hlY);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
