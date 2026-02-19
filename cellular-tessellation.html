@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cellular-tessellation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #030305; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// CELLULAR TESSELLATION - Hexagonal cells that pulse and connect
+let cells = [];
+let time = 0;
+const CELL_SIZE = 40;
+let cols, rows;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  cols = ceil(width / (CELL_SIZE * 1.5)) + 2;
+  rows = ceil(height / (CELL_SIZE * sqrt(3))) + 2;
+  
+  let offsetX = (width - cols * CELL_SIZE * 1.5) / 2;
+  let offsetY = (height - rows * CELL_SIZE * sqrt(3)) / 2;
+  
+  for (let i = 0; i < cols; i++) {
+    cells[i] = [];
+    for (let j = 0; j < rows; j++) {
+      let x = i * CELL_SIZE * 1.5 + offsetX;
+      let y = j * CELL_SIZE * sqrt(3) + offsetY;
+      if (i % 2 === 1) y += CELL_SIZE * sqrt(3) / 2;
+      
+      cells[i][j] = {
+        x: x,
+        y: y,
+        phase: random(TWO_PI),
+        pulseSpeed: random(0.02, 0.06),
+        hue: random(340, 380) % 360,
+        state: floor(random(3)),
+        connections: []
+      };
+    }
+  }
+  
+  // Build connections
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let neighbors = getNeighbors(i, j);
+      for (let n of neighbors) {
+        if (random() < 0.3) {
+          cells[i][j].connections.push(n);
+        }
+      }
+    }
+  }
+}
+
+function getNeighbors(i, j) {
+  let result = [];
+  let offsets = [
+    [-1, 0], [1, 0], [0, -1], [0, 1],
+    [-1, -1], [-1, 1], [1, -1], [1, 1]
+  ];
+  
+  for (let o of offsets) {
+    let ni = i + o[0];
+    let nj = j + o[1];
+    if (ni >= 0 && ni < cols && nj >= 0 && nj < rows) {
+      result.push({i: ni, j: nj});
+    }
+  }
+  return result;
+}
+
+function draw() {
+  background(240, 20, 1, 0.05);
+  
+  time += 0.016;
+  
+  // Draw connections first
+  strokeWeight(0.5);
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let cell = cells[i][j];
+      for (let conn of cell.connections) {
+        let target = cells[conn.i][conn.j];
+        let d = dist(cell.x, cell.y, target.x, target.y);
+        let alpha = map(sin(time * 2 + cell.phase), -1, 1, 0.02, 0.12);
+        stroke(cell.hue, 40, 30, alpha);
+        line(cell.x, cell.y, target.x, target.y);
+      }
+    }
+  }
+  
+  // Draw cells
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      drawCell(cells[i][j]);
+    }
+  }
+}
+
+function drawCell(cell) {
+  let pulse = sin(frameCount * cell.pulseSpeed + cell.phase);
+  let size = CELL_SIZE * 0.4 * (0.7 + pulse * 0.3);
+  let brightness = map(pulse, -1, 1, 20, 50);
+  let alpha = map(pulse, -1, 1, 0.2, 0.6);
+  
+  // Hexagon
+  push();
+  translate(cell.x, cell.y);
+  
+  // Outer glow
+  noStroke();
+  for (let r = size * 2; r > size; r -= 3) {
+    let a = map(r, size, size * 2, alpha * 0.3, 0);
+    fill(cell.hue, 50, brightness * 0.5, a);
+    drawHexagon(0, 0, r);
+  }
+  
+  // Main cell
+  fill(cell.hue, 60, brightness, alpha);
+  drawHexagon(0, 0, size);
+  
+  // Inner highlight
+  fill((cell.hue + 30) % 360, 30, 80, alpha * 0.5);
+  drawHexagon(0, 0, size * 0.5);
+  
+  // Core
+  fill(0, 0, 100, 0.8);
+  drawHexagon(0, 0, size * 0.15);
+  
+  pop();
+}
+
+function drawHexagon(cx, cy, r) {
+  beginShape();
+  for (let a = 0; a < TWO_PI; a += PI / 3) {
+    let x = cx + cos(a) * r;
+    let y = cy + sin(a) * r;
+    vertex(x, y);
+  }
+  endShape(CLOSE);
+}
+
+function windowResized() {
+  setup();
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
