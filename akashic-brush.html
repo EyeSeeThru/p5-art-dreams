@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akashic Brush</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #f5f0e6; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Akashic Brush - Painterly / Textural
+// Technique: Simulated brush strokes with canvas texture
+
+let brushStrokes = [];
+let time = 0;
+let canvasTexture;
+
+class BrushStroke {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = p5.Vector.random2D().mult(random(0.5, 2));
+    this.angle = random(TWO_PI);
+    this.angleVel = random(-0.05, 0.05);
+    this.len = random(20, 80);
+    this.weight = random(2, 15);
+    this.hue = random([
+      random(20, 50),   // ochre
+      random(0, 20),    // red
+      random(200, 260), // indigo
+      random(80, 120),  // olive
+      random(160, 190), // teal
+    ]);
+    this.sat = random(30, 70);
+    this.val = random(60, 90);
+    this.alpha = random(30, 80);
+    this.life = random(200, 500);
+    this.maxLife = this.life;
+  }
+  
+  update() {
+    // Perlin noise driven movement
+    let n = noise(this.pos.x * 0.005, this.pos.y * 0.005, time * 0.2);
+    let angle = n * TWO_PI * 2;
+    this.vel.x += cos(angle) * 0.1;
+    this.vel.y += sin(angle) * 0.1;
+    this.vel.limit(2);
+    
+    this.pos.add(this.vel);
+    this.angle += this.angleVel;
+    this.life--;
+  }
+  
+  display() {
+    let lifeRatio = this.life / this.maxLife;
+    let alpha = this.alpha * lifeRatio;
+    
+    push();
+    translate(this.pos.x, this.pos.y);
+    rotate(this.angle);
+    
+    colorMode(HSB, 360, 100, 100, 100);
+    
+    // Brush texture - multiple overlapping strokes
+    for (let i = 0; i < 3; i++) {
+      let offsetX = random(-this.weight/4, this.weight/4);
+      let offsetY = random(-this.len/4, this.len/4);
+      let jitter = random(0.8, 1.2);
+      
+      strokeWeight(this.weight * jitter);
+      stroke(this.hue, this.sat - i*10, this.val, alpha * (1 - i*0.2));
+      strokeCap(ROUND);
+      
+      // Tapered stroke
+      line(offsetX, offsetY, offsetX + this.len * jitter * 0.3, offsetY);
+    }
+    
+    colorMode(RGB, 255);
+    pop();
+  }
+  
+  isDead() {
+    return this.life <= 0 || 
+           this.pos.x < -50 || this.pos.x > width + 50 || 
+           this.pos.y < -50 || this.pos.y > height + 50;
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  // Create canvas texture
+  canvasTexture = createGraphics(width, height);
+  canvasTexture.background(245, 240, 230);
+  canvasTexture.noStroke();
+  
+  // Add paper grain
+  canvasTexture.loadPixels();
+  for (let i = 0; i < canvasTexture.pixels.length; i += 4) {
+    let grain = random(-10, 10);
+    canvasTexture.pixels[i] = constrain(canvasTexture.pixels[i] + grain, 0, 255);
+    canvasTexture.pixels[i+1] = constrain(canvasTexture.pixels[i+1] + grain, 0, 255);
+    canvasTexture.pixels[i+2] = constrain(canvasTexture.pixels[i+2] + grain, 0, 255);
+  }
+  canvasTexture.updatePixels();
+  
+  // Initial strokes from center
+  for (let i = 0; i < 50; i++) {
+    brushStrokes.push(new BrushStroke(width/2 + random(-100, 100), height/2 + random(-100, 100)));
+  }
+  
+  background(245, 240, 230);
+}
+
+function draw() {
+  // Paper texture background
+  image(canvasTexture, 0, 0);
+  
+  // Add new strokes occasionally
+  if (frameCount % 3 === 0 && brushStrokes.length < 400) {
+    let edge = floor(random(4));
+    let x, y;
+    switch(edge) {
+      case 0: x = random(width); y = -10; break;
+      case 1: x = width + 10; y = random(height); break;
+      case 2: x = random(width); y = height + 10; break;
+      case 3: x = -10; y = random(height); break;
+    }
+    brushStrokes.push(new BrushStroke(x, y));
+  }
+  
+  // Update and draw strokes
+  for (let i = brushStrokes.length - 1; i >= 0; i--) {
+    brushStrokes[i].update();
+    brushStrokes[i].display();
+    
+    if (brushStrokes[i].isDead()) {
+      brushStrokes.splice(i, 1);
+    }
+  }
+  
+  time += 0.01;
+  
+  // Vignette
+  noStroke();
+  for (let i = 5; i > 0; i--) {
+    fill(245, 240, 230, 15);
+    rect(0, 0, i * 10, height);
+    rect(width - i*10, 0, i * 10, height);
+    rect(0, 0, width, i * 10);
+    rect(0, height - i*10, width, i * 10);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
