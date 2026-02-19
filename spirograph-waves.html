@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>spirograph-waves</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #010104; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// SPIROGRAPH WAVES - Epicycloid curves with wave modulation
+let t = 0;
+let curves = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create multiple spirograph curves
+  for (let i = 0; i < 5; i++) {
+    curves.push({
+      R: random(80, 150),    // Outer radius
+      r: random(20, 60),     // Inner radius  
+      d: random(30, 100),    // Pen offset
+      hue: random(300, 360),
+      phase: random(TWO_PI),
+      speed: random(0.3, 0.8),
+      opacity: random(0.2, 0.5),
+      waveAmp: random(20, 50),
+      waveFreq: random(0.02, 0.08)
+    });
+  }
+}
+
+function draw() {
+  background(240, 20, 0.5, 0.03);
+  
+  t += 0.02;
+  
+  translate(width / 2, height / 2);
+  
+  for (let c of curves) {
+    drawSpirograph(c);
+  }
+}
+
+function drawSpirograph(c) {
+  let points = [];
+  let cycles = 20;
+  let stepsPerCycle = 60;
+  let totalSteps = cycles * stepsPerCycle;
+  
+  for (let i = 0; i < totalSteps; i++) {
+    let angle = (i / stepsPerCycle) * TWO_PI + c.phase;
+    let waveOffset = sin(angle * c.waveFreq * 10 + t * 2) * c.waveAmp;
+    
+    // Epicycloid equations
+    let R = c.R + waveOffset;
+    let r = c.r;
+    let d = c.d;
+    
+    let x = (R - r) * cos(angle) + d * cos(((R - r) / r) * angle);
+    let y = (R - r) * sin(angle) - d * sin(((R - r) / r) * angle);
+    
+    points.push({ x, y, angle });
+  }
+  
+  // Draw the curve
+  noFill();
+  strokeWeight(1);
+  
+  // Outer glow
+  for (let glow = 3; glow > 0; glow--) {
+    let alpha = c.opacity * 0.2 / glow;
+    stroke(c.hue, 50, 40, alpha);
+    beginShape();
+    for (let p of points) {
+      vertex(p.x, p.y);
+    }
+    endShape();
+  }
+  
+  // Main curve
+  stroke(c.hue, 40, 60, c.opacity);
+  beginShape();
+  for (let p of points) {
+    vertex(p.x, p.y);
+  }
+  endShape();
+  
+  // Draw trailing effect based on current time
+  let trailAngle = (t * c.speed * 10) % TWO_PI;
+  let trailX = (c.R - c.r) * cos(trailAngle) + c.d * cos(((c.R - c.r) / c.r) * trailAngle);
+  let trailY = (c.R - c.r) * sin(trailAngle) - c.d * sin(((c.R - c.r) / c.r) * trailAngle);
+  
+  // Glowing orb at current position
+  let waveOffset = sin(trailAngle * c.waveFreq * 10 + t * 2) * c.waveAmp;
+  let currentR = c.R + waveOffset;
+  
+  for (let r = 30; r > 0; r -= 5) {
+    let alpha = map(r, 0, 30, 0.4, 0);
+    fill(c.hue, 40, 50, alpha);
+    noStroke();
+    ellipse(trailX, trailY, r * 2);
+  }
+  
+  fill(c.hue, 30, 80, 0.9);
+  ellipse(trailX, trailY, 8);
+  
+  fill(0, 0, 100, 0.95);
+  ellipse(trailX, trailY, 3);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
