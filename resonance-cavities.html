@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>resonance-cavities</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020203; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// RESONANCE CAVITIES - Standing wave patterns in enclosed spaces
+let cavities = [];
+let time = 0;
+const CAVITY_COUNT = 5;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < CAVITY_COUNT; i++) {
+    cavities.push(createCavity(i));
+  }
+}
+
+function createCavity(index) {
+  let cx = random(width * 0.2, width * 0.8);
+  let cy = random(height * 0.2, height * 0.8);
+  let radius = random(100, 200);
+  
+  return {
+    cx, cy, radius,
+    nodes: generateNodes(cx, cy, radius, floor(random(16, 32))),
+    hue: random(200, 280),
+    freq: random(0.01, 0.03),
+    phase: random(TWO_PI),
+    mode: floor(random(1, 5)),  // Different resonance modes
+    rotation: random(TWO_PI),
+    rotSpeed: random(-0.003, 0.003)
+  };
+}
+
+function generateNodes(cx, cy, r, count) {
+  let nodes = [];
+  for (let i = 0; i < count; i++) {
+    let angle = map(i, 0, count, 0, TWO_PI);
+    nodes.push({
+      angle: angle,
+      baseR: r,
+      r: r,
+      v: 0  // radial velocity
+    });
+  }
+  return nodes;
+}
+
+function draw() {
+  background(240, 30, 1, 0.03);
+  
+  time += 0.02;
+  
+  // Sort by size for layering
+  cavities.sort((a, b) => a.radius - b.radius);
+  
+  for (let cav of cavities) {
+    updateCavity(cav);
+    drawCavity(cav);
+  }
+}
+
+function updateCavity(cav) {
+  cav.rotation += cav.rotSpeed;
+  
+  let t = time * 2 + cav.phase;
+  
+  for (let i = 0; i < cav.nodes.length; i++) {
+    let n = cav.nodes[i];
+    
+    // Standing wave based on mode
+    let wave;
+    switch(cav.mode) {
+      case 1: // Simple radial
+        wave = sin(n.angle * 2 + t);
+        break;
+      case 2: // Quadrupole
+        wave = sin(n.angle * 2 + t) * cos(n.angle * 2);
+        break;
+      case 3: // Hexagonal
+        wave = sin(n.angle * 3 + t);
+        break;
+      case 4: // Complex
+        wave = sin(n.angle * 2 + t) * 0.7 + sin(n.angle * 4 - t * 0.5) * 0.3;
+        break;
+      default:
+        wave = sin(n.angle + t);
+    }
+    
+    // Apply wave to radius with damping
+    let targetR = cav.baseR * (1 + wave * 0.25);
+    n.v += (targetR - n.r) * 0.1;
+    n.v *= 0.9;
+    n.r += n.v;
+  }
+}
+
+function drawCavity(cav) {
+  // Draw cavity boundary
+  noFill();
+  
+  // Outer glow
+  stroke(cav.hue, 40, 30, 0.1);
+  strokeWeight(8);
+  ellipse(cav.cx, cav.cy, cav.radius * 2.2);
+  
+  // Main boundary
+  stroke(cav.hue, 50, 40, 0.25);
+  strokeWeight(2);
+  ellipse(cav.cx, cav.cy, cav.radius * 2);
+  
+  // Draw nodes and connections
+  let pts = [];
+  for (let n of cav.nodes) {
+    let angle = n.angle + cav.rotation;
+    let x = cav.cx + cos(angle) * n.r;
+    let y = cav.cy + sin(angle) * n.r;
+    pts.push({x, y, r: n.r});
+  }
+  
+  // Draw connections
+  strokeWeight(1);
+  for (let i = 0; i < pts.length; i++) {
+    let p1 = pts[i];
+    let p2 = pts[(i + 1) % pts.length];
+    
+    // Strain affects color
+    let strain = abs(p1.r - p2.r) / cav.baseRadius;
+    let alpha = 0.15 + strain * 0.3;
+    
+    stroke(cav.hue + strain * 30, 40, 50, alpha);
+    line(p1.x, p1.y, p2.x, p2.y);
+    
+    // Cross connections for complexity
+    let p3 = pts[(i + floor(pts.length / 2)) % pts.length];
+    stroke(cav.hue + 20, 30, 40, alpha * 0.3);
+    line(p1.x, p1.y, p3.x, p3.y);
+  }
+  
+  // Draw nodes
+  noStroke();
+  for (let i = 0; i < pts.length; i++) {
+    let p = pts[i];
+    let normalizedR = (p.r - cav.baseR * 0.75) / (cav.baseR * 0.5);
+    normalizedR = constrain(normalizedR, 0, 1);
+    
+    // Size based on displacement
+    let size = 2 + normalizedR * 4;
+    let alpha = 0.3 + normalizedR * 0.5;
+    
+    // Glow
+    fill(cav.hue, 40, 50, alpha * 0.2);
+    ellipse(p.x, p.y, size * 4);
+    
+    // Core
+    fill(cav.hue, 50, 70, alpha);
+    ellipse(p.x, p.y, size);
+  }
+  
+  // Inner resonance pattern
+  let innerAlpha = 0.15 + sin(time * 3 + cav.phase) * 0.1;
+  fill(cav.hue + 30, 30, 60, innerAlpha);
+  noStroke();
+  ellipse(cav.cx, cav.cy, cav.radius * 0.3);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  for (let cav of cavities) {
+    cav.cx = random(width * 0.2, width * 0.8);
+    cav.cy = random(height * 0.2, height * 0.8);
+    cav.nodes = generateNodes(cav.cx, cav.cy, cav.radius, cav.nodes.length);
+  }
+}
+</script>
+</body>
+</html>
