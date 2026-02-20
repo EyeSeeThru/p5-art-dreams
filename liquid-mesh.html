@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>liquid-mesh</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020104; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// LIQUID MESH - Deformable mesh with liquid-like surface tension
+let particles = [];
+let springs = [];
+let time = 0;
+const GRID_SIZE = 12;
+const REST_LENGTH = 40;
+const STIFFNESS = 0.08;
+const DAMPING = 0.95;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  let offsetX = (width - GRID_SIZE * REST_LENGTH) / 2;
+  let offsetY = (height - GRID_SIZE * REST_LENGTH) / 2;
+  
+  // Create particle grid
+  for (let i = 0; i < GRID_SIZE; i++) {
+    particles[i] = [];
+    for (let j = 0; j < GRID_SIZE; j++) {
+      particles[i][j] = {
+        x: offsetX + i * REST_LENGTH + random(-5, 5),
+        y: offsetY + j * REST_LENGTH + random(-5, 5),
+        vx: 0,
+        vy: 0,
+        hue: random(340, 370) % 360,
+        pinned: false
+      };
+    }
+  }
+  
+  // Pin corners
+  particles[0][0].pinned = true;
+  particles[GRID_SIZE-1][0].pinned = true;
+  particles[0][GRID_SIZE-1].pinned = true;
+  particles[GRID_SIZE-1][GRID_SIZE-1].pinned = true;
+  
+  // Create springs
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      // Horizontal springs
+      if (i < GRID_SIZE - 1) {
+        springs.push({
+          a: particles[i][j],
+          b: particles[i+1][j],
+          rest: REST_LENGTH
+        });
+      }
+      // Vertical springs
+      if (j < GRID_SIZE - 1) {
+        springs.push({
+          a: particles[i][j],
+          b: particles[i][j+1],
+          rest: REST_LENGTH
+        });
+      }
+      // Diagonal springs for stability
+      if (i < GRID_SIZE - 1 && j < GRID_SIZE - 1 && random() < 0.5) {
+        springs.push({
+          a: particles[i][j],
+          b: particles[i+1][j+1],
+          rest: REST_LENGTH * SQRT2
+        });
+      }
+    }
+  }
+}
+
+function draw() {
+  background(240, 20, 0.5, 0.05);
+  
+  time += 0.016;
+  
+  // Apply forces
+  applyForces();
+  
+  // Solve springs
+  for (let iter = 0; iter < 3; iter++) {
+    solveSprings();
+  }
+  
+  // Update particles
+  updateParticles();
+  
+  // Draw mesh
+  drawMesh();
+}
+
+function applyForces() {
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      let p = particles[i][j];
+      if (p.pinned) continue;
+      
+      // Ripple force from center
+      let dx = p.x - width / 2;
+      let dy = p.y - height / 2;
+      let dist = sqrt(dx * dx + dy * dy);
+      let force = sin(dist * 0.02 - time * 3) * 0.5;
+      
+      p.vx += dx * 0.001 * force;
+      p.vy += dy * 0.001 * force;
+      
+      // Noise-based turbulence
+      let noiseVal = noise(p.x * 0.01 + time, p.y * 0.01);
+      p.vx += (noiseVal - 0.5) * 0.3;
+      p.vy += (noiseVal - 0.5) * 0.3;
+    }
+  }
+}
+
+function solveSprings() {
+  for (let s of springs) {
+    let dx = s.b.x - s.a.x;
+    let dy = s.b.y - s.a.y;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    if (dist === 0) continue;
+    
+    let force = (dist - s.rest) * STIFFNESS;
+    let fx = (dx / dist) * force;
+    let fy = (dy / dist) * force;
+    
+    if (!s.a.pinned) {
+      s.a.vx += fx;
+      s.a.vy += fy;
+    }
+    if (!s.b.pinned) {
+      s.b.vx -= fx;
+      s.b.vy -= fy;
+    }
+  }
+}
+
+function updateParticles() {
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      let p = particles[i][j];
+      if (p.pinned) continue;
+      
+      p.vx *= DAMPING;
+      p.vy *= DAMPING;
+      p.x += p.vx;
+      p.y += p.vy;
+    }
+  }
+}
+
+function drawMesh() {
+  // Draw filled triangles
+  for (let i = 0; i < GRID_SIZE - 1; i++) {
+    for (let j = 0; j < GRID_SIZE - 1; j++) {
+      let p1 = particles[i][j];
+      let p2 = particles[i+1][j];
+      let p3 = particles[i][j+1];
+      let p4 = particles[i+1][j+1];
+      
+      // Calculate center for color
+      let cx = (p1.x + p2.x + p3.x + p4.x) / 4;
+      let cy = (p1.y + p2.y + p3.y + p4.y) / 4;
+      let hue = (p1.hue + p2.hue + p3.hue + p4.hue) / 4;
+      
+      // Triangle 1
+      drawTriangle(p1, p2, p3, cx, cy, hue);
+      // Triangle 2
+      drawTriangle(p2, p4, p3, cx, cy, hue);
+    }
+  }
+  
+  // Draw wireframe on top
+  strokeWeight(1);
+  for (let s of springs) {
+    let dist = dist(s.a.x, s.a.y, s.b.x, s.b.y);
+    let strain = abs(dist - s.rest) / s.rest;
+    let alpha = map(strain, 0, 0.5, 0.1, 0.4);
+    
+    stroke(s.a.hue, 50, 50, alpha);
+    line(s.a.x, s.a.y, s.b.x, s.b.y);
+  }
+  
+  // Draw particles
+  noStroke();
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      let p = particles[i][j];
+      let pulse = sin(frameCount * 0.05 + i * 0.5 + j * 0.5) * 0.3 + 0.7;
+      
+      fill(p.hue, 40, 60, pulse * 0.8);
+      ellipse(p.x, p.y, 6);
+      
+      fill(0, 0, 100, 0.9);
+      ellipse(p.x, p.y, 2);
+    }
+  }
+}
+
+function drawTriangle(p1, p2, p3, cx, cy, hue) {
+  let brightness = map(sin(cx * 0.01 + cy * 0.01 + time), -1, 1, 20, 50);
+  let alpha = 0.15;
+  
+  fill(hue, 40, brightness, alpha);
+  noStroke();
+  triangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
