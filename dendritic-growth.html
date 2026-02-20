@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dendritic-growth</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050508; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// DENDRITIC GROWTH - Organic branching patterns (coral, lightning, neurons)
+let branches = [];
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize with several root branches
+  for (let i = 0; i < 5; i++) {
+    let startX = random(width * 0.2, width * 0.8);
+    let startY = height;
+    let angle = random(-PI * 0.8, -PI * 0.2);
+    branches.push({
+      x: startX,
+      y: startY,
+      angle: angle,
+      length: random(30, 60),
+      thickness: random(3, 6),
+      speed: random(0.5, 1.5),
+      life: 1,
+      generation: 0,
+      hue: random(180, 260)
+    });
+  }
+}
+
+function draw() {
+  background(240, 30, 2, 0.03);
+  
+  time += 0.01;
+  
+  // Update and draw branches
+  for (let i = branches.length - 1; i >= 0; i--) {
+    let b = branches[i];
+    
+    if (b.life > 0) {
+      // Calculate end point
+      let endX = b.x + cos(b.angle) * b.length * b.speed;
+      let endY = b.y + sin(b.angle) * b.length * b.speed;
+      
+      // Draw branch with glow
+      let glow = b.thickness * 3;
+      for (let g = glow; g > 0; g -= 0.5) {
+        let alpha = map(g, 0, glow, b.life * 0.1, 0);
+        stroke(b.hue, 60, 80, alpha);
+        strokeWeight(g);
+        line(b.x, b.y, endX, endY);
+      }
+      
+      // Core line
+      stroke(b.hue, 40, 100, b.life * 0.8);
+      strokeWeight(b.thickness);
+      line(b.x, b.y, endX, endY);
+      
+      // Branch tip for new growth
+      b.x = endX;
+      b.y = endY;
+      
+      // Wiggle the angle
+      b.angle += random(-0.1, 0.1);
+      
+      // Slowly decrease life
+      b.life -= 0.003;
+      
+      // Chance to branch
+      if (b.life > 0.3 && random() < 0.04 && b.generation < 6 && branches.length < 400) {
+        let branchAngle = b.angle + random(PI * 0.2, PI * 0.5) * (random() > 0.5 ? 1 : -1);
+        branches.push({
+          x: b.x,
+          y: b.y,
+          angle: branchAngle,
+          length: b.length * random(0.5, 0.8),
+          thickness: b.thickness * random(0.5, 0.7),
+          speed: b.speed * random(0.8, 1.2),
+          life: b.life * random(0.7, 1),
+          generation: b.generation + 1,
+          hue: b.hue + random(-20, 20)
+        });
+      }
+      
+      // Chance to spawn new root
+      if (frameCount % 120 === 0 && branches.length < 300) {
+        let startX = random(width * 0.1, width * 0.9);
+        branches.push({
+          x: startX,
+          y: height,
+          angle: random(-PI * 0.7, -PI * 0.3),
+          length: random(20, 50),
+          thickness: random(2, 5),
+          speed: random(0.4, 1.2),
+          life: 1,
+          generation: 0,
+          hue: random(180, 280)
+        });
+      }
+    }
+  }
+  
+  // Draw ambient particles
+  drawParticles();
+}
+
+function drawParticles() {
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let x = random(width);
+    let y = random(height);
+    let size = random(1, 3);
+    let hue = random(180, 280);
+    fill(hue, 30, 80, random(0.1, 0.3));
+    ellipse(x, y, size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
