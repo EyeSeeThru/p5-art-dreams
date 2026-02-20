@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>magnetic-fields</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #030306; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// MAGNETIC FIELDS - Dipole field lines with moving poles
+let poles = [];
+let time = 0;
+const POLE_COUNT = 4;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < POLE_COUNT; i++) {
+    poles.push({
+      x: random(width * 0.2, width * 0.8),
+      y: random(height * 0.2, height * 0.8),
+      vx: random(-0.8, 0.8),
+      vy: random(-0.8, 0.8),
+      strength: random(500, 1500) * (random() > 0.5 ? 1 : -1),
+      hue: random() > 0.5 ? random(340, 360) : random(0, 20),
+      phase: random(TWO_PI)
+    });
+  }
+}
+
+function draw() {
+  background(240, 20, 0.6, 0.04);
+  
+  time += 0.016;
+  
+  // Update poles
+  for (let p of poles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Bounce
+    if (p.x < 50 || p.x > width - 50) p.vx *= -1;
+    if (p.y < 50 || p.y > height - 50) p.vy *= -1;
+    p.x = constrain(p.x, 50, width - 50);
+    p.y = constrain(p.y, 50, height - 50);
+  }
+  
+  // Draw field lines
+  drawFieldLines();
+  
+  // Draw poles
+  for (let p of poles) {
+    drawPole(p);
+  }
+}
+
+function drawFieldLines() {
+  let stepSize = 8;
+  let maxSteps = 200;
+  
+  // Start points around each pole
+  for (let p of poles) {
+    if (p.strength > 0) { // Only draw from positive poles
+      for (let angle = 0; angle < TWO_PI; angle += PI / 6) {
+        let startX = p.x + cos(angle) * 20;
+        let startY = p.y + sin(angle) * 20;
+        
+        drawSingleFieldLine(startX, startY, p);
+      }
+    }
+  }
+}
+
+function drawSingleFieldLine(startX, startY, sourcePole) {
+  let x = startX;
+  let y = startY;
+  let hue = sourcePole.hue;
+  
+  noFill();
+  strokeWeight(1);
+  
+  beginShape();
+  for (let i = 0; i < maxSteps; i++) {
+    // Calculate field at current position
+    let fx = 0;
+    let fy = 0;
+    
+    for (let p of poles) {
+      let dx = p.x - x;
+      let dy = p.y - y;
+      let d2 = dx * dx + dy * dy;
+      let d = sqrt(d2);
+      
+      if (d < 20) break; // Too close to pole
+      
+      // Dipole field: B = (μ₀/4π) * (3(m·r̂)r̂ - m) / r³
+      // Simplified: force proportional to strength / d²
+      let force = p.strength / d2;
+      fx += (dx / d) * force;
+      fy += (dy / d) * force;
+    }
+    
+    // Normalize
+    let fMag = sqrt(fx * fx + fy * fy);
+    if (fMag < 0.001) break;
+    fx /= fMag;
+    fy /= fMag;
+    
+    // Add some wave
+    let wave = sin(i * 0.1 + time * 2) * 0.3;
+    let temp = fx;
+    fx = fx * cos(wave) - fy * sin(wave);
+    fy = temp * sin(wave) + fy * cos(wave);
+    
+    x += fx * stepSize;
+    y += fy * stepSize;
+    
+    // Check bounds
+    if (x < 0 || x > width || y < 0 || y > height) break;
+    
+    // Color based on field strength
+    let alpha = map(i, 0, maxSteps, 0.4, 0.05);
+    stroke(hue, 50, 40, alpha);
+    vertex(x, y);
+  }
+  endShape();
+}
+
+function drawPole(p) {
+  let pulse = sin(frameCount * 0.05 + p.phase) * 0.3 + 0.7;
+  let size = 20 * pulse;
+  let isPositive = p.strength > 0;
+  
+  // Glow
+  noStroke();
+  for (let r = size * 3; r > size; r -= 4) {
+    let alpha = map(r, size, size * 3, 0.4, 0);
+    fill(p.hue, 60, 40, alpha);
+    ellipse(p.x, p.y, r * 2);
+  }
+  
+  // Core
+  fill(p.hue, 50, 60, 0.8 * pulse);
+  ellipse(p.x, p.y, size * 2);
+  
+  // Symbol
+  fill(0, 0, 100, 0.9);
+  textAlign(CENTER, CENTER);
+  textSize(14);
+  text(isPositive ? "+" : "×", p.x, p.y);
+  
+  // Center dot
+  fill(0, 0, 100, 0.95);
+  ellipse(p.x, p.y, 4);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
