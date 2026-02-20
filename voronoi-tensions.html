@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>voronoi-tensions</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #080505; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// VORONOI TENSIONS - Voronoi diagram with tension lines between cell boundaries
+let sites = [];
+let time = 0;
+let cellColors = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize Voronoi sites
+  let numSites = 30;
+  for (let i = 0; i < numSites; i++) {
+    sites.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-0.5, 0.5),
+      vy: random(-0.5, 0.5),
+      hue: random(340, 380) % 360
+    });
+    cellColors.push(color(random(340, 380) % 360, 60, 15, 0.3));
+  }
+}
+
+function draw() {
+  background(350, 40, 3, 0.08);
+  
+  time += 0.005;
+  
+  // Update site positions
+  for (let s of sites) {
+    s.x += s.vx;
+    s.y += s.vy;
+    
+    // Bounce off edges
+    if (s.x < 0 || s.x > width) s.vx *= -1;
+    if (s.y < 0 || s.y > height) s.vy *= -1;
+    
+    // Add slight noise to movement
+    s.vx += random(-0.02, 0.02);
+    s.vy += random(-0.02, 0.02);
+    s.vx = constrain(s.vx, -1, 1);
+    s.vy = constrain(s.vy, -1, 1);
+  }
+  
+  // Draw Voronoi cells
+  drawVoronoi();
+  
+  // Draw tension lines between neighboring sites
+  drawTensionLines();
+  
+  // Draw sites as glowing points
+  drawSites();
+}
+
+function drawVoronoi() {
+  // Sample points across the canvas
+  let step = 8;
+  noStroke();
+  
+  for (let x = 0; x < width; x += step) {
+    for (let y = 0; y < height; y += step) {
+      let closest = findClosestSite(x, y);
+      
+      // Color based on distance to closest and second closest (tension)
+      let d1 = dist(x, y, closest.x, closest.y);
+      let d2 = findSecondClosestDist(x, y, closest);
+      
+      let tension = d2 - d1;
+      
+      if (tension < 15) {
+        // Near edge - draw tension boundary
+        let edgeAlpha = map(tension, 0, 15, 0.6, 0);
+        fill(closest.hue, 80, 60, edgeAlpha);
+        rect(x, y, step, step);
+      } else {
+        // Inside cell - subtle fill
+        fill(closest.hue, 40, 12, 0.15);
+        rect(x, y, step, step);
+      }
+    }
+  }
+}
+
+function drawTensionLines() {
+  // Draw lines between sites that are close to each other
+  strokeWeight(1);
+  
+  for (let i = 0; i < sites.length; i++) {
+    for (let j = i + 1; j < sites.length; j++) {
+      let d = dist(sites[i].x, sites[i].y, sites[j].x, sites[j].y);
+      
+      if (d < 200) {
+        // Calculate tension (how balanced the Voronoi boundary is)
+        let tension = map(d, 0, 200, 1, 0);
+        
+        // Pulsing line
+        let pulse = sin(time * 3 + d * 0.05) * 0.5 + 0.5;
+        let alpha = tension * pulse * 0.4;
+        
+        let avgHue = (sites[i].hue + sites[j].hue) / 2;
+        stroke(avgHue, 70, 80, alpha);
+        line(sites[i].x, sites[i].y, sites[j].x, sites[j].y);
+        
+        // Add glow
+        stroke(avgHue, 50, 30, alpha * 0.3);
+        strokeWeight(3);
+        line(sites[i].x, sites[i].y, sites[j].x, sites[j].y);
+        strokeWeight(1);
+      }
+    }
+  }
+}
+
+function drawSites() {
+  noStroke();
+  
+  for (let s of sites) {
+    // Outer glow
+    for (let r = 20; r > 0; r -= 2) {
+      let alpha = map(r, 0, 20, 0.3, 0);
+      fill(s.hue, 60, 80, alpha);
+      ellipse(s.x, s.y, r * 2);
+    }
+    
+    // Core
+    fill(s.hue, 50, 100, 0.9);
+    ellipse(s.x, s.y, 6);
+    
+    // Bright center
+    fill(0, 0, 100, 0.8);
+    ellipse(s.x, s.y, 2);
+  }
+}
+
+function findClosestSite(x, y) {
+  let closest = sites[0];
+  let minDist = dist(x, y, sites[0].x, sites[0].y);
+  
+  for (let i = 1; i < sites.length; i++) {
+    let d = dist(x, y, sites[i].x, sites[i].y);
+    if (d < minDist) {
+      minDist = d;
+      closest = sites[i];
+    }
+  }
+  
+  return closest;
+}
+
+function findSecondClosestDist(x, y, closest) {
+  let minDist = Infinity;
+  
+  for (let s of sites) {
+    if (s !== closest) {
+      let d = dist(x, y, s.x, s.y);
+      if (d < minDist) {
+        minDist = d;
+      }
+    }
+  }
+  
+  return minDist;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
