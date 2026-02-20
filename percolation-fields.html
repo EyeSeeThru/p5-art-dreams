@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>percolation-fields</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #030303; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// PERCOLATION FIELDS - Grid-based percolation with flowing activation
+let grid = [];
+let cols, rows;
+let resolution = 12;
+let time = 0;
+let activations = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize grid with random thresholds
+  for (let x = 0; x < cols; x++) {
+    grid[x] = [];
+    for (let y = 0; y < rows; y++) {
+      grid[x][y] = {
+        threshold: random(0.3, 0.7),
+        active: false,
+        value: 0,
+        neighbors: []
+      };
+    }
+  }
+  
+  // Connect neighbors (von Neumann + diagonal)
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let cell = grid[x][y];
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          if (dx === 0 && dy === 0) continue;
+          let nx = x + dx;
+          let ny = y + dy;
+          if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+            cell.neighbors.push(grid[nx][ny]);
+          }
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  background(260, 30, 2, 0.05);
+  
+  time += 0.02;
+  
+  // Randomly activate cells based on threshold
+  if (frameCount % 2 === 0) {
+    let x = floor(random(cols));
+    let y = floor(random(rows));
+    let cell = grid[x][y];
+    
+    if (!cell.active && random() < cell.threshold * 0.1) {
+      cell.active = true;
+      cell.value = 1;
+      activations.push({ cell: cell, age: 0, x: x, y: y });
+    }
+  }
+  
+  // Propagate activation
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let cell = grid[x][y];
+      
+      if (cell.active) {
+        // Count active neighbors
+        let activeNeighbors = 0;
+        for (let n of cell.neighbors) {
+          if (n.active) activeNeighbors++;
+        }
+        
+        // Spread to neighbors based on active count
+        if (random() < 0.02 * activeNeighbors) {
+          for (let n of cell.neighbors) {
+            if (!n.active && random() < 0.3) {
+              n.active = true;
+              n.value = 1;
+              activations.push({ cell: n, age: 0, x: x, y: y });
+            }
+          }
+        }
+        
+        // Decay
+        cell.value *= 0.995;
+        if (cell.value < 0.05) {
+          cell.active = false;
+        }
+      }
+    }
+  }
+  
+  // Age and clean up activations
+  for (let i = activations.length - 1; i >= 0; i--) {
+    activations[i].age++;
+    if (activations[i].age > 500 || !activations[i].cell.active) {
+      activations.splice(i, 1);
+    }
+  }
+  
+  // Draw the grid
+  drawGrid();
+  
+  // Draw activation trails
+  drawTrails();
+}
+
+function drawGrid() {
+  noStroke();
+  
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let cell = grid[x][y];
+      let px = x * resolution;
+      let py = y * resolution;
+      
+      if (cell.active) {
+        // Active cell with glow
+        let hue = map(cell.value, 0, 1, 280, 320);
+        let sat = map(cell.value, 0, 1, 30, 80);
+        let bri = map(cell.value, 0, 1, 20, 80);
+        
+        // Glow
+        for (let r = resolution * 2; r > resolution; r -= 2) {
+          let alpha = map(r, resolution, resolution * 2, cell.value * 0.4, 0);
+          fill(hue, sat * 0.5, bri, alpha);
+          ellipse(px + resolution / 2, py + resolution / 2, r);
+        }
+        
+        // Core
+        fill(hue, sat, bri, cell.value);
+        rect(px, py, resolution - 1, resolution - 1);
+      } else {
+        // Subtle inactive cells
+        fill(280, 20, 8, 0.3);
+        rect(px, py, resolution - 1, resolution - 1);
+      }
+    }
+  }
+}
+
+function drawTrails() {
+  // Draw lines between recently activated neighbors
+  strokeWeight(0.5);
+  
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let cell = grid[x][y];
+      
+      if (cell.active && cell.value > 0.3) {
+        for (let n of cell.neighbors) {
+          if (n.active && n.value > 0.3) {
+            let alpha = min(cell.value, n.value) * 0.15;
+            stroke(300, 60, 70, alpha);
+            
+            let x1 = x * resolution + resolution / 2;
+            let y1 = y * resolution + resolution / 2;
+            let x2 = 0, y2 = 0;
+            
+            // Find neighbor coords
+            for (let nx = 0; nx < cols; nx++) {
+              for (let ny = 0; ny < rows; ny++) {
+                if (grid[nx][ny] === n) {
+                  x2 = nx * resolution + resolution / 2;
+                  y2 = ny * resolution + resolution / 2;
+                }
+              }
+            }
+            
+            line(x1, y1, x2, y2);
+          }
+        }
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
