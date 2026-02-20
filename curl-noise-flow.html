@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>curl-noise-flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020104; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// CURL NOISE FLOW - Fluid-like particle motion using curl noise
+let particles = [];
+let numParticles = 800;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize particles
+  for (let i = 0; i < numParticles; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  return {
+    x: random(width),
+    y: random(height),
+    prevX: 0,
+    prevY: 0,
+    hue: random(0, 40),
+    size: random(1, 4),
+    speed: random(0.5, 2),
+    life: random(100, 300)
+  };
+}
+
+function draw() {
+  background(10, 30, 2, 0.04);
+  
+  time += 0.003;
+  
+  // Update and draw particles
+  for (let i = 0; i < particles.length; i++) {
+    let p = particles[i];
+    
+    p.prevX = p.x;
+    p.prevY = p.y;
+    
+    // Get curl noise velocity
+    let scale = 0.003;
+    let eps = 0.01;
+    
+    // Curl noise: cross product of gradient
+    let n1 = noise(p.x * scale, p.y * scale, time);
+    let n2 = noise(p.x * scale + eps, p.y * scale, time + 100);
+    let n3 = noise(p.x * scale, p.y * scale + eps, time + 200);
+    let n4 = noise(p.x * scale + eps, p.y * scale + eps, time + 300);
+    
+    let dx = (n2 - n1) / eps;
+    let dy = (n3 - n1) / eps;
+    
+    // Curl: (-dy, dx) gives divergence-free field
+    let vx = -dy * 15;
+    let vy = dx * 15;
+    
+    // Add some base flow
+    vx += sin(time * 0.5 + p.y * 0.01) * 0.5;
+    vy += cos(time * 0.3 + p.x * 0.01) * 0.5;
+    
+    p.x += vx * p.speed;
+    p.y += vy * p.speed;
+    
+    // Wrap around edges
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Life decay
+    p.life--;
+    if (p.life <= 0) {
+      particles[i] = createParticle();
+      continue;
+    }
+    
+    // Draw trail
+    let lifeRatio = p.life / 300;
+    let alpha = lifeRatio * 0.6;
+    let hue = (p.hue + time * 10) % 40;
+    
+    // Glow
+    strokeWeight(p.size * 2);
+    stroke(hue, 70, 30, alpha * 0.2);
+    line(p.prevX, p.prevY, p.x, p.y);
+    
+    // Core
+    strokeWeight(p.size);
+    stroke(hue, 60, 80, alpha);
+    line(p.prevX, p.prevY, p.x, p.y);
+    
+    // Bright center
+    strokeWeight(p.size * 0.3);
+    stroke(0, 0, 100, alpha);
+    line(p.prevX, p.prevY, p.x, p.y);
+  }
+  
+  // Add subtle flow field visualization
+  drawFlowField();
+}
+
+function drawFlowField() {
+  let scale = 0.005;
+  let step = 40;
+  
+  strokeWeight(0.5);
+  
+  for (let x = 0; x < width; x += step) {
+    for (let y = 0; y < height; y += step) {
+      let n1 = noise(x * scale, y * scale, time);
+      let n2 = noise(x * scale + 0.01, y * scale, time + 100);
+      let n3 = noise(x * scale, y * scale + 0.01, time + 200);
+      
+      let dx = (n2 - n1) / 0.01;
+      let dy = (n3 - n1) / 0.01;
+      
+      let angle = atan2(-dx, dy);
+      
+      let x2 = x + cos(angle) * 15;
+      let y2 = y + sin(angle) * 15;
+      
+      let alpha = 0.05;
+      stroke(20, 40, 40, alpha);
+      line(x, y, x2, y2);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
