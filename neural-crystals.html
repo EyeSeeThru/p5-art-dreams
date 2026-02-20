@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>neural-crystals</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050508; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// NEURAL CRYSTALS - Crystalline growth with activation functions
+let crystals = [];
+let time = 0;
+const NUM_CRYSTALS = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize crystal seeds
+  for (let i = 0; i < NUM_CRYSTALS; i++) {
+    crystals.push({
+      x: random(width),
+      y: random(height),
+      angle: random(TWO_PI),
+      growth: 0,
+      maxGrowth: random(80, 150),
+      activation: floor(random(4)), // 0: sigmoid, 1: tanh, 2: relu, 3: softmax
+      hue: random(180, 300),
+      branches: floor(random(3, 7))
+    });
+  }
+}
+
+function draw() {
+  background(240, 30, 2, 0.03);
+  
+  time += 0.015;
+  
+  // Draw each crystal
+  for (let c of crystals) {
+    drawCrystal(c);
+  }
+  
+  // Draw connections between nearby crystals
+  drawConnections();
+}
+
+function activation(x, type, t) {
+  // Neural activation functions as crystal growth patterns
+  let amp = 20;
+  switch(type) {
+    case 0: // Sigmoid - smooth S-curve
+      return 1 / (1 + exp(-x * 0.1)) * amp;
+    case 1: // Tanh - hyperbolic tangent
+      return tanh(x * 0.05) * amp;
+    case 2: // ReLU - linear with cutoff
+      return max(0, x * 0.08);
+    case 3: // Softmax-like radial
+      return log(1 + abs(x)) * 5;
+  }
+  return x;
+}
+
+function drawCrystal(c) {
+  c.growth = min(c.growth + 0.5, c.maxGrowth);
+  
+  let layers = floor(c.growth / 10);
+  
+  for (let layer = 0; layer < layers; layer++) {
+    let layerRadius = layer * 8;
+    let layerAlpha = map(layer, 0, layers, 0.6, 0.1);
+    
+    // Draw crystal branches
+    for (let b = 0; b < c.branches; b++) {
+      let branchAngle = c.angle + (TWO_PI / c.branches) * b;
+      let wobble = sin(time * 2 + b + layer * 0.5) * 0.2;
+      
+      let cx = c.x + cos(branchAngle + wobble) * layerRadius;
+      let cy = c.y + sin(branchAngle + wobble) * layerRadius;
+      
+      // Activation-based growth
+      let actVal = activation(layerRadius + sin(time + b) * 30, c.activation, time);
+      
+      let size = map(actVal, 0, 25, 2, 12);
+      
+      // Color based on activation type
+      let hue = (c.hue + layer * 5 + actVal * 2) % 360;
+      let sat = map(actVal, 0, 25, 40, 80);
+      let bri = map(layer, 0, layers, 80, 40);
+      
+      noStroke();
+      
+      // Glow effect
+      for (let r = size * 3; r > size; r -= 2) {
+        let a = map(r, size, size * 3, layerAlpha * 0.5, 0);
+        fill(hue, sat * 0.7, bri, a);
+        ellipse(cx, cy, r);
+      }
+      
+      // Core
+      fill(hue, sat, bri, layerAlpha);
+      ellipse(cx, cy, size);
+    }
+  }
+  
+  // Center glow
+  let pulse = sin(time * 3) * 0.3 + 0.7;
+  for (let r = 40 * pulse; r > 5; r -= 5) {
+    let a = map(r, 5, 40 * pulse, 0.4, 0);
+    fill(c.hue, 30, 90, a);
+    ellipse(c.x, c.y, r);
+  }
+  
+  fill(c.hue, 20, 100, 0.8);
+  ellipse(c.x, c.y, 5);
+}
+
+function drawConnections() {
+  for (let i = 0; i < crystals.length; i++) {
+    for (let j = i + 1; j < crystals.length; j++) {
+      let d = dist(crystals[i].x, crystals[i].y, crystals[j].x, crystals[j].y);
+      
+      if (d < 200) {
+        let alpha = map(d, 0, 200, 0.3, 0);
+        let sw = map(d, 0, 200, 3, 0.5);
+        
+        let hue = (crystals[i].hue + crystals[j].hue) / 2;
+        
+        stroke(hue, 40, 60, alpha);
+        strokeWeight(sw);
+        line(crystals[i].x, crystals[i].y, crystals[j].x, crystals[j].y);
+        
+        // Connection nodes
+        noStroke();
+        let midX = (crystals[i].x + crystals[j].x) / 2;
+        let midY = (crystals[i].y + crystals[j].y) / 2;
+        
+        let nodeSize = map(d, 0, 200, 6, 1);
+        fill(hue, 50, 80, alpha * 0.8);
+        ellipse(midX, midY, nodeSize);
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
