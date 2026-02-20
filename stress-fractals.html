@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>stress-fractals</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0c; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// STRESS FRACTALS - Fractal crack propagation under stress
+let time = 0;
+let cracks = [];
+const NUM_INITIAL_CRACKS = 8;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize crack seeds at random points
+  for (let i = 0; i < NUM_INITIAL_CRACKS; i++) {
+    cracks.push(createCrack(
+      random(width),
+      random(height),
+      random(TWO_PI),
+      0
+    ));
+  }
+}
+
+function createCrack(x, y, angle, depth) {
+  return {
+    x: x,
+    y: y,
+    angle: angle,
+    depth: depth,
+    segments: [{x: x, y: y}],
+    active: true,
+    stress: random(0.5, 1),
+    hue: random(0, 60) // Red/orange/yellow range
+  };
+}
+
+function draw() {
+  background(0, 0, 3, 0.08);
+  
+  time += 0.02;
+  
+  // Update and draw cracks
+  for (let c of cracks) {
+    updateCrack(c);
+    drawCrack(c);
+  }
+  
+  // Branch new cracks
+  if (frameCount % 30 === 0 && cracks.length < 40) {
+    let parent = random(cracks.filter(c => c.active));
+    if (parent && parent.depth < 4) {
+      let branchAngle = parent.angle + random(-PI/3, PI/3);
+      let newCrack = createCrack(
+        parent.segments[parent.segments.length-1].x,
+        parent.segments[parent.segments.length-1].y,
+        branchAngle,
+        parent.depth + 1
+      );
+      newCrack.hue = parent.hue + random(-20, 20);
+      cracks.push(newCrack);
+    }
+  }
+  
+  // Draw stress nodes
+  drawStressNodes();
+}
+
+function updateCrack(c) {
+  if (!c.active) return;
+  
+  // Propagate crack
+  let speed = c.stress * 3;
+  let angleNoise = noise(c.x * 0.005, c.y * 0.005, time * 0.5) * TWO_PI;
+  
+  c.angle += map(noise(c.x * 0.01, time), 0, 1, -0.1, 0.1);
+  
+  let newX = c.x + cos(c.angle) * speed;
+  let newY = c.y + sin(c.angle) * speed;
+  
+  // Add some jitter
+  newX += random(-1, 1);
+  newY += random(-1, 1);
+  
+  c.segments.push({x: newX, y: newY});
+  c.x = newX;
+  c.y = newY;
+  
+  // Keep segment count manageable
+  if (c.segments.length > 50) {
+    c.segments.shift();
+  }
+  
+  // Deactivate if off screen
+  if (c.x < -50 || c.x > width + 50 || c.y < -50 || c.y > height + 50) {
+    c.active = false;
+  }
+  
+  // Chance to stop naturally
+  if (random() < 0.005) {
+    c.active = false;
+  }
+}
+
+function drawCrack(c) {
+  // Draw glow
+  for (let i = 1; i < c.segments.length; i++) {
+    let prev = c.segments[i-1];
+    let curr = c.segments[i];
+    
+    let alpha = map(i, 0, c.segments.length, 0.1, 0.6);
+    let sw = map(i, 0, c.segments.length, 1, 4);
+    
+    // Outer glow
+    stroke(c.hue, 80, 40, alpha * 0.3);
+    strokeWeight(sw * 4);
+    line(prev.x, prev.y, curr.x, curr.y);
+    
+    // Core
+    stroke(c.hue, 60, 80, alpha);
+    strokeWeight(sw);
+    line(prev.x, prev.y, curr.x, curr.y);
+    
+    // Hot center
+    stroke(60, 20, 100, alpha * 0.8);
+    strokeWeight(sw * 0.3);
+    line(prev.x, prev.y, curr.x, curr.y);
+  }
+  
+  // Draw leading tip
+  if (c.active && c.segments.length > 0) {
+    let tip = c.segments[c.segments.length-1];
+    
+    // Pulsing tip
+    let pulse = sin(time * 10 + c.depth) * 0.5 + 0.5;
+    
+    noStroke();
+    for (let r = 15 * pulse; r > 2; r -= 2) {
+      let a = map(r, 2, 15 * pulse, 0.8, 0);
+      fill(c.hue, 50, 100, a);
+      ellipse(tip.x, tip.y, r);
+    }
+  }
+}
+
+function drawStressNodes() {
+  // Find crack intersections and draw stress points
+  for (let i = 0; i < cracks.length; i++) {
+    for (let j = i + 1; j < cracks.length; j++) {
+      let c1 = cracks[i];
+      let c2 = cracks[j];
+      
+      // Check recent segments for proximity
+      if (c1.segments.length > 5 && c2.segments.length > 5) {
+        let p1 = c1.segments[c1.segments.length-1];
+        let p2 = c2.segments[c2.segments.length-1];
+        
+        let d = dist(p1.x, p1.y, p2.x, p2.y);
+        
+        if (d < 30 && d > 5) {
+          // Stress point at intersection
+          let midX = (p1.x + p2.x) / 2;
+          let midY = (p1.y + p2.y) / 2;
+          
+          let pulse = sin(time * 5) * 0.5 + 0.5;
+          
+          noStroke();
+          for (let r = 20 * pulse; r > 3; r -= 3) {
+            let a = map(r, 3, 20 * pulse, 0.5, 0);
+            fill(40, 60, 100, a);
+            ellipse(midX, midY, r);
+          }
+          
+          fill(60, 30, 100, 0.9);
+          ellipse(midX, midY, 4);
+        }
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
