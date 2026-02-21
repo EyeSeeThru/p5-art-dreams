@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>void-currents</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020204; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// VOID CURRENTS - Dark matter streams flowing through empty space
+let time = 0;
+let streams = [];
+let numStreams = 7;
+let particles = [];
+let numParticles = 300;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize streams (curved paths)
+  for (let i = 0; i < numStreams; i++) {
+    streams.push({
+      points: generateStreamPoints(),
+      speed: random(0.3, 0.8),
+      hue: random(350, 390) % 360,
+      width: random(2, 6),
+      offset: random(1000)
+    });
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < numParticles; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function generateStreamPoints() {
+  let points = [];
+  let numPoints = 20;
+  
+  // Start position
+  let x = random(width);
+  let y = random(height);
+  let angle = random(TWO_PI);
+  
+  for (let i = 0; i < numPoints; i++) {
+    points.push({ x, y });
+    
+    // Curve the path
+    angle += random(-0.3, 0.3);
+    let speed = random(30, 60);
+    x += cos(angle) * speed;
+    y += sin(angle) * speed;
+  }
+  
+  return points;
+}
+
+function createParticle() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-0.5, 0.5),
+    vy: random(-0.5, 0.5),
+    size: random(1, 4),
+    hue: random(0, 25),
+    life: random(100, 300),
+    maxLife: 0,
+    stream: null
+  };
+}
+
+function draw() {
+  background(250, 30, 2, 0.08);
+  
+  time += 0.015;
+  
+  // Draw streams
+  for (let stream of streams) {
+    drawStream(stream);
+  }
+  
+  // Update and draw particles
+  updateParticles();
+  
+  // Draw subtle vortex centers
+  drawVortexCenters();
+}
+
+function drawStream(stream) {
+  noFill();
+  
+  let numSegments = stream.points.length;
+  
+  for (let i = 0; i < numSegments - 1; i++) {
+    let p1 = stream.points[i];
+    let p2 = stream.points[i + 1];
+    
+    // Animate points slightly
+    let offsetX = sin(time * stream.speed + i * 0.2 + stream.offset) * 10;
+    let offsetY = cos(time * stream.speed + i * 0.2 + stream.offset) * 10;
+    
+    let x1 = p1.x + offsetX;
+    let y1 = p1.y + offsetY;
+    let x2 = p2.x + offsetX;
+    let y2 = p2.y + offsetY;
+    
+    // Multiple stroke layers for glow
+    for (let w = stream.width * 4; w >= stream.width; w -= stream.width) {
+      let alpha = map(w, stream.width, stream.width * 4, 0.4, 0.05);
+      stroke(stream.hue, 60, 40, alpha);
+      strokeWeight(w);
+      line(x1, y1, x2, y2);
+    }
+    
+    // Bright core
+    stroke(stream.hue, 50, 70, 0.6);
+    strokeWeight(stream.width * 0.5);
+    line(x1, y1, x2, y2);
+  }
+}
+
+function updateParticles() {
+  noStroke();
+  
+  for (let p of particles) {
+    if (p.maxLife === 0) p.maxLife = p.life;
+    
+    // Find nearest stream and follow it
+    let nearestStream = null;
+    let nearestDist = Infinity;
+    let nearestPoint = null;
+    
+    for (let stream of streams) {
+      for (let pt of stream.points) {
+        let offsetX = sin(time * stream.speed + stream.offset) * 10;
+        let offsetY = cos(time * stream.speed + stream.offset) * 10;
+        let px = pt.x + offsetX;
+        let py = pt.y + offsetY;
+        
+        let d = dist(p.x, p.y, px, py);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestStream = stream;
+          nearestPoint = { x: px, y: py };
+        }
+      }
+    }
+    
+    // Attract to stream
+    if (nearestStream && nearestDist < 100) {
+      let force = map(nearestDist, 0, 100, 0.05, 0);
+      p.vx += (nearestPoint.x - p.x) * force;
+      p.vy += (nearestPoint.y - p.y) * force;
+    }
+    
+    // Apply velocity with damping
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    
+    // Wrap around edges
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Decay
+    p.life--;
+    
+    // Reset if dead
+    if (p.life <= 0) {
+      Object.assign(p, createParticle());
+    }
+    
+    // Draw
+    let alpha = map(p.life, 0, p.maxLife, 0, 0.7);
+    let size = p.size * map(p.life, 0, p.maxLife, 0.5, 1);
+    
+    // Glow
+    for (let r = size * 3; r > size; r -= size * 0.5) {
+      let a = alpha * map(r, size, size * 3, 1, 0);
+      fill(p.hue, 40, 50, a * 0.3);
+      ellipse(p.x, p.y, r);
+    }
+    
+    fill(p.hue, 60, 70, alpha);
+    ellipse(p.x, p.y, size);
+  }
+}
+
+function drawVortexCenters() {
+  noStroke();
+  
+  // Draw subtle dark vortexes at stream endpoints
+  for (let stream of streams) {
+    let first = stream.points[0];
+    let last = stream.points[stream.points.length - 1];
+    
+    let offsetX1 = sin(time * stream.speed + stream.offset) * 10;
+    let offsetY1 = cos(time * stream.speed + stream.offset) * 10;
+    let offsetX2 = sin(time * stream.speed + (stream.points.length - 1) * 0.2 + stream.offset) * 10;
+    let offsetY2 = cos(time * stream.speed + (stream.points.length - 1) * 0.2 + stream.offset) * 10;
+    
+    // First point
+    for (let r = 40; r > 5; r -= 5) {
+      let alpha = map(r, 5, 40, 0.15, 0);
+      fill(0, 0, 5, alpha);
+      ellipse(first.x + offsetX1, first.y + offsetY1, r * 2);
+    }
+    
+    // Last point
+    for (let r = 40; r > 5; r -= 5) {
+      let alpha = map(r, 5, 40, 0.15, 0);
+      fill(0, 0, 5, alpha);
+      ellipse(last.x + offsetX2, last.y + offsetY2, r * 2);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Regenerate streams
+  streams = [];
+  for (let i = 0; i < numStreams; i++) {
+    streams.push({
+      points: generateStreamPoints(),
+      speed: random(0.3, 0.8),
+      hue: random(350, 390) % 360,
+      width: random(2, 6),
+      offset: random(1000)
+    });
+  }
+}
+</script>
+</body>
+</html>
