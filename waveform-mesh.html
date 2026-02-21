@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>waveform-mesh</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #040408; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// WAVEFORM MESH - 3D wireframe mesh with layered wave displacement
+let cols = 30;
+let rows = 20;
+let time = 0;
+let points = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize grid points
+  for (let z = 0; z < rows; z++) {
+    points[z] = [];
+    for (let x = 0; x < cols; x++) {
+      points[z][x] = {
+        x: 0,
+        y: 0,
+        z: 0,
+        baseX: 0,
+        baseY: 0,
+        baseZ: 0
+      };
+    }
+  }
+  
+  // Set base positions
+  let spacing = 30;
+  let offsetX = (cols - 1) * spacing / 2;
+  let offsetZ = (rows - 1) * spacing / 2;
+  
+  for (let z = 0; z < rows; z++) {
+    for (let x = 0; x < cols; x++) {
+      points[z][x].baseX = x * spacing - offsetX;
+      points[z][x].baseY = 0;
+      points[z][x].baseZ = z * spacing - offsetZ;
+    }
+  }
+}
+
+function draw() {
+  background(240, 20, 2);
+  
+  time += 0.015;
+  
+  // Camera rotation
+  let camDist = 500;
+  let camX = sin(time * 0.2) * camDist;
+  let camZ = cos(time * 0.2) * camDist;
+  camera(camX, -200, camZ, 0, 0, 0, 0, 1, 0);
+  
+  // Update points with wave displacement
+  for (let z = 0; z < rows; z++) {
+    for (let x = 0; x < cols; x++) {
+      let p = points[z][x];
+      
+      // Multiple wave layers
+      let wave1 = sin(p.baseX * 0.02 + time * 2) * cos(p.baseZ * 0.02 + time) * 40;
+      let wave2 = sin(p.baseX * 0.05 + p.baseZ * 0.03 + time * 1.5) * 25;
+      let wave3 = cos(p.baseZ * 0.04 - time * 0.8) * sin(p.baseX * 0.01 + time * 0.5) * 30;
+      
+      p.x = p.baseX;
+      p.y = wave1 + wave2 + wave3;
+      p.z = p.baseZ;
+    }
+  }
+  
+  // Draw mesh as lines
+  drawMeshLines();
+  
+  // Draw points at intersections
+  drawMeshPoints();
+}
+
+function drawMeshLines() {
+  // Horizontal lines (along x)
+  for (let z = 0; z < rows; z++) {
+    for (let x = 0; x < cols - 1; x++) {
+      let p1 = points[z][x];
+      let p2 = points[z][x + 1];
+      
+      // Color based on y height
+      let avgY = (p1.y + p2.y) / 2;
+      let hue = map(avgY, -80, 80, 200, 280);
+      let sat = 60;
+      let bri = map(abs(avgY), 0, 80, 60, 30);
+      
+      // Glow line
+      strokeWeight(3);
+      stroke(hue, sat * 0.5, bri * 0.5, 0.2);
+      line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+      
+      // Core line
+      strokeWeight(1);
+      stroke(hue, sat, bri, 0.7);
+      line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+    }
+  }
+  
+  // Vertical lines (along z)
+  for (let x = 0; x < cols; x++) {
+    for (let z = 0; z < rows - 1; z++) {
+      let p1 = points[z][x];
+      let p2 = points[z + 1][x];
+      
+      let avgY = (p1.y + p2.y) / 2;
+      let hue = map(avgY, -80, 80, 200, 280);
+      let sat = 60;
+      let bri = map(abs(avgY), 0, 80, 60, 30);
+      
+      strokeWeight(1);
+      stroke(hue, sat, bri, 0.5);
+      line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+    }
+  }
+}
+
+function drawMeshPoints() {
+  noStroke();
+  
+  for (let z = 0; z < rows; z++) {
+    for (let x = 0; x < cols; x++) {
+      let p = points[z][x];
+      
+      let hue = map(p.y, -80, 80, 200, 280);
+      let size = map(abs(p.y), 0, 80, 2, 6);
+      let alpha = map(abs(p.y), 0, 80, 0.8, 0.3);
+      
+      // Glow
+      fill(hue, 40, 40, alpha * 0.3);
+      ellipse(p.x, p.y, p.z, size * 3);
+      
+      // Core
+      fill(hue, 50, 80, alpha);
+      ellipse(p.x, p.y, p.z, size);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
