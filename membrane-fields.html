@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>membrane-fields</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #030303; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// MEMBRANE FIELDS - Undulating membrane surfaces with field distortions
+let time = 0;
+let grid = [];
+let cols, rows;
+let resolution = 25;
+let attractors = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize grid with z-values
+  for (let y = 0; y < rows; y++) {
+    grid[y] = [];
+    for (let x = 0; x < cols; x++) {
+      grid[y][x] = {
+        z: 0,
+        targetZ: 0,
+        vx: 0,
+        vy: 0,
+        hue: random(0, 25)
+      };
+    }
+  }
+  
+  // Create attractors that distort the membrane
+  for (let i = 0; i < 4; i++) {
+    attractors.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-1.5, 1.5),
+      vy: random(-1.5, 1.5),
+      radius: random(100, 200),
+      strength: random(0.5, 1.5),
+      phase: random(TWO_PI)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 2, 0.1);
+  
+  time += 0.02;
+  
+  // Update attractors
+  for (let a of attractors) {
+    a.x += a.vx;
+    a.y += a.vy;
+    
+    // Bounce off edges
+    if (a.x < 0 || a.x > width) a.vx *= -1;
+    if (a.y < 0 || a.y > height) a.vy *= -1;
+  }
+  
+  // Update grid based on attractors
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let cell = grid[y][x];
+      let px = x * resolution;
+      let py = y * resolution;
+      
+      // Calculate influence from all attractors
+      let totalZ = 0;
+      let nearestHue = 0;
+      
+      for (let a of attractors) {
+        let d = dist(px, py, a.x, a.y);
+        if (d < a.radius) {
+          let influence = map(d, 0, a.radius, a.strength, 0);
+          let wave = sin(time * 2 + a.phase + d * 0.02);
+          totalZ += influence * 50 * wave;
+        }
+      }
+      
+      // Add ambient wave
+      totalZ += sin(x * 0.1 + time) * cos(y * 0.1 + time * 0.7) * 20;
+      
+      cell.targetZ = totalZ;
+      
+      // Spring physics
+      let force = (cell.targetZ - cell.z) * 0.1;
+      cell.vx += force;
+      cell.vx *= 0.85;
+      cell.z += cell.vx;
+    }
+  }
+  
+  // Draw membrane surface
+  drawMembrane();
+  
+  // Draw attractors
+  drawAttractors();
+}
+
+function drawMembrane() {
+  // Draw as connected triangles
+  for (let y = 0; y < rows - 1; y++) {
+    for (let x = 0; x < cols - 1; x++) {
+      let c1 = grid[y][x];
+      let c2 = grid[y][x + 1];
+      let c3 = grid[y + 1][x];
+      let c4 = grid[y + 1][x + 1];
+      
+      // Calculate colors based on z-depth
+      let avgZ = (c1.z + c2.z + c3.z + c4.z) / 4;
+      let hue = map(avgZ, -60, 60, 350, 20);
+      hue = (hue + 360) % 360;
+      
+      let brightness = map(abs(avgZ), 0, 60, 20, 70);
+      let alpha = map(abs(avgZ), 0, 60, 0.2, 0.7);
+      
+      // Draw quad as two triangles
+      noStroke();
+      
+      // First triangle
+      fill(hue, 60, brightness, alpha);
+      beginShape();
+      vertex(x * resolution, y * resolution, c1.z);
+      vertex((x + 1) * resolution, y * resolution, c2.z);
+      vertex(x * resolution, (y + 1) * resolution, c3.z);
+      endShape(CLOSE);
+      
+      // Second triangle
+      fill(hue, 60, brightness * 0.8, alpha * 0.8);
+      beginShape();
+      vertex((x + 1) * resolution, y * resolution, c2.z);
+      vertex((x + 1) * resolution, (y + 1) * resolution, c4.z);
+      vertex(x * resolution, (y + 1) * resolution, c3.z);
+      endShape(CLOSE);
+    }
+  }
+  
+  // Add wireframe overlay
+  stroke(0, 0, 80, 0.15);
+  strokeWeight(0.5);
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let c = grid[y][x];
+      let px = x * resolution;
+      let py = y * resolution;
+      
+      // Horizontal line
+      if (x < cols - 1) {
+        let c2 = grid[y][x + 1];
+        line(px, py, c.z, (x + 1) * resolution, py, c2.z);
+      }
+      
+      // Vertical line
+      if (y < rows - 1) {
+        let c2 = grid[y + 1][x];
+        line(px, py, c.z, px, (y + 1) * resolution, c2.z);
+      }
+    }
+  }
+}
+
+function drawAttractors() {
+  noStroke();
+  
+  for (let a of attractors) {
+    // Outer ring
+    for (let r = a.radius; r > a.radius * 0.3; r -= 10) {
+      let alpha = map(r, a.radius * 0.3, a.radius, 0.2, 0);
+      fill(15, 60, 60, alpha);
+      ellipse(a.x, a.y, r * 2);
+    }
+    
+    // Core
+    let pulse = sin(time * 3 + a.phase) * 0.3 + 0.7;
+    fill(15, 70, 80, pulse * 0.6);
+    ellipse(a.x, a.y, 20);
+    
+    // Bright center
+    fill(15, 40, 100, 0.8);
+    ellipse(a.x, a.y, 8);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Reinitialize grid
+  grid = [];
+  for (let y = 0; y < rows; y++) {
+    grid[y] = [];
+    for (let x = 0; x < cols; x++) {
+      grid[y][x] = {
+        z: 0,
+        targetZ: 0,
+        vx: 0,
+        vy: 0,
+        hue: random(0, 25)
+      };
+    }
+  }
+}
+</script>
