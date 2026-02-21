@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>fractal-aurora</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #010108; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// FRACTAL AURORA - Flowing aurora borealis with curtain-like patterns
+let time = 0;
+let layers = [];
+let numLayers = 8;
+let particles = [];
+let numParticles = 200;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize aurora curtain layers
+  for (let i = 0; i < numLayers; i++) {
+    layers.push({
+      offset: random(1000),
+      speed: random(0.3, 0.8),
+      amplitude: random(50, 150),
+      frequency: random(0.002, 0.008),
+      hue: random(140, 220),
+      yBase: height * 0.3 + i * (height * 0.08),
+      opacity: random(0.15, 0.4)
+    });
+  }
+  
+  // Initialize floating particles (stars/dust)
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      size: random(1, 3),
+      speed: random(0.2, 0.8),
+      brightness: random(30, 80)
+    });
+  }
+}
+
+function draw() {
+  background(230, 40, 3, 0.15);
+  
+  time += 0.015;
+  
+  // Draw subtle stars
+  drawParticles();
+  
+  // Draw aurora curtains
+  for (let layer of layers) {
+    drawAuroraLayer(layer);
+  }
+  
+  // Add subtle glow at horizon
+  drawHorizonGlow();
+}
+
+function drawParticles() {
+  noStroke();
+  
+  for (let p of particles) {
+    p.y -= p.speed;
+    p.x += sin(time + p.y * 0.01) * 0.3;
+    
+    if (p.y < 0) {
+      p.y = height;
+      p.x = random(width);
+    }
+    
+    let twinkle = sin(time * 2 + p.x * 0.1) * 0.3 + 0.7;
+    fill(200, 10, p.brightness * twinkle, 0.6);
+    ellipse(p.x, p.y, p.size);
+  }
+}
+
+function drawAuroraLayer(layer) {
+  noFill();
+  
+  let points = [];
+  let numPoints = 80;
+  
+  // Calculate curtain wave points
+  for (let i = 0; i <= numPoints; i++) {
+    let x = (i / numPoints) * width;
+    let wave1 = sin(x * layer.frequency + time * layer.speed + layer.offset) * layer.amplitude;
+    let wave2 = sin(x * layer.frequency * 2.3 + time * layer.speed * 0.7 + layer.offset) * layer.amplitude * 0.4;
+    let wave3 = cos(x * layer.frequency * 0.5 + time * layer.speed * 1.2) * layer.amplitude * 0.2;
+    
+    let y = layer.yBase + wave1 + wave2 + wave3;
+    points.push({ x, y });
+  }
+  
+  // Draw multiple opacity bands for depth
+  for (let band = 3; band >= 0; band--) {
+    let bandOffset = band * 25;
+    let bandAlpha = layer.opacity * (1 - band * 0.2);
+    let bandHue = (layer.hue + band * 8) % 360;
+    
+    stroke(bandHue, 60, 70, bandAlpha);
+    strokeWeight(4 + band * 2);
+    
+    beginShape();
+    for (let i = 0; i < points.length; i++) {
+      let p = points[i];
+      let drift = sin(time * 0.5 + i * 0.1 + layer.offset) * bandOffset;
+      curveVertex(p.x, p.y + drift);
+    }
+    endShape();
+  }
+  
+  // Add shimmer effect along curtain
+  drawCurtainShimmer(points, layer);
+}
+
+function drawCurtainShimmer(points, layer) {
+  let numShimmers = 30;
+  
+  for (let i = 0; i < numShimmers; i++) {
+    let idx = floor(random(points.length - 1));
+    let p1 = points[idx];
+    let p2 = points[idx + 1];
+    
+    let t = random(1);
+    let x = lerp(p1.x, p2.x, t);
+    let y = lerp(p1.y, p2.y, t) + sin(time * 2 + i) * 20;
+    
+    let shimmer = sin(time * 3 + i * 0.5 + x * 0.02) * 0.5 + 0.5;
+    let alpha = shimmer * layer.opacity * 1.5;
+    
+    noStroke();
+    fill(layer.hue + 20, 40, 90, alpha);
+    
+    let size = shimmer * 15 + 5;
+    ellipse(x, y, size, size * 3);
+  }
+}
+
+function drawHorizonGlow() {
+  // Subtle green/blue glow at bottom
+  noStroke();
+  
+  for (let i = 0; i < 10; i++) {
+    let y = height - i * 30;
+    let alpha = map(i, 0, 10, 0.08, 0);
+    fill(160, 50, 40, alpha);
+    rect(0, y, width, 30);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Reinitialize layer positions
+  for (let i = 0; i < layers.length; i++) {
+    layers[i].yBase = height * 0.3 + i * (height * 0.08);
+  }
+}
+</script>
+</body>
+</html>
