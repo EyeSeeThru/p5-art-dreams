@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>metaball-swarm</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020205; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// METABALL SWARM - Organic blob shapes that merge and separate
+let blobs = [];
+let numBlobs = 15;
+let time = 0;
+let field = [];
+let cols, rows;
+let resolution = 8;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize blobs with physics
+  for (let i = 0; i < numBlobs; i++) {
+    blobs.push(createBlob());
+  }
+}
+
+function createBlob() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-1, 1),
+    vy: random(-1, 1),
+    radius: random(40, 80),
+    targetRadius: random(40, 80),
+    phase: random(TWO_PI),
+    hue: random(320, 360) % 360,
+    mass: 1
+  };
+}
+
+function draw() {
+  background(345, 30, 2, 0.08);
+  
+  time += 0.02;
+  
+  // Update blob physics
+  for (let b of blobs) {
+    // Pulsing size
+    b.radius = lerp(b.radius, b.targetRadius + sin(time * 2 + b.phase) * 15, 0.05);
+    
+    // Random velocity changes
+    b.vx += random(-0.1, 0.1);
+    b.vy += random(-0.1, 0.1);
+    
+    // Speed limit
+    let speed = sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (speed > 2) {
+      b.vx = (b.vx / speed) * 2;
+      b.vy = (b.vy / speed) * 2;
+    }
+    
+    b.x += b.vx;
+    b.y += b.vy;
+    
+    // Wrap around
+    if (b.x < -b.radius) b.x = width + b.radius;
+    if (b.x > width + b.radius) b.x = -b.radius;
+    if (b.y < -b.radius) b.y = height + b.radius;
+    if (b.y > height + b.radius) b.y = -b.radius;
+  }
+  
+  // Blob-to-blob repulsion (creates merging visual effect)
+  for (let i = 0; i < blobs.length; i++) {
+    for (let j = i + 1; j < blobs.length; j++) {
+      let b1 = blobs[i];
+      let b2 = blobs[j];
+      
+      let dx = b2.x - b1.x;
+      let dy = b2.y - b1.y;
+      let d = sqrt(dx * dx + dy * dy);
+      let minDist = (b1.radius + b2.radius) * 0.8;
+      
+      if (d < minDist && d > 0) {
+        // Attract when close (metaball merging effect)
+        let force = (minDist - d) * 0.02;
+        let fx = (dx / d) * force;
+        let fy = (dy / d) * force;
+        
+        b1.vx -= fx;
+        b1.vy -= fy;
+        b2.vx += fx;
+        b2.vy += fy;
+      }
+    }
+  }
+  
+  // Calculate field values for metaball effect
+  for (let y = 0; y < rows; y++) {
+    field[y] = [];
+    for (let x = 0; x < cols; x++) {
+      let px = x * resolution;
+      let py = y * resolution;
+      
+      let sum = 0;
+      for (let b of blobs) {
+        let d = dist(px, py, b.x, b.y);
+        sum += (b.radius * b.radius) / (d * d + 1);
+      }
+      
+      field[y][x] = sum;
+    }
+  }
+  
+  // Draw metaball field
+  drawField();
+  
+  // Draw blob centers (subtle)
+  drawBlobs();
+}
+
+function drawField() {
+  noStroke();
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let val = field[y][x];
+      let px = x * resolution;
+      let py = y * resolution;
+      
+      if (val > 1) {
+        // Inside metaball
+        let alpha = map(val, 1, 8, 0.1, 0.8);
+        alpha = constrain(alpha, 0, 0.8);
+        
+        // Color based on field strength
+        let hue = map(val, 1, 8, 340, 280);
+        let sat = 70;
+        let bri = map(val, 1, 8, 30, 80);
+        
+        // Glow layers
+        for (let r = resolution * 2; r > resolution; r -= 2) {
+          let a = alpha * map(r, resolution, resolution * 2, 1, 0);
+          fill(hue, sat * 0.5, bri * 0.5, a * 0.3);
+          ellipse(px + resolution / 2, py + resolution / 2, r);
+        }
+        
+        fill(hue, sat, bri, alpha);
+        rect(px, py, resolution, resolution);
+      } else if (val > 0.5) {
+        // Edge glow
+        let alpha = map(val, 0.5, 1, 0, 0.3);
+        let hue = 340;
+        fill(hue, 50, 50, alpha);
+        rect(px, py, resolution, resolution);
+      }
+    }
+  }
+}
+
+function drawBlobs() {
+  // Subtle indicators at blob centers
+  noStroke();
+  
+  for (let b of blobs) {
+    // Outer glow
+    for (let r = b.radius * 2; r > b.radius; r -= 5) {
+      let alpha = map(r, b.radius, b.radius * 2, 0.15, 0);
+      fill(b.hue, 40, 40, alpha);
+      ellipse(b.x, b.y, r * 2);
+    }
+    
+    // Core hint
+    fill(b.hue, 30, 60, 0.2);
+    ellipse(b.x, b.y, b.radius * 0.5);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+}
+</script>
+</body>
+</html>
