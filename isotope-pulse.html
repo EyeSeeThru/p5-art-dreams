@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>isotope-pulse</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050505; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// ISOTOPE PULSE - Radioactive decay-inspired pulsing geometric forms
+let time = 0;
+let isotopes = [];
+let numIsotopes = 9;
+let gridSize = 80;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create isotope grid
+  let cols = floor(width / gridSize);
+  let rows = floor(height / gridSize);
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      isotopes.push({
+        x: i * gridSize + gridSize / 2,
+        y: j * gridSize + gridSize / 2,
+        baseSize: random(15, 35),
+        size: 0,
+        hue: random(0, 30), // Red tones
+        phase: random(TWO_PI),
+        speed: random(0.3, 0.9),
+        decay: random(0.95, 0.99),
+        active: true,
+        connections: []
+      });
+    }
+  }
+  
+  // Connect nearby isotopes
+  for (let i = 0; i < isotopes.length; i++) {
+    for (let j = i + 1; j < isotopes.length; j++) {
+      let d = dist(isotopes[i].x, isotopes[i].y, isotopes[j].x, isotopes[j].y);
+      if (d < gridSize * 1.5) {
+        isotopes[i].connections.push(j);
+        isotopes[j].connections.push(i);
+      }
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 2, 0.15);
+  
+  time += 0.025;
+  
+  // Update isotope sizes
+  for (let iso of isotopes) {
+    // Pulsing based on individual phase
+    let pulse = sin(time * iso.speed + iso.phase);
+    iso.size = iso.baseSize + pulse * iso.baseSize * 0.5;
+    
+    // Random decay events
+    if (random(1) < 0.002) {
+      iso.active = !iso.active;
+    }
+  }
+  
+  // Draw connections
+  drawConnections();
+  
+  // Draw isotopes
+  drawIsotopes();
+  
+  // Draw radiation particles
+  drawRadiation();
+}
+
+function drawConnections() {
+  let drawn = new Set();
+  
+  for (let i = 0; i < isotopes.length; i++) {
+    let iso = isotopes[i];
+    
+    for (let j of iso.connections) {
+      let key = i < j ? `${i}-${j}` : `${j}-${i}`;
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      
+      let other = isotopes[j];
+      let d = dist(iso.x, iso.y, other.x, other.y);
+      let alpha = map(d, 0, gridSize * 1.5, 0.4, 0);
+      
+      // Only draw if both are active
+      if (iso.active && other.active) {
+        // Multiple layers for glow
+        for (let w = 6; w >= 1; w -= 2) {
+          let a = alpha * map(w, 6, 1, 0.1, 1);
+          stroke(10, 70, 50, a);
+          strokeWeight(w);
+          line(iso.x, iso.y, other.x, other.y);
+        }
+      }
+    }
+  }
+}
+
+function drawIsotopes() {
+  for (let iso of isotopes) {
+    if (!iso.active) continue;
+    
+    // Outer radiation rings
+    for (let r = iso.size * 3; r > iso.size; r -= iso.size * 0.3) {
+      let alpha = map(r, iso.size, iso.size * 3, 0.15, 0);
+      fill(iso.hue, 60, 40, alpha);
+      noStroke();
+      ellipse(iso.x, iso.y, r * 2);
+    }
+    
+    // Main body - hexagonal shape
+    drawHexagon(iso.x, iso.y, iso.size, iso.hue);
+    
+    // Inner core
+    fill(iso.hue, 40, 90, 0.8);
+    noStroke();
+    ellipse(iso.x, iso.y, iso.size * 0.4);
+    
+    // Bright center
+    fill(iso.hue, 20, 100, 0.9);
+    ellipse(iso.x, iso.y, iso.size * 0.15);
+  }
+}
+
+function drawHexagon(x, y, r, hue) {
+  push();
+  translate(x, y);
+  
+  // Rotate slowly
+  rotate(time * 0.2);
+  
+  noFill();
+  stroke(hue, 70, 70, 0.8);
+  strokeWeight(2);
+  
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    let angle = (i / 6) * TWO_PI;
+    let px = cos(angle) * r;
+    let py = sin(angle) * r;
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+  
+  // Inner hexagon
+  strokeWeight(1);
+  stroke(hue, 50, 80, 0.5);
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    let angle = (i / 6) * TWO_PI + PI / 6;
+    let px = cos(angle) * r * 0.6;
+    let py = sin(angle) * r * 0.6;
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+  
+  pop();
+}
+
+function drawRadiation() {
+  // Floating radiation particles
+  let numParticles = 40;
+  
+  for (let i = 0; i < numParticles; i++) {
+    let angle = random(TWO_PI);
+    let dist = random(50, min(width, height) * 0.4);
+    let x = width / 2 + cos(angle + time * 0.1) * dist;
+    let y = height / 2 + sin(angle + time * 0.1) * dist;
+    
+    // Find nearest isotope
+    let nearest = null;
+    let nearestDist = Infinity;
+    
+    for (let iso of isotopes) {
+      if (!iso.active) continue;
+      let d = dist(x, y, iso.x, iso.y);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = iso;
+      }
+    }
+    
+    if (nearest && nearestDist < 150) {
+      // Orbit around nearest isotope
+      let orbitAngle = atan2(y - nearest.y, x - nearest.x) + 0.02;
+      let orbitRadius = nearestDist;
+      x = nearest.x + cos(orbitAngle) * orbitRadius;
+      y = nearest.y + sin(orbitAngle) * orbitRadius;
+      
+      // Draw particle
+      let alpha = map(nearestDist, 0, 150, 0.6, 0);
+      noStroke();
+      fill(nearest.hue, 50, 80, alpha);
+      ellipse(x, y, random(2, 5));
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Recreate grid
+  isotopes = [];
+  let cols = floor(width / gridSize);
+  let rows = floor(height / gridSize);
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      isotopes.push({
+        x: i * gridSize + gridSize / 2,
+        y: j * gridSize + gridSize / 2,
+        baseSize: random(15, 35),
+        size: 0,
+        hue: random(0, 30),
+        phase: random(TWO_PI),
+        speed: random(0.3, 0.9),
+        active: true,
+        connections: []
+      });
+    }
+  }
+  
+  // Reconnect
+  for (let i = 0; i < isotopes.length; i++) {
+    for (let j = i + 1; j < isotopes.length; j++) {
+      let d = dist(isotopes[i].x, isotopes[i].y, isotopes[j].x, isotopes[j].y);
+      if (d < gridSize * 1.5) {
+        isotopes[i].connections.push(j);
+        isotopes[j].connections.push(i);
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
