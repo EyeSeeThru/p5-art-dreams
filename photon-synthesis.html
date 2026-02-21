@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>photon-synthesis</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// PHOTON SYNTHESIS - Bioluminescent organisms that harvest light
+let organisms = [];
+let numOrganisms = 12;
+let time = 0;
+let tendrils = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create bioluminescent organisms
+  for (let i = 0; i < numOrganisms; i++) {
+    organisms.push(createOrganism());
+  }
+}
+
+function createOrganism() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-0.8, 0.8),
+    vy: random(-0.5, 0.3),
+    size: random(30, 80),
+    hue: random(160, 280),
+    pulseSpeed: random(0.02, 0.06),
+    tendrilCount: floor(random(6, 14)),
+    phase: random(TWO_PI),
+    opacity: random(0.4, 0.8),
+    rotation: random(TWO_PI),
+    rotationSpeed: random(-0.01, 0.01)
+  };
+}
+
+function draw() {
+  background(0, 0, 0, 0.08);
+  
+  time += 0.02;
+  
+  // Update and draw organisms
+  for (let org of organisms) {
+    updateOrganism(org);
+    drawOrganism(org);
+  }
+  
+  // Draw ambient particles
+  drawParticles();
+}
+
+function updateOrganism(org) {
+  // Drift movement
+  org.x += org.vx;
+  org.y += org.vy;
+  
+  // Gentle steering
+  org.vx += random(-0.02, 0.02);
+  org.vy += random(-0.01, 0.01);
+  
+  // Damping
+  org.vx *= 0.99;
+  org.vy *= 0.99;
+  
+  // Bounds with soft wrap
+  if (org.x < -100) org.x = width + 100;
+  if (org.x > width + 100) org.x = -100;
+  if (org.y < -100) org.y = height + 100;
+  if (org.y > height + 100) org.y = -100;
+  
+  // Rotation
+  org.rotation += org.rotationSpeed;
+}
+
+function drawOrganism(org) {
+  let pulse = sin(time * org.pulseSpeed * 50 + org.phase) * 0.3 + 0.7;
+  let coreSize = org.size * pulse;
+  
+  // Draw outer glow
+  for (let i = 5; i >= 0; i--) {
+    let glowSize = coreSize + i * 15;
+    let glowAlpha = org.opacity * (1 - i * 0.15) * 0.3;
+    let glowHue = (org.hue + i * 10) % 360;
+    
+    noStroke();
+    fill(glowHue, 70, 60, glowAlpha);
+    ellipse(org.x, org.y, glowSize, glowSize * 0.7);
+  }
+  
+  // Draw tendrils
+  drawTendrils(org, coreSize);
+  
+  // Draw core
+  noStroke();
+  let coreHue = org.hue;
+  fill(coreHue, 60, 90, org.opacity * pulse);
+  ellipse(org.x, org.y, coreSize * 0.5, coreSize * 0.35);
+  
+  // Inner bright core
+  fill(coreHue + 20, 30, 100, org.opacity * pulse * 0.8);
+  ellipse(org.x, org.y, coreSize * 0.2, coreSize * 0.15);
+}
+
+function drawTendrils(org, coreSize) {
+  let numTendrils = org.tendrilCount;
+  
+  for (let t = 0; t < numTendrils; t++) {
+    let angle = org.rotation + (t / numTendrils) * TWO_PI;
+    let tendrilLength = coreSize * random(1.5, 3);
+    
+    let points = [];
+    let numPoints = 20;
+    
+    for (let i = 0; i <= numPoints; i++) {
+      let progress = i / numPoints;
+      let waveX = sin(time * 2 + t + i * 0.3) * progress * 20;
+      let waveY = cos(time * 1.5 + t * 0.7 + i * 0.2) * progress * 15;
+      
+      let x = org.x + cos(angle) * (progress * tendrilLength) + waveX;
+      let y = org.y + sin(angle) * (progress * tendrilLength * 0.6) + waveY;
+      
+      points.push({ x, y, progress });
+    }
+    
+    // Draw tendril
+    noFill();
+    for (let i = 0; i < points.length - 1; i++) {
+      let p1 = points[i];
+      let p2 = points[i + 1];
+      
+      let alpha = (1 - p1.progress) * org.opacity * 0.6;
+      let hue = (org.hue + p1.progress * 40) % 360;
+      
+      stroke(hue, 70, 70, alpha);
+      strokeWeight((1 - p1.progress) * 3 + 0.5);
+      line(p1.x, p1.y, p2.x, p2.y);
+    }
+    
+    // Tendril tips (small glowing nodes)
+    let tip = points[points.length - 1];
+    let tipPulse = sin(time * 3 + t) * 0.3 + 0.7;
+    noStroke();
+    fill(org.hue + 30, 50, 90, org.opacity * tipPulse);
+    ellipse(tip.x, tip.y, 4, 3);
+  }
+}
+
+function drawParticles() {
+  // Ambient floating particles
+  let numAmbient = 80;
+  
+  for (let i = 0; i < numAmbient; i++) {
+    let x = (i * 137.5 + time * 10) % width;
+    let y = (i * 73.3 + time * 5) % height;
+    let size = (sin(time + i) * 0.3 + 0.7) * 2;
+    
+    let brightness = 30 + sin(time * 2 + i * 0.1) * 20;
+    fill(180, 30, brightness, 0.3);
+    ellipse(x, y, size, size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
