@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vortex-weaver</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #020108; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// VORTEX WEAVER - Spiral vortex with interwoven particle threads
+let time = 0;
+let threads = [];
+let numThreads = 40;
+let particles = [];
+let numParticles = 350;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize weaving threads
+  for (let i = 0; i < numThreads; i++) {
+    threads.push({
+      angle: random(TWO_PI),
+      radius: random(50, min(width, height) * 0.45),
+      speed: random(0.002, 0.008) * (random() > 0.5 ? 1 : -1),
+      thickness: random(0.5, 2),
+      hue: random(280, 360),
+      oscillation: random(0.01, 0.03),
+      phase: random(TWO_PI),
+      strands: floor(random(3, 8))
+    });
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < numParticles; i++) {
+    let angle = random(TWO_PI);
+    let radius = random(30, min(width, height) * 0.4);
+    particles.push({
+      angle: angle,
+      radius: radius,
+      baseAngle: angle,
+      baseRadius: radius,
+      speed: random(0.3, 1.2),
+      size: random(1, 4),
+      hue: random(320, 400) % 360,
+      trail: []
+    });
+  }
+}
+
+function draw() {
+  background(260, 30, 2, 0.08);
+  
+  time += 0.012;
+  
+  // Draw central glow
+  drawCore();
+  
+  // Draw weaving threads
+  for (let thread of threads) {
+    drawThread(thread);
+  }
+  
+  // Draw particles with trails
+  for (let p of particles) {
+    updateParticle(p);
+    drawParticle(p);
+  }
+  
+  // Draw connecting lines between nearby particles
+  drawConnections();
+}
+
+function drawCore() {
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  noStroke();
+  
+  // Pulsing core
+  let pulse = sin(time * 2) * 0.3 + 0.7;
+  
+  for (let i = 20; i >= 0; i--) {
+    let r = i * 8 * pulse;
+    let alpha = map(i, 0, 20, 0.3, 0);
+    fill(340, 60, 40, alpha);
+    ellipse(cx, cy, r * 2);
+  }
+  
+  // Bright center
+  fill(340, 40, 80, 0.6);
+  ellipse(cx, cy, 20 * pulse);
+}
+
+function drawThread(thread) {
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  thread.angle += thread.speed;
+  
+  noFill();
+  
+  // Draw multiple strands per thread
+  for (let s = 0; s < thread.strands; s++) {
+    let strandOffset = s * 8;
+    let strandHue = (thread.hue + s * 15) % 360;
+    let strandAlpha = 0.4 - s * 0.05;
+    
+    stroke(strandHue, 50, 60, strandAlpha);
+    strokeWeight(thread.thickness);
+    
+    beginShape();
+    for (let i = 0; i <= 60; i++) {
+      let t = i / 60;
+      let angle = thread.angle + t * TWO_PI * (1 + thread.speed * 10);
+      let osc = sin(time * thread.oscillation * 100 + t * PI + thread.phase) * 30;
+      let r = thread.radius + osc + strandOffset;
+      
+      let x = cx + cos(angle) * r;
+      let y = cy + sin(angle) * r;
+      
+      curveVertex(x, y);
+    }
+    endShape();
+  }
+}
+
+function updateParticle(p) {
+  // Spiral motion
+  p.angle += p.speed * 0.01;
+  
+  // Oscillating radius
+  let radiusOsc = sin(time * p.speed + p.baseAngle) * 40;
+  p.radius = p.baseRadius + radiusOsc;
+  
+  // Store trail
+  let cx = width / 2;
+  let cy = height / 2;
+  let x = cx + cos(p.angle) * p.radius;
+  let y = cy + sin(p.angle) * p.radius;
+  
+  p.trail.push({ x, y });
+  if (p.trail.length > 15) {
+    p.trail.shift();
+  }
+}
+
+function drawParticle(p) {
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Draw trail
+  noStroke();
+  
+
+  noFill();
+  for (let i = 0; i < p.trail.length - 1; i++) {
+    let alpha = map(i, 0, p.trail.length, 0, 0.4);
+    let weight = map(i, 0, p.trail.length, 0.5, p.size);
+    stroke(p.hue, 50, 70, alpha);
+    strokeWeight(weight);
+    line(p.trail[i].x, p.trail[i].y, p.trail[i + 1].x, p.trail[i + 1].y);
+  }
+  
+  // Draw particle
+  let x = cx + cos(p.angle) * p.radius;
+  let y = cy + sin(p.angle) * p.radius;
+  
+  let twinkle = sin(time * 3 + p.baseAngle * 5) * 0.3 + 0.7;
+  
+  noStroke();
+  fill(p.hue, 40, 80, twinkle);
+  ellipse(x, y, p.size * twinkle);
+  
+  // Glow
+  fill(p.hue, 30, 60, twinkle * 0.3);
+  ellipse(x, y, p.size * 3 * twinkle);
+}
+
+function drawConnections() {
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  stroke(300, 20, 40, 0.05);
+  strokeWeight(0.5);
+  
+  // Check nearby particles
+  for (let i = 0; i < particles.length; i++) {
+    let p1 = particles[i];
+    let x1 = cx + cos(p1.angle) * p1.radius;
+    let y1 = cy + sin(p1.angle) * p1.radius;
+    
+    for (let j = i + 1; j < particles.length; j++) {
+      let p2 = particles[j];
+      let x2 = cx + cos(p2.angle) * p2.radius;
+      let y2 = cy + sin(p2.angle) * p2.radius;
+      
+      let d = dist(x1, y1, x2, y2);
+      
+      if (d < 60) {
+        let alpha = map(d, 0, 60, 0.08, 0);
+        stroke(300, 20, 40, alpha);
+        line(x1, y1, x2, y2);
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Update base radii for new size
+  let newMaxRadius = min(width, height) * 0.4;
+  for (let p of particles) {
+    p.baseRadius = min(p.baseRadius, newMaxRadius);
+  }
+  for (let t of threads) {
+    t.radius = min(t.radius, newMaxRadius);
+  }
+}
+</script>
+</body>
+</html>
