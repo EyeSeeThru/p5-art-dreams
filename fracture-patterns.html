@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>fracture-patterns</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050505; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// FRACTURE PATTERNS - Geometric shards splitting and reforming
+let shards = [];
+let numShards = 40;
+let time = 0;
+let cracks = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize shards
+  for (let i = 0; i < numShards; i++) {
+    shards.push(createShard());
+  }
+  
+  // Initialize cracks
+  for (let i = 0; i < 15; i++) {
+    cracks.push(createCrack());
+  }
+}
+
+function createShard() {
+  let cx = random(width);
+  let cy = random(height);
+  let sides = floor(random(3, 7));
+  let radius = random(40, 120);
+  
+  // Create polygon vertices
+  let vertices = [];
+  for (let i = 0; i < sides; i++) {
+    let angle = (i / sides) * TWO_PI + random(-0.3, 0.3);
+    let r = radius * random(0.7, 1.3);
+    vertices.push({
+      x: cx + cos(angle) * r,
+      y: cy + sin(angle) * r
+    });
+  }
+  
+  return {
+    cx, cy,
+    vertices,
+    rotation: random(TWO_PI),
+    rotationSpeed: random(-0.005, 0.005),
+    scale: random(0.5, 1.2),
+    opacity: random(0.2, 0.5),
+    hue: random(340, 380) % 360,
+    fractureProgress: 0,
+    fracturing: random() > 0.7
+  };
+}
+
+function createCrack() {
+  let startX = random(width);
+  let startY = random(height);
+  let angle = random(TWO_PI);
+  
+  let points = [{ x: startX, y: startY }];
+  let numSegments = floor(random(8, 20));
+  let currentX = startX;
+  let currentY = startY;
+  
+  for (let i = 0; i < numSegments; i++) {
+    angle += random(-0.5, 0.5);
+    let length = random(30, 80);
+    currentX += cos(angle) * length;
+    currentY += sin(angle) * length;
+    points.push({ x: currentX, y: currentY });
+  }
+  
+  return {
+    points,
+    opacity: random(0.3, 0.7),
+    hue: random(0, 30),
+    width: random(1, 3)
+  };
+}
+
+function draw() {
+  background(0, 0, 0, 0.08);
+  
+  time += 0.015;
+  
+  // Draw cracks
+  drawCracks();
+  
+  // Draw shards
+  drawShards();
+  
+  // Draw ambient fragments
+  drawFragments();
+}
+
+function drawCracks() {
+  for (let crack of cracks) {
+    for (let i = 0; i < crack.points.length - 1; i++) {
+      let p1 = crack.points[i];
+      let p2 = crack.points[i + 1];
+      
+      // Pulsing opacity
+      let pulse = sin(time * 2 + i * 0.2) * 0.2 + 0.8;
+      
+      stroke(crack.hue, 40, 60, crack.opacity * pulse);
+      strokeWeight(crack.width);
+      line(p1.x, p1.y, p2.x, p2.y);
+      
+      // Glowing nodes at joints
+      noStroke();
+      fill(crack.hue + 20, 30, 80, crack.opacity * pulse * 0.5);
+      ellipse(p1.x, p1.y, 4, 4);
+    }
+  }
+}
+
+function drawShards() {
+  for (let shard of shards) {
+    shard.rotation += shard.rotationSpeed;
+    
+    // Subtle drift
+    shard.cx += sin(time + shard.rotation) * 0.2;
+    shard.cy += cos(time * 0.7 + shard.rotation) * 0.2;
+    
+    // Fracture animation
+    if (shard.fracturing) {
+      shard.fractureProgress += 0.005;
+      if (shard.fractureProgress > 1) {
+        shard.fracturing = false;
+        shard.fractureProgress = 0;
+      }
+    }
+    
+    push();
+    translate(shard.cx, shard.cy);
+    rotate(shard.rotation);
+    scale(shard.scale);
+    
+    // Draw shard polygon
+    let fractureOffset = shard.fracturing ? sin(shard.fractureProgress * PI) * 20 : 0;
+    
+    noStroke();
+    
+    // Outer glow
+    for (let i = 3; i >= 0; i--) {
+      let alpha = shard.opacity * (1 - i * 0.2) * 0.3;
+      fill(shard.hue, 60, 40, alpha);
+      
+      beginShape();
+      for (let v of shard.vertices) {
+        let ox = v.x - shard.cx;
+        let oy = v.y - shard.cy;
+        // Fracture displacement
+        ox += random(-fractureOffset, fractureOffset) * 0.1;
+        oy += random(-fractureOffset, fractureOffset) * 0.1;
+        vertex(ox + i * 3, oy + i * 3);
+      }
+      endShape(CLOSE);
+    }
+    
+    // Main shard body
+    let bodyAlpha = shard.opacity * (1 - shard.fractureProgress * 0.3);
+    fill(shard.hue, 50, 25, bodyAlpha);
+    
+    beginShape();
+    for (let v of shard.vertices) {
+      let ox = v.x - shard.cx;
+      let oy = v.y - shard.cy;
+      vertex(ox, oy);
+    }
+    endShape(CLOSE);
+    
+    // Highlight edge
+    stroke(shard.hue + 30, 40, 50, shard.opacity * 0.6);
+    strokeWeight(1);
+    noFill();
+    beginShape();
+    for (let v of shard.vertices) {
+      let ox = v.x - shard.cx;
+      let oy = v.y - shard.cy;
+      vertex(ox, oy);
+    }
+    endShape(CLOSE);
+    
+    pop();
+  }
+}
+
+function drawFragments() {
+  let numFragments = 60;
+  
+  for (let i = 0; i < numFragments; i++) {
+    let x = (i * 137 + time * 20) % width;
+    let y = (i * 89 + time * 15) % height;
+    
+    let size = random(1, 3);
+    let alpha = random(0.1, 0.3);
+    let hue = random(0, 40);
+    
+    noStroke();
+    fill(hue, 30, 40, alpha);
+    rect(x, y, size, size * 2);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
