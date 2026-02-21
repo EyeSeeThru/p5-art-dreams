@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>resonant-disks</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #080808; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// RESONANT DISKS - Concentric oscillating disks with interference patterns
+let time = 0;
+let disks = [];
+let numDisks = 12;
+let waves = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create oscillating disk sources
+  for (let i = 0; i < numDisks; i++) {
+    let angle = random(TWO_PI);
+    let distFromCenter = random(height * 0.1, height * 0.35);
+    disks.push({
+      x: width / 2 + cos(angle) * distFromCenter,
+      y: height / 2 + sin(angle) * distFromCenter,
+      baseRadius: random(20, 60),
+      radius: 0,
+      phase: random(TWO_PI),
+      speed: random(0.5, 1.5),
+      hue: random(340, 380) % 360,
+      pulseOffset: random(TWO_PI)
+    });
+  }
+  
+  // Initialize wave sources
+  for (let i = 0; i < 5; i++) {
+    waves.push({
+      x: random(width * 0.2, width * 0.8),
+      y: random(height * 0.2, height * 0.8),
+      freq: random(0.02, 0.05),
+      amp: random(50, 120),
+      phase: random(TWO_PI),
+      speed: random(0.8, 1.2)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 3, 0.1);
+  
+  time += 0.03;
+  
+  // Update disk radii
+  for (let d of disks) {
+    d.radius = d.baseRadius + sin(time * d.speed + d.pulseOffset) * d.baseRadius * 0.4;
+  }
+  
+  // Draw interference field
+  drawInterferenceField();
+  
+  // Draw concentric disk ripples
+  drawDiskRipples();
+  
+  // Draw wave patterns
+  drawWaves();
+  
+  // Draw disk cores
+  drawDiskCores();
+}
+
+function drawInterferenceField() {
+  let resolution = 20;
+  let cols = floor(width / resolution);
+  let rows = floor(height / resolution);
+  
+  noStroke();
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let px = x * resolution + resolution / 2;
+      let py = y * resolution + resolution / 2;
+      
+      // Calculate combined influence from all disks
+      let totalInfluence = 0;
+      let dominantHue = 0;
+      
+      for (let d of disks) {
+        let dist = dist(px, py, d.x, d.y);
+        let wave = sin(dist * 0.05 - time * d.speed + d.phase);
+        let influence = (d.radius / (dist + 1)) * wave;
+        totalInfluence += influence;
+        
+        if (abs(influence) > abs(dominantHue)) {
+          dominantHue = d.hue;
+        }
+      }
+      
+      // Draw if influence is significant
+      if (abs(totalInfluence) > 0.3) {
+        let alpha = map(abs(totalInfluence), 0.3, 2, 0, 0.5);
+        alpha = constrain(alpha, 0, 0.5);
+        
+        let hue = (dominantHue + totalInfluence * 10) % 360;
+        fill(hue, 70, 50, alpha);
+        
+        rect(px - resolution / 2, py - resolution / 2, resolution, resolution);
+      }
+    }
+  }
+}
+
+function drawDiskRipples() {
+  noFill();
+  
+  // Draw expanding rings from each disk
+  for (let d of disks) {
+    let numRings = 8;
+    
+    for (let r = 0; r < numRings; r++) {
+      let ringPhase = (time * d.speed + r * 0.5 + d.phase) % (TWO_PI);
+      let ringRadius = d.radius + ringPhase * 30;
+      let alpha = map(ringPhase, 0, TWO_PI, 0.4, 0);
+      
+      stroke(d.hue, 60, 60, alpha);
+      strokeWeight(2);
+      ellipse(d.x, d.y, ringRadius * 2);
+    }
+  }
+}
+
+function drawWaves() {
+  noFill();
+  
+  for (let w of waves) {
+    let numWaves = 6;
+    
+    for (let i = 0; i < numWaves; i++) {
+      let wavePhase = (time * w.speed + i * 0.8 + w.phase) % (TWO_PI);
+      let radius = 30 + wavePhase * w.amp;
+      let alpha = map(wavePhase, 0, TWO_PI, 0.3, 0);
+      
+      stroke(10, 70, 50, alpha);
+      strokeWeight(1.5);
+      ellipse(w.x, w.y, radius * 2);
+    }
+  }
+}
+
+function drawDiskCores() {
+  noStroke();
+  
+  for (let d of disks) {
+    // Outer glow
+    for (let r = d.radius * 2; r > d.radius; r -= 4) {
+      let alpha = map(r, d.radius, d.radius * 2, 0.2, 0);
+      fill(d.hue, 50, 40, alpha);
+      ellipse(d.x, d.y, r * 2);
+    }
+    
+    // Core
+    fill(d.hue, 70, 80, 0.9);
+    ellipse(d.x, d.y, d.radius * 0.5);
+    
+    // Bright center
+    fill(d.hue, 30, 100, 0.7);
+    ellipse(d.x, d.y, d.radius * 0.2);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Reposition disks
+  for (let i = 0; i < disks.length; i++) {
+    let angle = random(TWO_PI);
+    let distFromCenter = random(height * 0.1, height * 0.35);
+    disks[i].x = width / 2 + cos(angle) * distFromCenter;
+    disks[i].y = height / 2 + sin(angle) * distFromCenter;
+  }
+  
+  // Reposition waves
+  for (let w of waves) {
+    w.x = random(width * 0.2, width * 0.8);
+    w.y = random(height * 0.2, height * 0.8);
+  }
+}
+</script>
+</body>
+</html>
