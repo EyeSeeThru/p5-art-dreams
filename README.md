@@ -38,6 +38,7 @@ The project cycles through different technique categories to ensure variety:
 | temporal-fractures | Fractals | Temporal fractal patterns |
 | void-geometry | Geometry | Abstract void geometry |
 | recursive-ember | Fractals | Recursive fractal embers rising with glowing particles |
+| chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
 
 ...and more.
 
