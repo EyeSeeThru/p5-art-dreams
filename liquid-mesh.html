@@ -74,7 +74,7 @@ function setup() {
         springs.push({
           a: particles[i][j],
           b: particles[i+1][j+1],
-          rest: REST_LENGTH * SQRT2
+          rest: REST_LENGTH * 1.41421356
         });
       }
     }
@@ -185,8 +185,8 @@ function drawMesh() {
   // Draw wireframe on top
   strokeWeight(1);
   for (let s of springs) {
-    let dist = dist(s.a.x, s.a.y, s.b.x, s.b.y);
-    let strain = abs(dist - s.rest) / s.rest;
+    let d = dist(s.a.x, s.a.y, s.b.x, s.b.y);
+    let strain = abs(d - s.rest) / s.rest;
     let alpha = map(strain, 0, 0.5, 0.1, 0.4);
     
     stroke(s.a.hue, 50, 50, alpha);

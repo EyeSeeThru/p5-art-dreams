@@ -92,9 +92,9 @@ function drawInterferenceField() {
       let dominantHue = 0;
       
       for (let d of disks) {
-        let dist = dist(px, py, d.x, d.y);
-        let wave = sin(dist * 0.05 - time * d.speed + d.phase);
-        let influence = (d.radius / (dist + 1)) * wave;
+        let distance = dist(px, py, d.x, d.y);
+        let wave = sin(distance * 0.05 - time * d.speed + d.phase);
+        let influence = (d.radius / (distance + 1)) * wave;
         totalInfluence += influence;
         
         if (abs(influence) > abs(dominantHue)) {
