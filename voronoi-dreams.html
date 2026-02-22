@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voronoi Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Voronoi Dreams - Cellular geometry with animated attractors
+// Technique: Voronoi diagrams + Perlin noise + moving attractors
+
+let sites = [];
+let numSites = 80;
+let attractors = [];
+let numAttractors = 3;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  // Initialize Voronoi sites
+  for (let i = 0; i < numSites; i++) {
+    sites.push({
+      x: random(width),
+      y: random(height),
+      baseX: 0,
+      baseY: 0,
+      hue: random(360)
+    });
+    sites[i].baseX = sites[i].x;
+    sites[i].baseY = sites[i].y;
+  }
+  
+  // Initialize attractors
+  for (let i = 0; i < numAttractors; i++) {
+    attractors.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-2, 2),
+      vy: random(-2, 2),
+      radius: random(100, 200)
+    });
+  }
+}
+
+function draw() {
+  background(10, 20, 8);
+  t += 0.008;
+  
+  // Update attractors
+  for (let a of attractors) {
+    a.x += a.vx;
+    a.y += a.vy;
+    
+    // Bounce off edges
+    if (a.x < 0 || a.x > width) a.vx *= -1;
+    if (a.y < 0 || a.y > height) a.vy *= -1;
+    
+    // Add subtle noise to movement
+    a.vx += random(-0.1, 0.1);
+    a.vy += random(-0.1, 0.1);
+    a.vx = constrain(a.vx, -3, 3);
+    a.vy = constrain(a.vy, -3, 3);
+  }
+  
+  // Update sites based on attractor influence
+  for (let site of sites) {
+    let totalDx = 0;
+    let totalDy = 0;
+    
+    for (let a of attractors) {
+      let d = dist(site.baseX, site.baseY, a.x, a.y);
+      let influence = a.radius / (d + 50);
+      influence = constrain(influence, 0, 1);
+      
+      // Noise-based displacement
+      let noiseScale = 0.01;
+      let noiseVal = noise(site.baseX * noiseScale + t, site.baseY * noiseScale);
+      let angle = noiseVal * TWO_PI * 2;
+      
+      totalDx += cos(angle) * influence * 30;
+      totalDy += sin(angle) * influence * 30;
+    }
+    
+    // Smooth interpolation
+    site.x = lerp(site.x, site.baseX + totalDx, 0.05);
+    site.y = lerp(site.y, site.baseY + totalDy, 0.05);
+  }
+  
+  // Draw Voronoi-like cells
+  loadPixels();
+  
+  // For each pixel, find closest site
+  let cellSize = 8;
+  for (let x = 0; x < width; x += cellSize) {
+    for (let y = 0; y < height; y += cellSize) {
+      let closestSite = null;
+      let closestDist = Infinity;
+      
+      for (let site of sites) {
+        let d = dist(x, y, site.x, site.y);
+        if (d < closestDist) {
+          closestDist = d;
+          closestSite = site;
+        }
+      }
+      
+      if (closestSite) {
+        // Calculate distance to nearest attractor for color variation
+        let minAttrDist = Infinity;
+        for (let a of attractors) {
+          let d = dist(x, y, a.x, a.y);
+          minAttrDist = min(minAttrDist, d);
+        }
+        
+        // Color based on site hue + attractor influence
+        let hueVal = (closestSite.hue + t * 30 + minAttrDist * 0.1) % 360;
+        let sat = map(minAttrDist, 0, 300, 80, 40);
+        let bri = map(minAttrDist, 0, 400, 90, 30);
+        
+        // Add pulsing glow near attractors
+        let pulse = sin(t * 3 + minAttrDist * 0.05) * 0.5 + 0.5;
+        if (minAttrDist < 150) {
+          bri = lerp(bri, 100, (1 - minAttrDist / 150) * pulse);
+        }
+        
+        fill(hueVal, sat, bri);
+        rect(x, y, cellSize, cellSize);
+      }
+    }
+  }
+  
+  // Draw attractor markers
+  for (let a of attractors) {
+    // Outer glow
+    for (let r = a.radius; r > 0; r -= 20) {
+      let alpha = map(r, 0, a.radius, 0.3, 0);
+      fill(0, 0, 100, alpha);
+      ellipse(a.x, a.y, r * 2);
+    }
+    
+    // Core
+    fill(0, 0, 100);
+    ellipse(a.x, a.y, 8);
+  }
+  
+  // Add subtle grain overlay
+  for (let i = 0; i < 500; i++) {
+    let gx = random(width);
+    let gy = random(height);
+    fill(0, 0, 100, random(0.02, 0.08));
+    rect(gx, gy, 1, 1);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Reinitialize sites for new dimensions
+  sites = [];
+  for (let i = 0; i < numSites; i++) {
+    sites.push({
+      x: random(width),
+      y: random(height),
+      baseX: random(width),
+      baseY: random(height),
+      hue: random(360)
+    });
+  }
+}
+
+function mousePressed() {
+  // Add new attractor on click
+  attractors.push({
+    x: mouseX,
+    y: mouseY,
+    vx: random(-2, 2),
+    vy: random(-2, 2),
+    radius: random(100, 200)
+  });
+  if (attractors.length > 6) {
+    attractors.shift();
+  }
+}
+</script>
+</body>
+</html>
