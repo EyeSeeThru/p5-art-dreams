@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>p5 Art Dreams</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      min-height: 100vh;
+      padding: 40px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #ff3b3b;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #ff3b3b;
+      box-shadow: 0 10px 40px rgba(255, 59, 59, 0.15);
+    }
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+    .card-title {
+      padding: 16px;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #888;
+      border-top: 1px solid #222;
+    }
+    footer {
+      text-align: center;
+      margin-top: 80px;
+      padding: 40px;
+      color: #444;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+    }
+    footer a {
+      color: #ff3b3b;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>p5 Art Dreams</h1>
+    <p class="subtitle">Generative Art Collection</p>
+  </header>
+  
+  <main class="gallery">
+    <a href="akashic-brush.html" class="card">
+      <img src="thumbs/akashic-brush.png" alt="Akashic Brush">
+      <div class="card-title">Akashic Brush</div>
+    </a>
+    <a href="axiom.html" class="card">
+      <img src="thumbs/axiom.png" alt="Axiom">
+      <div class="card-title">Axiom</div>
+    </a>
+    <a href="boolean-tensions.html" class="card">
+      <img src="thumbs/boolean-tensions.png" alt="Boolean Tensions">
+      <div class="card-title">Boolean Tensions</div>
+    </a>
+    <a href="cellular-tessellation.html" class="card">
+      <img src="thumbs/cellular-tessellation.png" alt="Cellular Tessellation">
+      <div class="card-title">Cellular Tessellation</div>
+    </a>
+    <a href="chromatic-doubt.html" class="card">
+      <img src="thumbs/chromatic-doubt.png" alt="Chromatic Doubt">
+      <div class="card-title">Chromatic Doubt</div>
+    </a>
+    <a href="chromatic-strata.html" class="card">
+      <img src="thumbs/chromatic-strata.png" alt="Chromatic Strata">
+      <div class="card-title">Chromatic Strata</div>
+    </a>
+    <a href="constraint-lattices.html" class="card">
+      <img src="thumbs/constraint-lattices.png" alt="Constraint Lattices">
+      <div class="card-title">Constraint Lattices</div>
+    </a>
+    <a href="coriolis-field.html" class="card">
+      <img src="thumbs/coriolis-field.png" alt="Coriolis Field">
+      <div class="card-title">Coriolis Field</div>
+    </a>
+    <a href="curl-noise-flow.html" class="card">
+      <img src="thumbs/curl-noise-flow.png" alt="Curl Noise Flow">
+      <div class="card-title">Curl Noise Flow</div>
+    </a>
+    <a href="dendritic-growth.html" class="card">
+      <img src="thumbs/dendritic-growth.png" alt="Dendritic Growth">
+      <div class="card-title">Dendritic Growth</div>
+    </a>
+    <a href="diffraction-grating.html" class="card">
+      <img src="thumbs/diffraction-grating.png" alt="Diffraction Grating">
+      <div class="card-title">Diffraction Grating</div>
+    </a>
+    <a href="diffusion-fields.html" class="card">
+      <img src="thumbs/diffusion-fields.png" alt="Diffusion Fields">
+      <div class="card-title">Diffusion Fields</div>
+    </a>
+    <a href="echoes.html" class="card">
+      <img src="thumbs/echoes.png" alt="Echoes">
+      <div class="card-title">Echoes</div>
+    </a>
+    <a href="filament-networks.html" class="card">
+      <img src="thumbs/filament-networks.png" alt="Filament Networks">
+      <div class="card-title">Filament Networks</div>
+    </a>
+    <a href="flux-geometry.html" class="card">
+      <img src="thumbs/flux-geometry.png" alt="Flux Geometry">
+      <div class="card-title">Flux Geometry</div>
+    </a>
+    <a href="fractal-aurora.html" class="card">
+      <img src="thumbs/fractal-aurora.png" alt="Fractal Aurora">
+      <div class="card-title">Fractal Aurora</div>
+    </a>
+    <a href="fracture-patterns.html" class="card">
+      <img src="thumbs/fracture-patterns.png" alt="Fracture Patterns">
+      <div class="card-title">Fracture Patterns</div>
+    </a>
+    <a href="fracture.html" class="card">
+      <img src="thumbs/fracture.png" alt="Fracture">
+      <div class="card-title">Fracture</div>
+    </a>
+    <a href="ghost-protocol.html" class="card">
+      <img src="thumbs/ghost-protocol.png" alt="Ghost Protocol">
+      <div class="card-title">Ghost Protocol</div>
+    </a>
+    <a href="gyroid-surfaces.html" class="card">
+      <img src="thumbs/gyroid-surfaces.png" alt="Gyroid Surfaces">
+      <div class="card-title">Gyroid Surfaces</div>
+    </a>
+    <a href="interference.html" class="card">
+      <img src="thumbs/interference.png" alt="Interference">
+      <div class="card-title">Interference</div>
+    </a>
+    <a href="iso-density.html" class="card">
+      <img src="thumbs/iso-density.png" alt="Iso Density">
+      <div class="card-title">Iso Density</div>
+    </a>
+    <a href="isotope-pulse.html" class="card">
+      <img src="thumbs/isotope-pulse.png" alt="Isotope Pulse">
+      <div class="card-title">Isotope Pulse</div>
+    </a>
+    <a href="liminal-state.html" class="card">
+      <img src="thumbs/liminal-state.png" alt="Liminal State">
+      <div class="card-title">Liminal State</div>
+    </a>
+    <a href="liquid-gravity.html" class="card">
+      <img src="thumbs/liquid-gravity.png" alt="Liquid Gravity">
+      <div class="card-title">Liquid Gravity</div>
+    </a>
+    <a href="liquid-mesh.html" class="card">
+      <img src="thumbs/liquid-mesh.png" alt="Liquid Mesh">
+      <div class="card-title">Liquid Mesh</div>
+    </a>
+    <a href="lissajous-knots.html" class="card">
+      <img src="thumbs/lissajous-knots.png" alt="Lissajous Knots">
+      <div class="card-title">Lissajous Knots</div>
+    </a>
+    <a href="magnetic-fields.html" class="card">
+      <img src="thumbs/magnetic-fields.png" alt="Magnetic Fields">
+      <div class="card-title">Magnetic Fields</div>
+    </a>
+    <a href="membrane-fields.html" class="card">
+      <img src="thumbs/membrane-fields.png" alt="Membrane Fields">
+      <div class="card-title">Membrane Fields</div>
+    </a>
+    <a href="metaball-swarm.html" class="card">
+      <img src="thumbs/metaball-swarm.png" alt="Metaball Swarm">
+      <div class="card-title">Metaball Swarm</div>
+    </a>
+    <a href="neural-bloom.html" class="card">
+      <img src="thumbs/neural-bloom.png" alt="Neural Bloom">
+      <div class="card-title">Neural Bloom</div>
+    </a>
+    <a href="neural-crystals.html" class="card">
+      <img src="thumbs/neural-crystals.png" alt="Neural Crystals">
+      <div class="card-title">Neural Crystals</div>
+    </a>
+    <a href="orbital-decay.html" class="card">
+      <img src="thumbs/orbital-decay.png" alt="Orbital Decay">
+      <div class="card-title">Orbital Decay</div>
+    </a>
+    <a href="oscillating-ropes.html" class="card">
+      <img src="thumbs/oscillating-ropes.png" alt="Oscillating Ropes">
+      <div class="card-title">Oscillating Ropes</div>
+    </a>
+    <a href="particle-weaving.html" class="card">
+      <img src="thumbs/particle-weaving.png" alt="Particle Weaving">
+      <div class="card-title">Particle Weaving</div>
+    </a>
+    <a href="perceptual-erosion.html" class="card">
+      <img src="thumbs/perceptual-erosion.png" alt="Perceptual Erosion">
+      <div class="card-title">Perceptual Erosion</div>
+    </a>
+    <a href="percolation-fields.html" class="card">
+      <img src="thumbs/percolation-fields.png" alt="Percolation Fields">
+      <div class="card-title">Percolation Fields</div>
+    </a>
+    <a href="phantom-membrane.html" class="card">
+      <img src="thumbs/phantom-membrane.png" alt="Phantom Membrane">
+      <div class="card-title">Phantom Membrane</div>
+    </a>
+    <a href="phase-portraits.html" class="card">
+      <img src="thumbs/phase-portraits.png" alt="Phase Portraits">
+      <div class="card-title">Phase Portraits</div>
+    </a>
+    <a href="photon-synthesis.html" class="card">
+      <img src="thumbs/photon-synthesis.png" alt="Photon Synthesis">
+      <div class="card-title">Photon Synthesis</div>
+    </a>
+    <a href="phyllotaxis-bloom.html" class="card">
+      <img src="thumbs/phyllotaxis-bloom.png" alt="Phyllotaxis Bloom">
+      <div class="card-title">Phyllotaxis Bloom</div>
+    </a>
+    <a href="quantum-foam.html" class="card">
+      <img src="thumbs/quantum-foam.png" alt="Quantum Foam">
+      <div class="card-title">Quantum Foam</div>
+    </a>
+    <a href="reaction-diffusion.html" class="card">
+      <img src="thumbs/reaction-diffusion.png" alt="Reaction Diffusion">
+      <div class="card-title">Reaction Diffusion</div>
+    </a>
+    <a href="recursive-ember.html" class="card">
+      <img src="thumbs/recursive-ember.png" alt="Recursive Ember">
+      <div class="card-title">Recursive Ember</div>
+    </a>
+    <a href="recursive-veins.html" class="card">
+      <img src="thumbs/recursive-veins.png" alt="Recursive Veins">
+      <div class="card-title">Recursive Veins</div>
+    </a>
+    <a href="resonance-cavities.html" class="card">
+      <img src="thumbs/resonance-cavities.png" alt="Resonance Cavities">
+      <div class="card-title">Resonance Cavities</div>
+    </a>
+    <a href="resonance-crystals.html" class="card">
+      <img src="thumbs/resonance-crystals.png" alt="Resonance Crystals">
+      <div class="card-title">Resonance Crystals</div>
+    </a>
+    <a href="resonant-disks.html" class="card">
+      <img src="thumbs/resonant-disks.png" alt="Resonant Disks">
+      <div class="card-title">Resonant Disks</div>
+    </a>
+    <a href="spirograph-waves.html" class="card">
+      <img src="thumbs/spirograph-waves.png" alt="Spirograph Waves">
+      <div class="card-title">Spirograph Waves</div>
+    </a>
+    <a href="stasis-field.html" class="card">
+      <img src="thumbs/stasis-field.png" alt="Stasis Field">
+      <div class="card-title">Stasis Field</div>
+    </a>
+    <a href="static-flux.html" class="card">
+      <img src="thumbs/static-flux.png" alt="Static Flux">
+      <div class="card-title">Static Flux</div>
+    </a>
+    <a href="strange-attractors.html" class="card">
+      <img src="thumbs/strange-attractors.png" alt="Strange Attractors">
+      <div class="card-title">Strange Attractors</div>
+    </a>
+    <a href="stress-fractals.html" class="card">
+      <img src="thumbs/stress-fractals.png" alt="Stress Fractals">
+      <div class="card-title">Stress Fractals</div>
+    </a>
+    <a href="temporal-fractures.html" class="card">
+      <img src="thumbs/temporal-fractures.png" alt="Temporal Fractures">
+      <div class="card-title">Temporal Fractures</div>
+    </a>
+    <a href="tension-nodes.html" class="card">
+      <img src="thumbs/tension-nodes.png" alt="Tension Nodes">
+      <div class="card-title">Tension Nodes</div>
+    </a>
+    <a href="thermal-drift.html" class="card">
+      <img src="thumbs/thermal-drift.png" alt="Thermal Drift">
+      <div class="card-title">Thermal Drift</div>
+    </a>
+    <a href="toroidal-membranes.html" class="card">
+      <img src="thumbs/toroidal-membranes.png" alt="Toroidal Membranes">
+      <div class="card-title">Toroidal Membranes</div>
+    </a>
+    <a href="undulation.html" class="card">
+      <img src="thumbs/undulation.png" alt="Undulation">
+      <div class="card-title">Undulation</div>
+    </a>
+    <a href="venous.html" class="card">
+      <img src="thumbs/venous.png" alt="Venous">
+      <div class="card-title">Venous</div>
+    </a>
+    <a href="void-currents.html" class="card">
+      <img src="thumbs/void-currents.png" alt="Void Currents">
+      <div class="card-title">Void Currents</div>
+    </a>
+    <a href="void-geometry.html" class="card">
+      <img src="thumbs/void-geometry.png" alt="Void Geometry">
+      <div class="card-title">Void Geometry</div>
+    </a>
+    <a href="voronoi-dreams.html" class="card">
+      <img src="thumbs/voronoi-dreams.png" alt="Voronoi Dreams">
+      <div class="card-title">Voronoi Dreams</div>
+    </a>
+    <a href="voronoi-tensions.html" class="card">
+      <img src="thumbs/voronoi-tensions.png" alt="Voronoi Tensions">
+      <div class="card-title">Voronoi Tensions</div>
+    </a>
+    <a href="vortex-weaver.html" class="card">
+      <img src="thumbs/vortex-weaver.png" alt="Vortex Weaver">
+      <div class="card-title">Vortex Weaver</div>
+    </a>
+    <a href="wave-interference.html" class="card">
+      <img src="thumbs/wave-interference.png" alt="Wave Interference">
+      <div class="card-title">Wave Interference</div>
+    </a>
+    <a href="waveform-mesh.html" class="card">
+      <img src="thumbs/waveform-mesh.png" alt="Waveform Mesh">
+      <div class="card-title">Waveform Mesh</div>
+    </a>
+  </main>
+  
+  <footer>
+    <p>p5 Art Dreams — <a href="https://github.com/EyeSeeThru/p5-art-dreams">View on GitHub</a></p>
+  </footer>
+</body>
+</html>
