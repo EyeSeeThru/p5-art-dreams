@@ -45,6 +45,7 @@ The project cycles through different technique categories to ensure variety:
 | diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
 | lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
 | phyllotaxis-bloom | Math | Golden angle spiral patterns with emergent flower-like bloom |
+| moire-weave | Physics | Overlapping oscillating grids creating interference moire patterns |
 
 ...and more.
 
