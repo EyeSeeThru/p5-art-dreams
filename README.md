@@ -44,6 +44,7 @@ The project cycles through different technique categories to ensure variety:
 | voronoi-dreams | Geometry | Voronoi cells influenced by moving attractors with pulsing glow |
 | diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
 | lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
+| phyllotaxis-bloom | Math | Golden angle spiral patterns with emergent flower-like bloom |
 
 ...and more.
 
