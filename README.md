@@ -43,6 +43,7 @@ The project cycles through different technique categories to ensure variety:
 | chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
 | voronoi-dreams | Geometry | Voronoi cells influenced by moving attractors with pulsing glow |
 | diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
+| lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
 
 ...and more.
 

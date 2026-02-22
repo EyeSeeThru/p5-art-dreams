@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lissajous Knots</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Lissajous Knots - Parametric woven curves
+// Creates complex 3D-like knots using Lissajous curves
+
+let t = 0;
+const KNOTS = 7;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+}
+
+function draw() {
+  background(0, 0, 4);
+  
+  translate(width / 2, height / 2);
+  
+  const radius = min(width, height) * 0.35;
+  
+  // Draw multiple Lissajous knots
+  for (let k = 0; k < KNOTS; k++) {
+    let a = 3 + k;
+    let b = 4 + k * 2;
+    let phase = (TWO_PI / KNOTS) * k + t * 0.3;
+    
+    drawLissajousKnot(a, b, phase, radius, k);
+  }
+  
+  // Central glow
+  noStroke();
+  for (let r = 60; r > 0; r -= 10) {
+    fill(0, 0, 100, 0.02);
+    ellipse(0, 0, r * 2);
+  }
+  
+  t += 0.008;
+}
+
+function drawLissajousKnot(a, b, phase, radius, index) {
+  let points = [];
+  const resolution = 400;
+  
+  // Generate Lissajous curve points
+  for (let i = 0; i <= resolution; i++) {
+    let theta = map(i, 0, resolution, 0, TWO_PI);
+    
+    let x = radius * sin(a * theta + phase);
+    let y = radius * sin(b * theta);
+    let z = cos(theta * 2); // Simulated z for depth
+    
+    points.push({ x, y, z });
+  }
+  
+  // Draw the curve with depth-based coloring
+  noFill();
+  
+  for (let i = 1; i < points.length; i++) {
+    let p1 = points[i - 1];
+    let p2 = points[i];
+    
+    // Depth affects color and alpha
+    let avgZ = (p1.z + p2.z) / 2;
+    let depthFactor = map(avgZ, -1, 1, 0.3, 1);
+    
+    let hue = map(index, 0, KNOTS, 0, 280);
+    let sat = 70;
+    let bri = map(depthFactor, 0.3, 1, 40, 100);
+    let alpha = map(depthFactor, 0.3, 1, 0.2, 0.8);
+    
+    stroke(hue, sat, bri, alpha);
+    strokeWeight(map(depthFactor, 0.3, 1, 0.5, 2.5));
+    line(p1.x, p1.y, p2.x, p2.y);
+  }
+  
+  // Draw intersection nodes
+  for (let i = 0; i < points.length; i += 40) {
+    let p = points[i];
+    let depthFactor = map(p.z, -1, 1, 0.3, 1);
+    
+    noStroke();
+    fill(0, 0, 100, map(depthFactor, 0.3, 1, 0.3, 0.9));
+    ellipse(p.x, p.y, map(depthFactor, 0.3, 1, 2, 6));
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
