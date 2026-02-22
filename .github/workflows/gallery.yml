@@ -1,0 +1,103 @@
+name: Auto Gallery Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.html'
+
+jobs:
+  update-gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install puppeteer
+
+      - name: Start local server
+        run: |
+          python3 -m http.server 8080 &
+          sleep 2
+
+      - name: Find new sketches
+        id: new-sketches
+        run: |
+          # Get list of existing thumbnails
+          ls thumbs/ 2>/dev/null | sed 's/.png$//' > existing.txt
+          
+          # Find new HTML files not in existing
+          for file in *.html; do
+            name=$(basename "$file" .html)
+            if ! grep -q "^$name$" existing.txt; then
+              echo "New sketch found: $name"
+              echo "$name" >> new_sketches.txt
+            fi
+          done
+          
+          # Count new sketches
+          count=$(wc -l < new_sketches.txt 2>/dev/null || echo 0)
+          echo "Found $count new sketches"
+          echo "count=$count" >> $GITHUB_OUTPUT
+          
+          if [ "$count" -gt "0" ]; then
+            echo "has_new=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_new=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Capture screenshots
+        if: steps.new-sketches.outputs.has_new == 'true'
+        run: |
+          cat new_sketches.txt | while read sketch; do
+            echo "Capturing $sketch..."
+            npx puppeteer browsers install chrome
+            node -e "
+              const puppeteer = require('puppeteer');
+              (async () => {
+                const browser = await puppeteer.launch({
+                  headless: true,
+                  args: ['--no-sandbox', '--disable-setuid-sandbox']
+                });
+                const page = await browser.newPage();
+                await page.setViewport({ width: 800, height: 600 });
+                await page.goto('http://localhost:8080/$sketch.html', { waitUntil: 'networkidle0', timeout: 30000 });
+                await new Promise(r => setTimeout(r, 5000));
+                await page.screenshot({ path: 'thumbs/$sketch.png', fullPage: false });
+                await browser.close();
+              })();
+            "
+          done
+
+      - name: Update gallery
+        if: steps.new-sketches.outputs.has_new == 'true'
+        run: |
+          # Create directory if not exists
+          mkdir -p thumbs
+          
+          # Get all thumbnails and generate gallery entries
+          for thumb in thumbs/*.png; do
+            name=$(basename "$thumb" .png)
+            # Check if already in index.html
+            if ! grep -q "href=\"$name.html\"" index.html; then
+              echo "Adding $name to gallery..."
+              # Add card to gallery (before last </main>)
+              sed -i "s|</main>|    <a href=\"$name.html\" class=\"card\">\n      <img src=\"thumbs/$name.png\" alt=\"$name\">\n      <div class=\"card-title\">$name</div>\n    </a>\n</main>|" index.html
+            fi
+          done
+
+      - name: Commit and push
+        if: steps.new-sketches.outputs.has_new == 'true'
+        run: |
+          git config --local user.email "cerebro@openclaw.ai"
+          git config --local user.name "Cerebro"
+          git add -A
+          git diff --staged --quiet || git commit -m "Auto: Add new sketch thumbnails to gallery"
+          git push
