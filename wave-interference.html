@@ -3,118 +3,143 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>wave-interference</title>
+  <title>Wave Interference — p5.js Art</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #020204; }
+    body { overflow: hidden; background: #0a0a0f; }
     canvas { display: block; }
   </style>
 </head>
 <body>
 <script>
-// WAVE INTERFERENCE - Overlapping sine waves creating moiré patterns
-let oscillators = [];
-let time = 0;
-const OSC_COUNT = 12;
+// Wave Interference — Constructive and destructive wave patterns
+// Exploration of superposition principle with animated wave sources
+
+const sources = [];
+let t = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  colorMode(HSB, 360, 100, 100, 1);
+  pixelDensity(1);
   
-  for (let i = 0; i < OSC_COUNT; i++) {
-    oscillators.push({
+  // Initialize wave sources at random positions
+  for (let i = 0; i < 5; i++) {
+    sources.push({
       x: random(width * 0.2, width * 0.8),
       y: random(height * 0.2, height * 0.8),
-      freqX: random(0.01, 0.03),
-      freqY: random(0.01, 0.03),
-      amp: random(50, 150),
+      freq: random(0.02, 0.05),
+      amp: random(80, 150),
       phase: random(TWO_PI),
-      speed: random(0.5, 1.5),
-      hue: random(180, 260),
-      angle: random(TWO_PI)
+      speed: random(0.8, 1.5)
     });
   }
 }
 
 function draw() {
-  background(240, 20, 2, 0.03);
+  background(10, 10, 15);
   
-  time += 0.016;
-  
-  // Draw interference field
   loadPixels();
   
-  let d = pixelDensity();
-  let osc = oscillators;
-  
-  for (let x = 0; x < width; x += 3) {
-    for (let y = 0; y < height; y += 3) {
-      let value = 0;
+  // Calculate wave interference for each pixel
+  for (let x = 0; x < width; x += 2) {
+    for (let y = 0; y < height; y += 2) {
+      let totalWave = 0;
       
-      for (let o of osc) {
-        let dx = x - o.x;
-        let dy = y - o.y;
-        let angle = o.angle + atan2(dy, dx);
-        let dist = sqrt(dx * dx + dy * dy);
-        
-        value += sin(dist * o.freqX + time * o.speed + o.phase) * 
-                 cos(angle * 2 + time * 0.5) * o.amp;
+      for (let s of sources) {
+        let d = dist(x, y, s.x, s.y);
+        let wave = sin(d * s.freq - t * s.speed + s.phase) * s.amp;
+        wave *= exp(-d * 0.003); // decay with distance
+        totalWave += wave;
       }
       
-      let normalized = map(value, -osc.length * 100, osc.length * 100, 0, 1);
-      let brightness = pow(normalized, 2) * 80;
-      let hue = map(normalized, 0, 1, 200, 280);
+      // Map wave amplitude to color
+      let normalized = map(totalWave, -300, 300, 0, 1);
       
-      // Draw point
-      noStroke();
-      fill(hue, 60, brightness, 0.15);
-      rect(x, y, 3, 3);
+      // Interference color palette
+      let r, g, b;
+      
+      // Deep blues and cyans for negative (destructive)
+      // Warm oranges and magentas for positive (constructive)
+      if (totalWave > 0) {
+        let n = constrain(totalWave / 200, 0, 1);
+        r = lerp(255, 30, n);
+        g = lerp(120, 20, n);
+        b = lerp(80, 50, n);
+      } else {
+        let n = constrain(-totalWave / 200, 0, 1);
+        r = lerp(20, 80, n);
+        g = lerp(40, 150, n);
+        b = lerp(60, 220, n);
+      }
+      
+      // Add glow effect
+      let glow = sin(normalized * PI) * 50;
+      
+      // Set pixels (with downsampling for performance)
+      for (let dx = 0; dx < 2 && x + dx < width; dx++) {
+        for (let dy = 0; dy < 2 && y + dy < height; dy++) {
+          let idx = 4 * ((y + dy) * width + (x + dx));
+          pixels[idx] = constrain(r + glow * 0.3, 0, 255);
+          pixels[idx + 1] = constrain(g + glow * 0.2, 0, 255);
+          pixels[idx + 2] = constrain(b + glow * 0.1, 0, 255);
+          pixels[idx + 3] = 255;
+        }
+      }
     }
   }
   
-  // Draw oscillator centers
-  for (let o of oscillators) {
-    let pulse = sin(frameCount * 0.05 + o.phase) * 0.3 + 0.7;
+  updatePixels();
+  
+  // Draw source points with pulsing glow
+  for (let s of sources) {
+    let pulse = sin(t * 0.1 + s.phase) * 0.3 + 0.7;
     
     // Outer glow
     noStroke();
     for (let r = 60; r > 0; r -= 10) {
-      let alpha = map(r, 0, 60, 0.3, 0) * pulse;
-      fill(o.hue, 50, 40, alpha);
-      ellipse(o.x, o.y, r * 2);
+      let alpha = map(r, 0, 60, 80, 0) * pulse;
+      fill(255, 200, 150, alpha);
+      ellipse(s.x, s.y, r, r);
     }
     
     // Core
-    fill(o.hue, 40, 80, 0.8 * pulse);
-    ellipse(o.x, o.y, 8);
-    
-    // Center dot
-    fill(0, 0, 100, 0.9);
-    ellipse(o.x, o.y, 3);
+    fill(255, 240, 220);
+    ellipse(s.x, s.y, 12 * pulse, 12 * pulse);
   }
   
-  // Draw connecting lines
-  strokeWeight(0.3);
-  for (let i = 0; i < oscillators.length; i++) {
-    for (let j = i + 1; j < oscillators.length; j++) {
-      let o1 = oscillators[i];
-      let o2 = oscillators[j];
-      let d = dist(o1.x, o1.y, o2.x, o2.y);
-      
-      if (d < 300) {
-        let alpha = map(d, 0, 300, 0.15, 0);
-        let avgHue = (o1.hue + o2.hue) / 2;
-        
-        stroke(avgHue, 40, 50, alpha);
-        line(o1.x, o1.y, o2.x, o2.y);
-      }
-    }
+  t += 0.05;
+  
+  // Subtle vignette
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let alpha = map(i, 0, 50, 0, 100);
+    fill(0, alpha);
+    rect(0, 0, width, i);
+    rect(0, height - i, width, i);
+    rect(0, 0, i, height);
+    rect(width - i, 0, i, height);
   }
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  // Reposition sources on resize
+  setup();
+}
+
+function mousePressed() {
+  // Add new wave source on click
+  if (sources.length < 12) {
+    sources.push({
+      x: mouseX,
+      y: mouseY,
+      freq: random(0.02, 0.05),
+      amp: random(80, 150),
+      phase: random(TWO_PI),
+      speed: random(0.8, 1.5)
+    });
+  }
 }
 </script>
 </body>
