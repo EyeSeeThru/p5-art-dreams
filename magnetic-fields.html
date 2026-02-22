@@ -17,6 +17,8 @@
 let poles = [];
 let time = 0;
 const POLE_COUNT = 4;
+const MAX_STEPS = 200;
+const STEP_SIZE = 8;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -62,8 +64,7 @@ function draw() {
 }
 
 function drawFieldLines() {
-  let stepSize = 8;
-  let maxSteps = 200;
+  // STEP_SIZE defined at top
   
   // Start points around each pole
   for (let p of poles) {
@@ -87,7 +88,7 @@ function drawSingleFieldLine(startX, startY, sourcePole) {
   strokeWeight(1);
   
   beginShape();
-  for (let i = 0; i < maxSteps; i++) {
+  for (let i = 0; i < MAX_STEPS; i++) {
     // Calculate field at current position
     let fx = 0;
     let fy = 0;
@@ -119,14 +120,14 @@ function drawSingleFieldLine(startX, startY, sourcePole) {
     fx = fx * cos(wave) - fy * sin(wave);
     fy = temp * sin(wave) + fy * cos(wave);
     
-    x += fx * stepSize;
-    y += fy * stepSize;
+    x += fx * STEP_SIZE;
+    y += fy * STEP_SIZE;
     
     // Check bounds
     if (x < 0 || x > width || y < 0 || y > height) break;
     
     // Color based on field strength
-    let alpha = map(i, 0, maxSteps, 0.4, 0.05);
+    let alpha = map(i, 0, MAX_STEPS, 0.4, 0.05);
     stroke(hue, 50, 40, alpha);
     vertex(x, y);
   }
