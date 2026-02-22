@@ -37,6 +37,7 @@ The project cycles through different technique categories to ensure variety:
 | phase-portraits | Math | Phase space visualization |
 | temporal-fractures | Fractals | Temporal fractal patterns |
 | void-geometry | Geometry | Abstract void geometry |
+| recursive-ember | Fractals | Recursive fractal embers rising with glowing particles |
 
 ...and more.
 
