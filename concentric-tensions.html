@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Concentric Tensions</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #050505; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Concentric Tensions - Animated tension lines between oscillating rings
+// Creates complex patterns from radial forces
+
+let t = 0;
+const RINGS = 24;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+}
+
+function draw() {
+  background(0, 0, 3);
+  
+  translate(width / 2, height / 2);
+  
+  let maxRadius = min(width, height) * 0.45;
+  let ringSpacing = maxRadius / RINGS;
+  
+  // Store ring positions for tension lines
+  let rings = [];
+  
+  // Draw rings
+  for (let i = 0; i < RINGS; i++) {
+    let baseRadius = (i + 1) * ringSpacing;
+    
+    // Oscillation with different frequencies
+    let osc = sin(i * 0.4 + t * 1.5) * ringSpacing * 0.3;
+    osc += sin(i * 0.7 + t * 2.3) * ringSpacing * 0.15;
+    
+    let radius = baseRadius + osc;
+    let points = 60 + i * 4;
+    
+    // Color based on ring index
+    let hue = map(i, 0, RINGS, 0, 300);
+    let sat = 60;
+    let bri = map(i, 0, RINGS, 30, 90);
+    
+    rings.push({ radius, hue, points, index: i });
+    
+    // Draw ring as series of points
+    noFill();
+    strokeWeight(1.5);
+    
+    for (let j = 0; j <= points; j++) {
+      let angle = map(j, 0, points, 0, TWO_PI);
+      
+      // Add wave distortion to ring
+      let wave = sin(angle * (3 + i * 0.2) + t * 2) * (ringSpacing * 0.1);
+      let r = radius + wave;
+      
+      let x = r * cos(angle);
+      let y = r * sin(angle);
+      
+      let alpha = map(j, 0, points, 0.2, 0.8);
+      stroke(hue, sat, bri, alpha);
+      point(x, y);
+    }
+  }
+  
+  // Draw tension lines between adjacent rings
+  for (let i = 0; i < rings.length - 1; i++) {
+    let r1 = rings[i];
+    let r2 = rings[i + 1];
+    
+    let connections = 40 + i * 3;
+    
+    for (let j = 0; j < connections; j++) {
+      let angle1 = (j / connections) * TWO_PI + t * 0.5;
+      let angle2 = ((j + 1) / connections) * TWO_PI + t * 0.5;
+      
+      let wave1 = sin(angle1 * (3 + r1.index * 0.2) + t * 2) * (ringSpacing * 0.1);
+      let wave2 = sin(angle2 * (3 + r2.index * 0.2) + t * 2) * (ringSpacing * 0.1);
+      
+      let x1 = (r1.radius + wave1) * cos(angle1);
+      let y1 = (r1.radius + wave1) * sin(angle1);
+      let x2 = (r2.radius + wave2) * cos(angle2);
+      let y2 = (r2.radius + wave2) * sin(angle2);
+      
+      // Tension line color
+      let avgHue = (r1.hue + r2.hue) / 2;
+      let alpha = map(i, 0, RINGS, 0.1, 0.4);
+      
+      stroke(avgHue, 50, 80, alpha);
+      strokeWeight(0.5);
+      line(x1, y1, x2, y2);
+    }
+  }
+  
+  // Central glow
+  noStroke();
+  for (let r = 60; r > 0; r -= 8) {
+    fill(0, 0, 100, 0.02);
+    ellipse(0, 0, r * 2);
+  }
+  
+  t += 0.015;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

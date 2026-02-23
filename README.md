@@ -46,6 +46,7 @@ The project cycles through different technique categories to ensure variety:
 | lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
 | phyllotaxis-bloom | Math | Golden angle spiral patterns with emergent flower-like bloom |
 | moire-weave | Physics | Overlapping oscillating grids creating interference moire patterns |
+| concentric-tensions | Geometry | Oscillating concentric rings with connecting tension lines |
 
 ...and more.
 
