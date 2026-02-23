@@ -30,15 +30,19 @@ jobs:
           python3 -m http.server 8080 &
           sleep 2
 
-      - name: Find new sketches
+      - name: Find and capture new sketches
         id: new-sketches
         run: |
           # Get list of existing thumbnails
           ls thumbs/ 2>/dev/null | sed 's/.png$//' > existing.txt
           
           # Find new HTML files not in existing
+          > new_sketches.txt
           for file in *.html; do
             name=$(basename "$file" .html)
+            if [ "$name" = "index" ]; then
+              continue
+            fi
             if ! grep -q "^$name$" existing.txt; then
               echo "New sketch found: $name"
               echo "$name" >> new_sketches.txt
@@ -60,6 +64,9 @@ jobs:
         if: steps.new-sketches.outputs.has_new == 'true'
         run: |
           cat new_sketches.txt | while read sketch; do
+            if [ -z "$sketch" ]; then
+              continue
+            fi
             echo "Capturing $sketch..."
             npx puppeteer browsers install chrome
             node -e "
@@ -79,22 +86,46 @@ jobs:
             "
           done
 
-      - name: Update gallery
+      - name: Rebuild gallery in alphabetical order
         if: steps.new-sketches.outputs.has_new == 'true'
         run: |
-          # Create directory if not exists
-          mkdir -p thumbs
+          python3 << 'PYEOF'
+          import os
+          import re
           
-          # Get all thumbnails and generate gallery entries
-          for thumb in thumbs/*.png; do
-            name=$(basename "$thumb" .png)
-            # Check if already in index.html
-            if ! grep -q "href=\"$name.html\"" index.html; then
-              echo "Adding $name to gallery..."
-              # Add card to gallery (before last </main>)
-              sed -i "s|</main>|    <a href=\"$name.html\" class=\"card\">\n      <img src=\"thumbs/$name.png\" alt=\"$name\">\n      <div class=\"card-title\">$name</div>\n    </a>\n</main>|" index.html
-            fi
-          done
+          # Get all sketch names in alphabetical order
+          sketches = sorted([f.replace('.html', '') for f in os.listdir('.') if f.endswith('.html') and f != 'index.html'])
+          
+          # Read the file
+          with open('index.html', 'r') as f:
+              content = f.read()
+          
+          # Find the gallery section
+          match = re.search(r'(<main class="gallery">)\n', content)
+          if match:
+              start = match.end()
+              
+              # Find where </main> is
+              end = content.find('</main>')
+              
+              # Generate new cards in alphabetical order
+              cards = []
+              for name in sketches:
+                  title = ' '.join(word.capitalize() for word in name.split('-'))
+                  card = f'''    <a href="{name}.html" class="card">
+        <img src="thumbs/{name}.png" alt="{title}">
+        <div class="card-title">{title}</div>
+      </a>'''
+                  cards.append(card)
+              
+              new_gallery = match.group(1) + '\n' + '\n'.join(cards) + '\n'
+              new_content = content[:start] + new_gallery + content[end:]
+              
+              with open('index.html', 'w') as f:
+                  f.write(new_content)
+              
+              print(f"Generated {len(sketches)} cards in alphabetical order")
+          PYEOF
 
       - name: Commit and push
         if: steps.new-sketches.outputs.has_new == 'true'
