@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recursive Polygons</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Recursive Polygons - Nested geometric shapes with recursive subdivision
+// Creates intricate fractal-like patterns from simple polygon rules
+
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+}
+
+function draw() {
+  background(0, 0, 4);
+  
+  translate(width / 2, height / 2);
+  
+  let maxRadius = min(width, height) * 0.4;
+  
+  // Draw recursive polygons at different scales
+  for (let i = 0; i < 5; i++) {
+    let scale = map(i, 0, 5, 0.3, 1);
+    let radius = maxRadius * scale;
+    let sides = 5 + i * 2;
+    let rotation = t * (i + 1) * 0.2;
+    let depth = 4 - i;
+    
+    drawRecursivePolygon(0, 0, radius, sides, rotation, depth, i);
+  }
+  
+  // Central recursive star
+  drawRecursiveStar(0, 0, maxRadius * 0.15, 6, t * 0.5, 3);
+  
+  // Ambient particles
+  randomSeed(42);
+  for (let i = 0; i < 50; i++) {
+    let angle = random(TWO_PI);
+    let r = random(maxRadius * 0.8, maxRadius * 1.2);
+    let x = r * cos(angle);
+    let y = r * sin(angle);
+    
+    let size = random(1, 3);
+    let hue = random(0, 360);
+    
+    noStroke();
+    fill(hue, 40, 60, 0.4);
+    ellipse(x, y, size);
+  }
+  
+  t += 0.012;
+}
+
+function drawRecursivePolygon(x, y, radius, sides, rotation, depth, colorOffset) {
+  if (depth <= 0 || radius < 5) return;
+  
+  let hue = map(colorOffset, 0, 5, 0, 280);
+  let sat = 60;
+  let bri = map(depth, 0, 4, 40, 100);
+  let alpha = map(depth, 0, 4, 0.3, 0.9);
+  
+  // Draw polygon
+  beginShape();
+  for (let i = 0; i <= sides; i++) {
+    let angle = map(i, 0, sides, 0, TWO_PI) + rotation;
+    let px = x + radius * cos(angle);
+    let py = y + radius * sin(angle);
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+  
+  noFill();
+  stroke(hue, sat, bri, alpha);
+  strokeWeight(map(depth, 0, 4, 0.5, 2));
+  
+  beginShape();
+  for (let i = 0; i <= sides; i++) {
+    let angle = map(i, 0, sides, 0, TWO_PI) + rotation;
+    let px = x + radius * cos(angle);
+    let py = y + radius * sin(angle);
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+  
+  // Recursive calls at vertices
+  for (let i = 0; i < sides; i++) {
+    let angle = map(i, 0, sides, 0, TWO_PI) + rotation;
+    let nx = x + radius * cos(angle);
+    let ny = y + radius * sin(angle);
+    
+    let newRadius = radius * 0.4;
+    let newRotation = rotation + t * (depth + 1) * 0.3;
+    
+    drawRecursivePolygon(nx, ny, newRadius, sides, newRotation, depth - 1, colorOffset);
+  }
+}
+
+function drawRecursiveStar(x, y, radius, points, rotation, depth) {
+  if (depth <= 0 || radius < 3) return;
+  
+  let hue = (t * 20) % 360;
+  let sat = 50;
+  let bri = 100;
+  
+  // Inner and outer points
+  let innerRadius = radius * 0.5;
+  
+  noFill();
+  stroke(hue, sat, bri, 0.8);
+  strokeWeight(1.5);
+  
+  beginShape();
+  for (let i = 0; i <= points * 2; i++) {
+    let angle = map(i, 0, points * 2, 0, TWO_PI) + rotation;
+    let r = (i % 2 === 0) ? radius : innerRadius;
+    let px = x + r * cos(angle);
+    let py = y + r * sin(angle);
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+  
+  // Recursive stars at each point
+  for (let i = 0; i < points * 2; i++) {
+    if (i % 2 === 0) {
+      let angle = map(i, 0, points * 2, 0, TWO_PI) + rotation;
+      let nx = x + radius * cos(angle);
+      let ny = y + radius * sin(angle);
+      
+      drawRecursiveStar(nx, ny, radius * 0.35, points, -rotation, depth - 1);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
