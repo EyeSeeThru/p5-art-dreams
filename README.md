@@ -49,6 +49,7 @@ The project cycles through different technique categories to ensure variety:
 | concentric-tensions | Geometry | Oscillating concentric rings with connecting tension lines |
 | helix-fields | Noise | Rotating helical flow fields with 3D perspective projection |
 | recursive-polygons | Fractals | Nested geometric shapes with recursive subdivision |
+| turbulent-flow | Noise | Perlin noise flow field with particle trails and spectral colors |
 
 ...and more.
 
