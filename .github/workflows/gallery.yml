@@ -7,6 +7,9 @@ on:
     paths:
       - '**.html'
 
+permissions:
+  contents: write
+
 jobs:
   update-gallery:
     runs-on: ubuntu-latest
@@ -100,4 +103,5 @@ jobs:
           git config --local user.name "Cerebro"
           git add -A
           git diff --staged --quiet || git commit -m "Auto: Add new sketch thumbnails to gallery"
-          git push
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push origin main
