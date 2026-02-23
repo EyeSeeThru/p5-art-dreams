@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helix Fields</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #080808; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Helix Fields - Rotating helical flow fields
+// Creates intertwined helical streamlines that rotate and evolve
+
+let t = 0;
+const TRAILS = 300;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  background(0, 0, 3);
+}
+
+function draw() {
+  // Semi-transparent overlay for trail effect
+  noStroke();
+  fill(0, 0, 3, 0.08);
+  rect(0, 0, width, height);
+  
+  translate(width / 2, height / 2);
+  
+  // Draw multiple helix streams
+  for (let i = 0; i < TRAILS; i++) {
+    drawHelixStream(i);
+  }
+  
+  // Central glow
+  noStroke();
+  for (let r = 80; r > 0; r -= 10) {
+    fill(0, 0, 100, 0.015);
+    ellipse(0, 0, r * 2);
+  }
+  
+  t += 0.008;
+}
+
+function drawHelixStream(index) {
+  let seed = index * 137.5;
+  randomSeed(seed);
+  
+  // Helix parameters
+  let turns = 3 + (index % 5);
+  let radius = 50 + (index % 150);
+  let verticalSpread = 200;
+  let phase = (index / TRAILS) * TWO_PI * 2 + t;
+  let direction = (index % 2 === 0) ? 1 : -1;
+  
+  // Starting position
+  let startAngle = (index / TRAILS) * TWO_PI * turns;
+  
+  let points = [];
+  let resolution = 60;
+  
+  for (let i = 0; i <= resolution; i++) {
+    let tLocal = i / resolution;
+    let angle = startAngle + tLocal * TWO_PI * turns * direction + phase;
+    
+    // Helix radius varies with height
+    let r = radius * (1 + 0.3 * sin(tLocal * PI));
+    
+    // Position on helix
+    let x = r * cos(angle);
+    let y = (tLocal - 0.5) * verticalSpread;
+    let z = r * sin(angle);
+    
+    // Add noise displacement
+    let noiseScale = 0.01;
+    let noiseVal = noise(x * noiseScale + t, y * noiseScale + index);
+    let displacement = map(noiseVal, 0, 1, -30, 30);
+    
+    x += displacement * cos(angle + PI/2);
+    z += displacement * sin(angle + PI/2);
+    
+    // Project 3D to 2D with perspective
+    let scale = map(z, -radius, radius, 0.5, 1.5);
+    let px = x * scale;
+    let py = y * scale;
+    
+    points.push({ x: px, y: py, z: z });
+  }
+  
+  // Draw the stream
+  noFill();
+  
+  for (let i = 1; i < points.length; i++) {
+    let p1 = points[i - 1];
+    let p2 = points[i];
+    
+    // Color based on position and index
+    let hue = (index * 0.5 + t * 30) % 360;
+    let sat = 60;
+    let bri = map(p2.z, -radius, radius, 30, 100);
+    let alpha = map(i, 0, resolution, 0.1, 0.7);
+    
+    // Depth affects stroke weight
+    let weight = map(p2.z, -radius, radius, 0.3, 2);
+    
+    stroke(hue, sat, bri, alpha);
+    strokeWeight(weight);
+    line(p1.x, p1.y, p2.x, p2.y);
+  }
+  
+  // Draw head particle
+  let head = points[points.length - 1];
+  let headBri = map(head.z, -radius, radius, 40, 100);
+  noStroke();
+  fill((index * 0.5 + t * 30) % 360, 70, headBri, 0.9);
+  ellipse(head.x, head.y, map(head.z, -radius, radius, 2, 5));
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0, 0, 3);
+}
+</script>
+</body>
+</html>
