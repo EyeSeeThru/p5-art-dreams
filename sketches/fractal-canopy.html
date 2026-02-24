@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fractal Canopy</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Fractal Canopy - Recursive branching structure with organic sway
+// Category: Fractals & Recursive Algorithms
+
+let branches = [];
+let time = 0;
+let palette;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Earthy forest palette with golden highlights
+  palette = [
+    color(25, 60, 40),   // Dark bark
+    color(35, 50, 55),   // Brown branch
+    color(45, 40, 60),  // Light wood
+    color(85, 30, 70),  // Young green
+    color(120, 25, 80), // Fresh leaf
+    color(45, 60, 90),  // Golden accent
+  ];
+  
+  // Initialize trunk
+  branches.push(new Branch(width / 2, height, -PI / 2, height * 0.22, 12));
+  
+  // Generate initial tree
+  for (let i = 0; i < 8; i++) {
+    growTree();
+  }
+}
+
+function growTree() {
+  let newBranches = [];
+  for (let b of branches) {
+    if (b.depth < 10 && b.len > 8) {
+      // Left branch
+      let angle1 = random(-PI / 4, -PI / 8);
+      let len1 = b.len * random(0.65, 0.8);
+      let newB1 = new Branch(b.endX, b.endY, b.angle + angle1, len1, b.depth + 1);
+      newBranches.push(newB1);
+      
+      // Right branch
+      let angle2 = random(PI / 8, PI / 4);
+      let len2 = b.len * random(0.65, 0.8);
+      let newB2 = new Branch(b.endX, b.endY, b.angle + angle2, len2, b.depth + 1);
+      newBranches.push(newB2);
+    }
+  }
+  branches = branches.concat(newBranches);
+}
+
+function draw() {
+  background(10, 15, 8);
+  time += 0.008;
+  
+  // Ambient glow
+  noStroke();
+  for (let i = 3; i > 0; i--) {
+    fill(45, 40, 15, 3);
+    ellipse(width / 2, height * 0.3, width * 0.6 * i / 2, height * 0.4 * i / 2);
+  }
+  
+  // Draw branches
+  branches.sort((a, b) => a.depth - b.depth);
+  
+  for (let b of branches) {
+    b.update();
+    b.display();
+  }
+  
+  // Add subtle floating particles
+  drawParticles();
+}
+
+function drawParticles() {
+  noStroke();
+  for (let i = 0; i < 30; i++) {
+    let x = (noise(i * 0.5, time * 0.3) - 0.5) * width;
+    let y = height - noise(i * 0.7, time * 0.2) * height * 0.9;
+    let size = noise(i, time * 0.5) * 3 + 1;
+    let alpha = noise(i * 0.3, time * 0.4) * 30 + 10;
+    fill(45, 20, 80, alpha);
+    ellipse(x, y, size, size);
+  }
+}
+
+class Branch {
+  constructor(x, y, angle, len, depth) {
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.len = len;
+    this.depth = depth;
+    this.swayOffset = random(1000);
+    this.baseAngle = angle;
+    
+    this.endX = x + cos(angle) * len;
+    this.endY = y + sin(angle) * len;
+  }
+  
+  update() {
+    // Organic sway
+    let sway = sin(time * 2 + this.swayOffset) * 0.02 * this.depth;
+    this.angle = this.baseAngle + sway;
+    
+    // Update end position
+    this.endX = this.x + cos(this.angle) * this.len;
+    this.endY = this.y + sin(this.angle) * this.len;
+  }
+  
+  display() {
+    let col = palette[min(this.depth % palette.length, palette.length - 1)];
+    let hue = hue(col);
+    let sat = saturation(col);
+    let bri = brightness(col);
+    
+    // Deeper branches are darker
+    bri *= map(this.depth, 0, 10, 1, 0.5);
+    
+    stroke(hue, sat, bri, 90);
+    strokeWeight(map(this.depth, 0, 10, 12, 1));
+    line(this.x, this.y, this.endX, this.endY);
+    
+    // Add subtle highlight on newer branches
+    if (this.depth > 3) {
+      stroke(hue, sat * 0.5, 100, 20);
+      strokeWeight(0.5);
+      line(this.x, this.y - 1, this.endX, this.endY - 1);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+// Mouse click grows more branches
+function mousePressed() {
+  for (let i = 0; i < 3; i++) {
+    growTree();
+  }
+}
+</script>
+</body>
+</html>

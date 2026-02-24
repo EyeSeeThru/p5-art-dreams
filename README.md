@@ -32,6 +32,7 @@ The project cycles through different technique categories to ensure variety:
 | akashic-brush | Painterly | Brush strokes on textured canvas |
 | iso-density | Noise | Perlin noise flow field |
 | cellular-tessellation | Geometry | Hexagonal grid with pulsing cells |
+| chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
 | quantum-foam | Physics | Quantum foam visualization |
 | neural-bloom | Networks | Neural network-inspired patterns |
 | orbital-decay | Physics | Orbital mechanics simulation |
@@ -45,6 +46,7 @@ The project cycles through different technique categories to ensure variety:
 | chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
 | voronoi-dreams | Geometry | Voronoi cells influenced by moving attractors with pulsing glow |
 | diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
+| fractal-canopy | Fractals | Recursive branching tree with organic sway and golden hour palette |
 | lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
 | menger-sponge | Fractals | 3D Menger sponge fractal with animated rotation and color cycling |
 | neon-streaming | Noise | Glowing particle streams with Perlin flow field and trail effects |
