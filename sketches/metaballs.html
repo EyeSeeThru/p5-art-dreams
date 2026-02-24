@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metaballs — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Metaballs — Organic blob dynamics using marching squares
+// Technique: Implicit surfaces, marching squares algorithm
+
+let balls = [];
+const NUM_BALLS = 12;
+const GRID_SIZE = 8;
+let cols, rows;
+let grid = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  cols = floor(width / GRID_SIZE) + 1;
+  rows = floor(height / GRID_SIZE) + 1;
+  
+  // Initialize metaballs with random positions and velocities
+  for (let i = 0; i < NUM_BALLS; i++) {
+    balls.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-2, 2),
+      vy: random(-2, 2),
+      radius: random(40, 80),
+      hue: random(280, 340) // Purples, magentas, pinks
+    });
+  }
+}
+
+function draw() {
+  background(240, 20, 5); // Dark background
+  
+  // Update ball positions
+  for (let b of balls) {
+    b.x += b.vx;
+    b.y += b.vy;
+    
+    // Bounce off edges
+    if (b.x < b.radius || b.x > width - b.radius) b.vx *= -1;
+    if (b.y < b.radius || b.y > height - b.radius) b.vy *= -1;
+    
+    // Keep in bounds
+    b.x = constrain(b.x, b.radius, width - b.radius);
+    b.y = constrain(b.y, b.radius, height - b.radius);
+  }
+  
+  // Calculate field values at each grid point
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let px = x * GRID_SIZE;
+      let py = y * GRID_SIZE;
+      let sum = 0;
+      
+      for (let b of balls) {
+        let d = dist(px, py, b.x, b.y);
+        // Metaball formula: r²/d²
+        let r = b.radius * 1.5;
+        if (d < r * 3) {
+          sum += (r * r) / (d * d + 0.001);
+        }
+      }
+      
+      grid[y * cols + x] = sum;
+    }
+  }
+  
+  // Marching squares
+  noStroke();
+  
+  for (let y = 0; y < rows - 1; y++) {
+    for (let x = 0; x < cols - 1; x++) {
+      let x0 = x * GRID_SIZE;
+      let y0 = y * GRID_SIZE;
+      
+      // Get values at corners
+      let a = grid[y * cols + x];
+      let b = grid[y * cols + x + 1];
+      let c = grid[(y + 1) * cols + x + 1];
+      let d = grid[(y + 1) * cols + x];
+      
+      let threshold = 1.0;
+      
+      // Calculate case (0-15)
+      let caseNum = 0;
+      if (a > threshold) caseNum |= 8;
+      if (b > threshold) caseNum |= 4;
+      if (c > threshold) caseNum |= 2;
+      if (d > threshold) caseNum |= 1;
+      
+      // Interpolate edge points
+      let ab = lerpP(a, b, threshold);
+      let bc = lerpP(b, c, threshold);
+      let cd = lerpP(c, d, threshold);
+      let da = lerpP(d, a, threshold);
+      
+      // Draw based on case
+      let avgVal = (a + b + c + d) / 4;
+      let hue = map(avgVal, 0.5, 2, 280, 340);
+      let sat = map(avgVal, 0.5, 2, 60, 90);
+      let bri = map(avgVal, 0.5, 3, 40, 100);
+      
+      fill(hue, sat, bri, 0.85);
+      
+      drawCase(caseNum, x0, y0, ab, bc, cd, da);
+    }
+  }
+  
+  // Draw subtle glow orbs at ball centers
+  for (let b of balls) {
+    let glowSize = b.radius * 2;
+    let gradient = drawingContext.createRadialGradient(b.x, b.y, 0, b.x, b.y, glowSize);
+    gradient.addColorStop(0, `hsla(${b.hue}, 80%, 70%, 0.3)`);
+    gradient.addColorStop(1, `hsla(${b.hue}, 80%, 50%, 0)`);
+    drawingContext.fillStyle = gradient;
+    drawingContext.beginPath();
+    drawingContext.arc(b.x, b.y, glowSize, 0, TWO_PI);
+    drawingContext.fill();
+  }
+}
+
+function lerpP(a, b, t) {
+  if (abs(b - a) < 0.001) return 0;
+  return (t - a) / (b - a);
+}
+
+function drawCase(caseNum, x, y, ab, bc, cd, da) {
+  let g = GRID_SIZE;
+  
+  switch(caseNum) {
+    case 1:  quad(x + g*da, y + g, x, y + g*cd, x, y + g, x + g*da, y + g); break;
+    case 2:  quad(x + g, y + g*bc, x + g, y + g, x + g*cd, y + g, x + g, y + g*bc); break;
+    case 3:  quad(x + g*da, y + g, x + g, y + g, x + g, y + g*bc, x, y + g*cd); break;
+    case 4:  quad(x + g*ab, y, x + g, y, x + g, y + g*bc, x + g*bc, y + g); break;
+    case 5:  quad(x + g*ab, y, x + g*da, y + g, x + g*cd, y + g, x + g*bc, y + g); 
+             quad(x + g*ab, y, x + g*bc, y + g, x + g*ab, y + g, x, y + g*da); break;
+    case 6:  quad(x + g*ab, y, x + g, y, x + g, y + g, x + g*cd, y + g); break;
+    case 7:  quad(x + g*ab, y, x + g*da, y + g, x, y + g*cd, x + g*cd, y + g); break;
+    case 8:  quad(x, y + g*da, x + g*ab, y, x + g*ab, y, x, y); break;
+    case 9:  quad(x, y + g*da, x + g*ab, y, x + g*bc, y + g, x, y + g); break;
+    case 10: quad(x, y + g*da, x + g*ab, y, x + g, y, x + g, y + g*bc, x + g*bc, y + g, x, y + g); break;
+    case 11: quad(x, y + g*da, x + g*ab, y, x + g, y, x + g, y + g*bc); break;
+    case 12: quad(x, y, x + g, y, x + g, y + g*bc, x + g*cd, y + g); break;
+    case 13: quad(x, y, x + g, y, x + g, y + g*bc, x + g*cd, y + g, x + g*da, y + g); break;
+    case 14: quad(x, y, x + g*ab, y, x + g*ab, y + g, x + g*cd, y + g, x + g, y + g); break;
+    case 15: quad(x, y, x + g, y, x + g, y + g, x, y + g); break;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / GRID_SIZE) + 1;
+  rows = floor(height / GRID_SIZE) + 1;
+  grid = new Array(cols * rows).fill(0);
+}
+</script>
+</body>
+</html>

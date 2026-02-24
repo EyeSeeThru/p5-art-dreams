@@ -57,6 +57,7 @@ The project cycles through different technique categories to ensure variety:
 | recursive-polygons | Fractals | Nested geometric shapes with recursive subdivision |
 | wave-particles | Physics+Noise | Wave interference combined with particle dynamics |
 | turbulent-flow | Noise | Perlin noise flow field with particle trails and spectral colors |
+| metaballs | Geometry | Organic blob dynamics using marching squares algorithm |
 
 ...and more.
 
