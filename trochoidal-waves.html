@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trochoidal Waves</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Trochoidal Waves - Parametric curves creating mesmerizing geometric patterns
+// Inspired by epicycloids and hypocycloids
+
+let t = 0;
+let particles = [];
+const NUM_PARTICLES = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noFill();
+  
+  // Initialize particles with random starting positions
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push({
+      r: random(50, 400),        // Radius of rolling circle
+      d: random(20, 150),         // Radius of tracing point
+      phase: random(TWO_PI),      // Initial phase
+      hue: random(160, 280),      // Blue-cyan-purple range
+      speed: random(0.002, 0.008) // Animation speed
+    });
+  }
+}
+
+function draw() {
+  // Semi-transparent background for trail effect
+  background(10, 5, 8, 8);
+  
+  translate(width / 2, height / 2);
+  
+  // Draw multiple layers of trochoidal patterns
+  for (let i = 0; i < particles.length; i++) {
+    let p = particles[i];
+    
+    // Trochoid parameters
+    let R = p.r * (1 + 0.3 * sin(t * 0.1 + i * 0.01));
+    let r = p.d;
+    let d = r * 1.5;
+    
+    // Epicycloid/hypocycloid hybrid
+    let k = R / r;
+    let x = (R + r) * cos(t * p.speed * 50 + p.phase) - d * cos((R + r) / r * (t * p.speed * 50 + p.phase));
+    let y = (R + r) * sin(t * p.speed * 50 + p.phase) - d * sin((R + r) / r * (t * p.speed * 50 + p.phase));
+    
+    // Scale and position
+    let scaleFactor = min(width, height) / 1000;
+    x *= scaleFactor;
+    y *= scaleFactor;
+    
+    // Dynamic color based on position and time
+    let hue = (p.hue + t * 5 + x * 0.1) % 360;
+    let sat = 70 + 30 * sin(t * 0.02 + i * 0.1);
+    let bri = 80 + 20 * cos(t * 0.015 + y * 0.05);
+    
+    stroke(hue, sat, bri, 60);
+    strokeWeight(1.5);
+    
+    // Connect to create web-like patterns
+    if (i > 0) {
+      let prev = particles[i - 1];
+      let prevR = prev.r * (1 + 0.3 * sin(t * 0.1 + (i - 1) * 0.01));
+      let prevR_r = prev.d;
+      let prevD = prevR_r * 1.5;
+      let prevX = (prevR + prevR_r) * cos(t * prev.speed * 50 + prev.phase) - prevD * cos((prevR + prevR_r) / prevR_r * (t * prev.speed * 50 + prev.phase));
+      let prevY = (prevR + prevR_r) * sin(t * prev.speed * 50 + prev.phase) - prevD * sin((prevR + prevR_r) / prevR_r * (t * prev.speed * 50 + prev.phase));
+      prevX *= scaleFactor;
+      prevY *= scaleFactor;
+      
+      let dist = sqrt(pow(x - prevX, 2) + pow(y - prevY, 2));
+      if (dist < 80) {
+        stroke(hue, sat - 20, bri, 40 * (1 - dist / 80));
+        line(prevX, prevY, x, y);
+      }
+    }
+    
+    // Draw the point
+    stroke(hue, sat, bri, 80);
+    point(x, y);
+  }
+  
+  // Add central glow
+  let glowSize = 50 + 30 * sin(t * 0.03);
+  for (let i = 5; i > 0; i--) {
+    noStroke();
+    fill(200, 80, 20, 3);
+    ellipse(0, 0, glowSize * i, glowSize * i);
+  }
+  
+  t += 0.01;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

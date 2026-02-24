@@ -24,6 +24,7 @@ The project cycles through different technique categories to ensure variety:
 |--------|-----------|-------------|
 | wave-interference | Physics | Wave interference patterns with multiple sources |
 
+| trochoidal-waves | Math | Parametric trochoid curves creating mesmerizing geometric patterns |
 | thermal-drift | Shaders | GLSL shader with FBM noise, thermal color palette |
 | turing-patterns | Cellular | Reaction-diffusion patterns creating spots and stripes |
 | coriolis-field | Physics | Particle simulation with Coriolis force |
