@@ -124,20 +124,20 @@ class Branch {
   
   display() {
     let col = palette[min(this.depth % palette.length, palette.length - 1)];
-    let hue = hue(col);
+    let h = hue(col);
     let sat = saturation(col);
     let bri = brightness(col);
     
     // Deeper branches are darker
     bri *= map(this.depth, 0, 10, 1, 0.5);
     
-    stroke(hue, sat, bri, 90);
+    stroke(h, sat, bri, 90);
     strokeWeight(map(this.depth, 0, 10, 12, 1));
     line(this.x, this.y, this.endX, this.endY);
     
     // Add subtle highlight on newer branches
     if (this.depth > 3) {
-      stroke(hue, sat * 0.5, 100, 20);
+      stroke(h, sat * 0.5, 100, 20);
       strokeWeight(0.5);
       line(this.x, this.y - 1, this.endX, this.endY - 1);
     }
