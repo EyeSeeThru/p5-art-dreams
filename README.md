@@ -44,6 +44,7 @@ The project cycles through different technique categories to ensure variety:
 | voronoi-dreams | Geometry | Voronoi cells influenced by moving attractors with pulsing glow |
 | diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
 | lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
+| menger-sponge | Fractals | 3D Menger sponge fractal with animated rotation and color cycling |
 | phyllotaxis-bloom | Math | Golden angle spiral patterns with emergent flower-like bloom |
 | moire-weave | Physics | Overlapping oscillating grids creating interference moire patterns |
 | concentric-tensions | Geometry | Oscillating concentric rings with connecting tension lines |
