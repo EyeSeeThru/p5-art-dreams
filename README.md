@@ -25,6 +25,7 @@ The project cycles through different technique categories to ensure variety:
 | wave-interference | Physics | Wave interference patterns with multiple sources |
 
 | thermal-drift | Shaders | GLSL shader with FBM noise, thermal color palette |
+| turing-patterns | Cellular | Reaction-diffusion patterns creating spots and stripes |
 | coriolis-field | Physics | Particle simulation with Coriolis force |
 | reaction-diffusion | Cellular | Gray-Scott reaction-diffusion model |
 | akashic-brush | Painterly | Brush strokes on textured canvas |
