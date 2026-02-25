@@ -47,6 +47,7 @@ The project cycles through different technique categories to ensure variety:
 | void-geometry | Geometry | Abstract void geometry |
 | recursive-ember | Fractals | Recursive fractal embers rising with glowing particles |
 | chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
+| plasma-field | Shaders | Animated plasma effect with color cycling |
 | chladni-patterns | Math | Standing wave interference patterns creating geometric sand art |
 | voronoi-dreams | Geometry | Voronoi cells influenced by moving attractors with pulsing glow |
 | diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
