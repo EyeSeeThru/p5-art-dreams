@@ -59,6 +59,7 @@ The project cycles through different technique categories to ensure variety:
 | wave-particles | Physics+Noise | Wave interference combined with particle dynamics |
 | turbulent-flow | Noise | Perlin noise flow field with particle trails and spectral colors |
 | metaballs | Geometry | Organic blob dynamics using marching squares algorithm |
+| crystal-growth | Cellular | Procedural crystal growth visualization with glowing edges |
 
 ...and more.
 

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crystal Growth</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const CELL_SIZE = 8;
+const GROWTH_RATE = 0.02;
+let grid = [];
+let cols, rows;
+let activeCells = [];
+let colors;
+let frame = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = floor(width / CELL_SIZE);
+  rows = floor(height / CELL_SIZE);
+  
+  colors = [
+    color(180, 220, 255),
+    color(140, 200, 255),
+    color(100, 180, 255),
+    color(60, 150, 255),
+    color(40, 120, 220),
+    color(30, 90, 180),
+    color(20, 60, 140),
+  ];
+  
+  // Initialize grid
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = 0;
+    }
+  }
+  
+  // Start from center
+  let cx = floor(cols / 2);
+  let cy = floor(rows / 2);
+  grid[cx][cy] = 1;
+  activeCells.push({x: cx, y: cy});
+  
+  background(10, 10, 15);
+}
+
+function draw() {
+  if (activeCells.length === 0) return;
+  
+  // Process some cells
+  let toAdd = [];
+  let toRemove = [];
+  
+  for (let i = 0; i < activeCells.length; i++) {
+    let cell = activeCells[i];
+    
+    if (random() < GROWTH_RATE) {
+      let neighbors = getEmptyNeighbors(cell.x, cell.y);
+      if (neighbors.length > 0) {
+        let next = random(neighbors);
+        grid[next.x][next.y] = min(grid[cell.x][cell.y] + 1, colors.length - 1);
+        toAdd.push(next);
+      }
+    }
+    
+    if (random() < 0.001) {
+      toRemove.push(i);
+    }
+  }
+  
+  for (let n of toAdd) {
+    activeCells.push({x: n.x, y: n.y});
+  }
+  
+  toRemove.sort((a, b) => b - a);
+  for (let i of toRemove) {
+    activeCells.splice(i, 1);
+  }
+  
+  // Draw new cells
+  for (let n of toAdd) {
+    let c = colors[grid[n.x][n.y]];
+    fill(c);
+    noStroke();
+    rect(n.x * CELL_SIZE, n.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    
+    // Add glow
+    fill(red(c), green(c), blue(c), 30);
+    rect(n.x * CELL_SIZE - 2, n.y * CELL_SIZE - 2, CELL_SIZE + 4, CELL_SIZE + 4);
+  }
+  
+  frame++;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(10, 10, 15);
+}
+</script>
+</body>
+</html>
