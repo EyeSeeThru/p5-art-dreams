@@ -62,6 +62,7 @@ The project cycles through different technique categories to ensure variety:
 - **metaballs** — Organic blob dynamics using marching squares algorithm
 - **crystal-growth** — Procedural crystal growth visualization with glowing edges
 - **lichtenberg-figures** — Fractal branching electrical discharge patterns with glowing trails
+- **caustic-dreams** — Underwater light caustics with animated ray patterns and floor interference
 
 ...and more.
 

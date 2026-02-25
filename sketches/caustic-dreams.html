@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caustic Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a12; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Caustic Dreams — Light caustics visualization
+// Exploring underwater light patterns through ray marching and noise
+
+let t = 0;
+const N_CAUSTICS = 12;
+const rays = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  noStroke();
+  
+  // Initialize light rays from above
+  for (let i = 0; i < N_CAUSTICS; i++) {
+    rays.push({
+      x: random(width),
+      speed: random(0.3, 1.2),
+      phase: random(TWO_PI),
+      intensity: random(0.6, 1.0),
+      freq: random(0.008, 0.025),
+      amp: random(15, 40)
+    });
+  }
+}
+
+function draw() {
+  // Deep water gradient background
+  background(8, 12, 24);
+  
+  // Add subtle gradient overlay
+  for (let y = 0; y < height; y += 4) {
+    let inter = map(y, 0, height, 0, 1);
+    let c = lerpColor(color(20, 40, 60), color(5, 15, 35), inter);
+    fill(c);
+    rect(0, y, width, 4);
+  }
+  
+  // Draw caustic light patterns
+  blendMode(ADD);
+  
+  for (let ray of rays) {
+    drawCaustic(ray);
+  }
+  
+  blendMode(BLEND);
+  
+  // Add water surface shimmer at top
+  drawSurfaceShimmer();
+  
+  t += 0.02;
+}
+
+function drawCaustic(ray) {
+  const { x, speed, phase, intensity, freq, amp } = ray;
+  
+  // Moving x position with wave motion
+  let xPos = x + sin(t * speed + phase) * 80;
+  xPos = (xPos + width) % (width + 200) - 100;
+  
+  // Caustic light cones
+  for (let i = 0; i < 8; i++) {
+    let yBase = height * 0.15 + i * (height * 0.1);
+    let spread = map(i, 0, 8, 30, 200);
+    
+    // Animated spread
+    spread += sin(t * 0.5 + i * 0.5 + phase) * amp * 0.5;
+    
+    // Caustic brightness (brightest near source, scattering as it goes down)
+    let brightness = intensity * map(i, 0, 8, 0.8, 0.15);
+    brightness *= (0.7 + 0.3 * sin(t * speed * 2 + i * freq * 100));
+    
+    // Color based on depth — cyan to deep blue
+    let r = brightness * 20;
+    let g = brightness * 80 + i * 15;
+    let b = brightness * 120 + i * 20;
+    
+    // Draw light cone
+    fill(r, g, b, brightness * 40);
+    
+    beginShape();
+    vertex(xPos - 5, yBase);
+    vertex(xPos + 5, yBase);
+    vertex(xPos + spread, height);
+    vertex(xPos - spread, height);
+    endShape(CLOSE);
+    
+    // Add bright center line
+    fill(r * 1.5, g * 1.5, b * 1.5, brightness * 25);
+    beginShape();
+    vertex(xPos - 2, yBase);
+    vertex(xPos + 2, yBase);
+    vertex(xPos + spread * 0.4, height);
+    vertex(xPos - spread * 0.4, height);
+    endShape(CLOSE);
+  }
+  
+  // Interference patterns on the "floor"
+  drawFloorCaustics(xPos, intensity);
+}
+
+function drawFloorCaustics(xPos, intensity) {
+  const floorY = height - 60;
+  
+  // Multiple layers of caustic patterns
+  for (let layer = 0; layer < 3; layer++) {
+    let layerOffset = layer * 40;
+    let layerScale = 0.02 + layer * 0.01;
+    let layerBright = intensity * (0.4 - layer * 0.1);
+    
+    for (let x = -50; x < width + 50; x += 3) {
+      // Calculate caustic pattern using overlapping sine waves
+      let n1 = sin(x * layerScale + t * 0.5 + layer);
+      let n2 = sin(x * layerScale * 1.7 - t * 0.3 + layer * 2);
+      let n3 = sin((x + xPos) * layerScale * 0.8 + t * 0.4);
+      
+      let caustic = (n1 + n2 + n3) / 3;
+      caustic = pow(abs(caustic), 1.5) * layerBright;
+      
+      let alpha = caustic * 60;
+      let r = caustic * 40;
+      let g = caustic * 120;
+      let b = caustic * 180;
+      
+      fill(r, g, b, alpha);
+      rect(x, floorY + layerOffset, 3, 40 + layer * 20);
+    }
+  }
+}
+
+function drawSurfaceShimmer() {
+  // Light coming through water surface
+  for (let x = 0; x < width; x += 8) {
+    let shimmer = sin(x * 0.05 + t * 2) * 0.5 + 0.5;
+    shimmer *= sin(x * 0.02 - t * 1.5) * 0.5 + 0.5;
+    
+    let y = height * 0.1 + sin(x * 0.03 + t) * 20;
+    
+    fill(100, 180, 220, shimmer * 30);
+    ellipse(x, y, 4 + shimmer * 8, 2 + shimmer * 4);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Reinitialize rays for new width
+  rays.length = 0;
+  for (let i = 0; i < N_CAUSTICS; i++) {
+    rays.push({
+      x: random(width),
+      speed: random(0.3, 1.2),
+      phase: random(TWO_PI),
+      intensity: random(0.6, 1.0),
+      freq: random(0.008, 0.025),
+      amp: random(15, 40)
+    });
+  }
+}
+</script>
+</body>
+</html>
