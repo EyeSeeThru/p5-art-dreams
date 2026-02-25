@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spirograph Harmonics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Spirograph Harmonics - Multiple rotating arms creating intricate geometric patterns
+// Technique: Math (Parametric curves with harmonic oscillation)
+
+let arms = [];
+let numArms = 7;
+let trail = [];
+let maxTrail = 800;
+let hueOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Create rotating arms with different properties
+  for (let i = 0; i < numArms; i++) {
+    arms.push({
+      length: map(i, 0, numArms - 1, 80, 350),
+      speed: map(i, 0, numArms - 1, 0.02, 0.08) * (i % 2 === 0 ? 1 : -1),
+      phase: (TWO_PI / numArms) * i,
+      armWidth: map(i, 0, numArms - 1, 4, 1)
+    });
+  }
+  
+  background(0);
+}
+
+function draw() {
+  // Semi-transparent overlay for fade effect
+  noStroke();
+  fill(0, 0, 0, 3);
+  rect(0, 0, width, height);
+  
+  let centerX = width / 2;
+  let centerY = height / 2;
+  
+  // Calculate end point from all arms
+  let x = centerX;
+  let y = centerY;
+  
+  for (let arm of arms) {
+    let angle = arm.phase + frameCount * arm.speed;
+    x += cos(angle) * arm.length;
+    y += sin(angle) * arm.length;
+  }
+  
+  // Add to trail
+  trail.push({ x, y, age: 0 });
+  
+  // Limit trail length
+  if (trail.length > maxTrail) {
+    trail.shift();
+  }
+  
+  // Age the trail
+  for (let i = trail.length - 1; i >= 0; i--) {
+    trail[i].age++;
+    if (trail[i].age > 150) {
+      trail.splice(i, 1);
+    }
+  }
+  
+  // Draw trail with gradient colors
+  noFill();
+  
+  for (let i = 1; i < trail.length; i++) {
+    let t = i / trail.length;
+    let age = map(trail[i].age, 0, 150, 0, 1);
+    let h = (hueOffset + t * 180 + i * 0.5) % 360;
+    let s = map(t, 0, 1, 80, 60);
+    let b = map(t, 0, 1, 100, 70);
+    let alpha = map(t, 0, 1, 90, 20) * (1 - age * 0.7);
+    
+    stroke(h, s, b, alpha);
+    strokeWeight(map(t, 0, 1, 3, 1));
+    line(trail[i - 1].x, trail[i - 1].y, trail[i].x, trail[i].y);
+  }
+  
+  // Draw current point
+  if (trail.length > 0) {
+    let pt = trail[trail.length - 1];
+    noStroke();
+    fill((hueOffset + 180) % 360, 60, 100, 80);
+    circle(pt.x, pt.y, 12);
+    
+    // Glow effect
+    fill((hueOffset + 180) % 360, 60, 100, 30);
+    circle(pt.x, pt.y, 25);
+  }
+  
+  // Slowly rotate hue
+  hueOffset = (hueOffset + 0.3) % 360;
+  
+  // Occasionally reset trail for variety
+  if (frameCount % 600 === 0 && frameCount > 100) {
+    background(0);
+    trail = [];
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+  trail = [];
+}
+
+function mousePressed() {
+  // Reset on click
+  background(0);
+  trail = [];
+  
+  // Randomize arm speeds
+  for (let arm of arms) {
+    arm.speed = random(0.01, 0.1) * (random() > 0.5 ? 1 : -1);
+  }
+}
+</script>
+</body>
+</html>

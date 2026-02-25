@@ -22,6 +22,8 @@ The project cycles through different technique categories to ensure variety:
 
 | Sketch | Technique | Description |
 |--------|-----------|-------------|
+| spirograph-harmonics | Math | Parametric curves with multiple rotating arms creating intricate geometric patterns |
+
 | wave-interference | Physics | Wave interference patterns with multiple sources |
 
 | wave-particle-duality | Physics+Noise | Particles exhibiting wave-particle duality with interference patterns |
