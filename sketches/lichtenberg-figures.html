@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lichtenberg Figures</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Lichtenberg Figures - Fractal branching patterns
+let branches = [];
+let particles = [];
+const MAX_PARTICLES = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  background(0);
+  
+  // Initialize main discharge points
+  let startPoints = [
+    createVector(width * 0.2, height),
+    createVector(width * 0.5, height),
+    createVector(width * 0.8, height),
+    createVector(width * 0.3, height * 0.5),
+    createVector(width * 0.7, height * 0.5)
+  ];
+  
+  for (let pt of startPoints) {
+    // Create initial branches
+    for (let i = 0; i < 3; i++) {
+      let angle = -PI/2 + random(-0.8, 0.8);
+      let vel = p5.Vector.fromAngle(angle).mult(random(2, 4));
+      branches.push(new Branch(pt.x, pt.y, vel, 0));
+    }
+  }
+}
+
+function draw() {
+  // Fade effect for trails
+  noStroke();
+  fill(0, 0.03);
+  rect(0, 0, width, height);
+  
+  // Update and draw branches
+  for (let i = branches.length - 1; i >= 0; i--) {
+    branches[i].update();
+    branches[i].display();
+    
+    // Chance to branch
+    if (branches[i].canBranch() && random() < 0.04) {
+      let newVel = branches[i].vel.copy();
+      newVel.rotate(random(-0.6, 0.6));
+      newVel.mult(0.85);
+      branches.push(new Branch(
+        branches[i].pos.x, 
+        branches[i].pos.y, 
+        newVel, 
+        branches[i].depth + 1
+      ));
+    }
+    
+    // Remove dead branches
+    if (branches[i].isDead()) {
+      branches.splice(i, 1);
+    }
+  }
+  
+  // Spawn new branches periodically
+  if (frameCount % 60 === 0 && branches.length < 300) {
+    let y = height * random(0.9, 1.0);
+    let x = width * random(0.2, 0.8);
+    for (let i = 0; i < 2; i++) {
+      let angle = -PI/2 + random(-0.5, 0.5);
+      let vel = p5.Vector.fromAngle(angle).mult(random(2, 4));
+      branches.push(new Branch(x, y, vel, 0));
+    }
+  }
+  
+  // Add glow particles
+  if (particles.length < MAX_PARTICLES && branches.length > 0) {
+    let sourceBranch = random(branches);
+    if (sourceBranch && !sourceBranch.isDead()) {
+      particles.push(new Particle(sourceBranch.pos.x, sourceBranch.pos.y));
+    }
+  }
+  
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    particles[i].display();
+    if (particles[i].isDead()) {
+      particles.splice(i, 1);
+    }
+  }
+}
+
+class Branch {
+  constructor(x, y, vel, depth) {
+    this.pos = createVector(x, y);
+    this.vel = vel;
+    this.depth = depth;
+    this.life = 255;
+    this.maxLife = random(80, 180);
+    this.width = map(depth, 0, 5, 3, 0.5);
+    this.hue = random(340, 380) % 360;
+  }
+  
+  update() {
+    this.pos.add(this.vel);
+    this.vel.rotate(random(-0.1, 0.1));
+    this.vel.mult(0.99);
+   (0.99);
+    this.life -= 255 / this.maxLife;
+  }
+  
+  display() {
+    let alpha = map(this.life, 0, 255, 0, 1);
+    let sat = map(this.depth, 0, 5, 90, 60);
+    let bri = map(this.depth, 0, 5, 100, 70);
+    
+    stroke(this.hue, sat, bri, alpha);
+    strokeWeight(this.width);
+    point(this.pos.x, this.pos.y);
+    
+    // Glow effect
+    for (let g = 1; g <= 3; g++) {
+      stroke(this.hue, sat - 20, bri, alpha * 0.3 / g);
+      strokeWeight(this.width + g * 2);
+      point(this.pos.x, this.pos.y);
+    }
+  }
+  
+  canBranch() {
+    return this.depth < 4 && this.life > 50;
+  }
+  
+  isDead() {
+    return this.life <= 0 || 
+           this.pos.x < 0 || this.pos.x > width ||
+           this.pos.y < 0 || this.pos.y > height;
+  }
+}
+
+class Particle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = p5.Vector.random2D().mult(random(0.5, 2));
+    this.life = 255;
+    this.hue = random(340, 380) % 360;
+  }
+  
+  update() {
+    this.pos.add(this.vel);
+    this.vel.mult(0.98);
+    this.life -= 4;
+  }
+  
+  display() {
+    let alpha = map(this.life, 0, 255, 0, 0.8);
+    noStroke();
+    fill(this.hue, 70, 100, alpha);
+    let size = map(this.life, 0, 255, 0, 3);
+    ellipse(this.pos.x, this.pos.y, size);
+  }
+  
+  isDead() {
+    return this.life <= 0;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>

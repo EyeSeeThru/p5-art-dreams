@@ -22,6 +22,8 @@ The project cycles through different technique categories to ensure variety:
 
 | Sketch | Technique | Description |
 |--------|-----------|-------------|
+| dla-clusters | Cellular | Diffusion Limited Aggregation with wandering particles forming crystalline clusters |
+
 | spirograph-harmonics | Math | Parametric curves with multiple rotating arms creating intricate geometric patterns |
 
 | wave-interference | Physics | Wave interference patterns with multiple sources |
@@ -66,6 +68,7 @@ The project cycles through different technique categories to ensure variety:
 | turbulent-flow | Noise | Perlin noise flow field with particle trails and spectral colors |
 | metaballs | Geometry | Organic blob dynamics using marching squares algorithm |
 | crystal-growth | Cellular | Procedural crystal growth visualization with glowing edges |
+| lichtenberg-figures | Fractals | Fractal branching electrical discharge patterns with glowing trails |
 
 ...and more.
 
