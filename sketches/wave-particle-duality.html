@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wave-Particle Duality</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Wave-Particle Duality
+// Explores the quantum mechanical concept where particles exhibit both wave and particle behavior
+
+const particles = [];
+const NUM_PARTICLES = 800;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  // Initialize particles with wave-like and particle-like properties
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  // Trail effect with fade
+  fill(0, 0, 0, 0.08);
+  rect(0, 0, width, height);
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Draw wave interference background pattern
+  drawWaveField();
+  
+  time += 0.01;
+}
+
+function drawWaveField() {
+  // Subtle wave field visualization
+  const cols = 20;
+  const rows = 15;
+  const cellW = width / cols;
+  const cellH = height / rows;
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const x = i * cellW + cellW / 2;
+      const y = j * cellH + cellH / 2;
+      
+      const wave1 = sin(x * 0.01 + time * 2) * cos(y * 0.01 - time);
+      const wave2 = sin(sqrt(x * x + y * y) * 0.02 - time * 3);
+      const interference = (wave1 + wave2) * 0.5;
+      
+      const hue = map(interference, -1, 1, 180, 280);
+      const alpha = map(interference, -1, 1, 0, 0.15);
+      
+      fill(hue, 60, 80, alpha);
+      ellipse(x, y, cellW * 0.8, cellH * 0.8);
+    }
+  }
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+    // Start at random positions
+    this.pos = createVector(random(width), random(height));
+  }
+  
+  reset() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(2, 4);
+    this.hue = random(160, 280);
+    this.size = random(2, 6);
+    // Each particle has a "wave phase" for oscillation
+    this.phase = random(TWO_PI);
+    this.waveAmplitude = random(0.5, 2);
+  }
+  
+  update() {
+    // Wave-like behavior: oscillate with interference pattern
+    const waveX = sin(this.pos.x * 0.005 + time * 2 + this.phase) * this.waveAmplitude;
+    const waveY = cos(this.pos.y * 0.005 + time * 1.5 + this.phase) * this.waveAmplitude;
+    
+    // Particle-like behavior: velocity with momentum
+    const angle = atan2(waveY, waveX) + noise(this.pos.x * 0.001, this.pos.y * 0.001, time) * TWO_PI;
+    
+    // Combine wave and particle forces
+    const waveForce = p5.Vector.fromAngle(angle).mult(0.3);
+    const interferenceForce = this.getInterferenceForce();
+    
+    this.acc.add(waveForce);
+    this.acc.add(interferenceForce.mult(0.5));
+    
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+    
+    // Damping for smooth motion
+    this.vel.mult(0.98);
+    
+    // Wrap around edges
+    if (this.pos.x < 0) this.pos.x = width;
+    if (this.pos.x > width) this.pos.x = 0;
+    if (this.pos.y < 0) this.pos.y = height;
+    if (this.pos.y > height) this.pos.y = 0;
+  }
+  
+  getInterferenceForce() {
+    // Calculate wave interference at particle position
+    const wave1 = sin(this.pos.x * 0.01 + time * 2);
+    const wave2 = cos(this.pos.y * 0.01 - time * 1.5);
+    const wave3 = sin((this.pos.x + this.pos.y) * 0.007 + time);
+    
+    const interference = (wave1 + wave2 + wave3) / 3;
+    const angle = interference * TWO_PI;
+    
+    return p5.Vector.fromAngle(angle).mult(0.5);
+  }
+  
+  display() {
+    // Particle glow effect
+    const speed = this.vel.mag();
+    const brightness = map(speed, 0, this.maxSpeed, 50, 100);
+    const size = map(speed, 0, this.maxSpeed, this.size * 0.5, this.size * 1.5);
+    
+    // Outer glow
+    fill(this.hue, 70, brightness, 0.3);
+    ellipse(this.pos.x, this.pos.y, size * 3, size * 3);
+    
+    // Core
+    fill(this.hue, 60, brightness, 0.9);
+    ellipse(this.pos.x, this.pos.y, size, size);
+    
+    // Bright center
+    fill(this.hue, 30, 100, 1);
+    ellipse(this.pos.x, this.pos.y, size * 0.4, size * 0.4);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

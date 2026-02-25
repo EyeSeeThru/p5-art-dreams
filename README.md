@@ -24,6 +24,8 @@ The project cycles through different technique categories to ensure variety:
 |--------|-----------|-------------|
 | wave-interference | Physics | Wave interference patterns with multiple sources |
 
+| wave-particle-duality | Physics+Noise | Particles exhibiting wave-particle duality with interference patterns |
+
 | trochoidal-waves | Math | Parametric trochoid curves creating mesmerizing geometric patterns |
 | thermal-drift | Shaders | GLSL shader with FBM noise, thermal color palette |
 | turing-patterns | Cellular | Reaction-diffusion patterns creating spots and stripes |
