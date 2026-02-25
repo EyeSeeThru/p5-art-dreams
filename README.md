@@ -20,55 +20,48 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
-| Sketch | Technique | Description |
-|--------|-----------|-------------|
-| dla-clusters | Cellular | Diffusion Limited Aggregation with wandering particles forming crystalline clusters |
-
-| spirograph-harmonics | Math | Parametric curves with multiple rotating arms creating intricate geometric patterns |
-
-| wave-interference | Physics | Wave interference patterns with multiple sources |
-
-| wave-particle-duality | Physics+Noise | Particles exhibiting wave-particle duality with interference patterns |
-
-| trochoidal-waves | Math | Parametric trochoid curves creating mesmerizing geometric patterns |
-| thermal-drift | Shaders | GLSL shader with FBM noise, thermal color palette |
-| turing-patterns | Cellular | Reaction-diffusion patterns creating spots and stripes |
-| coriolis-field | Physics | Particle simulation with Coriolis force |
-| reaction-diffusion | Cellular | Gray-Scott reaction-diffusion model |
-| akashic-brush | Painterly | Brush strokes on textured canvas |
-| iso-density | Noise | Perlin noise flow field |
-| cellular-tessellation | Geometry | Hexagonal grid with pulsing cells |
-| chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
-| quantum-foam | Physics | Quantum foam visualization |
-| neural-bloom | Networks | Neural network-inspired patterns |
-| orbital-decay | Physics | Orbital mechanics simulation |
-| resonance-cavities | Audio | Resonant frequency visualization |
-| stasis-field | Physics | Static field effects |
-| strange-attractors | Math | Chaotic attractor rendering |
-| perlin-vortex | Noise | Perlin noise-driven vortex field with particle trails |
-| phase-portraits | Math | Phase space visualization |
-| temporal-fractures | Fractals | Temporal fractal patterns |
-| void-geometry | Geometry | Abstract void geometry |
-| recursive-ember | Fractals | Recursive fractal embers rising with glowing particles |
-| chromatic-strata | Geometry | Abstract layered bands with emergent color blending |
-| plasma-field | Shaders | Animated plasma effect with color cycling |
-| chladni-patterns | Math | Standing wave interference patterns creating geometric sand art |
-| voronoi-dreams | Geometry | Voronoi cells influenced by moving attractors with pulsing glow |
-| diffraction-grating | Physics | Light spectrum interference patterns with multiple slits |
-| fractal-canopy | Fractals | Recursive branching tree with organic sway and golden hour palette |
-| lissajous-knots | Math | Parametric Lissajous curves forming woven knot patterns |
-| menger-sponge | Fractals | 3D Menger sponge fractal with animated rotation and color cycling |
-| neon-streaming | Noise | Glowing particle streams with Perlin flow field and trail effects |
-| phyllotaxis-bloom | Math | Golden angle spiral patterns with emergent flower-like bloom |
-| moire-weave | Physics | Overlapping oscillating grids creating interference moire patterns |
-| concentric-tensions | Geometry | Oscillating concentric rings with connecting tension lines |
-| helix-fields | Noise | Rotating helical flow fields with 3D perspective projection |
-| recursive-polygons | Fractals | Nested geometric shapes with recursive subdivision |
-| wave-particles | Physics+Noise | Wave interference combined with particle dynamics |
-| turbulent-flow | Noise | Perlin noise flow field with particle trails and spectral colors |
-| metaballs | Geometry | Organic blob dynamics using marching squares algorithm |
-| crystal-growth | Cellular | Procedural crystal growth visualization with glowing edges |
-| lichtenberg-figures | Fractals | Fractal branching electrical discharge patterns with glowing trails |
+- **dla-clusters** — Diffusion Limited Aggregation with wandering particles forming crystalline clusters
+- **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
+- **wave-interference** — Wave interference patterns with multiple sources
+- **wave-particle-duality** — Particles exhibiting wave-particle duality with interference patterns
+- **trochoidal-waves** — Parametric trochoid curves creating mesmerizing geometric patterns
+- **thermal-drift** — GLSL shader with FBM noise, thermal color palette
+- **turing-patterns** — Reaction-diffusion patterns creating spots and stripes
+- **coriolis-field** — Particle simulation with Coriolis force
+- **reaction-diffusion** — Gray-Scott reaction-diffusion model
+- **akashic-brush** — Brush strokes on textured canvas
+- **iso-density** — Perlin noise flow field
+- **cellular-tessellation** — Hexagonal grid with pulsing cells
+- **chromatic-strata** — Abstract layered bands with emergent color blending
+- **quantum-foam** — Quantum foam visualization
+- **neural-bloom** — Neural network-inspired patterns
+- **orbital-decay** — Orbital mechanics simulation
+- **resonance-cavities** — Resonant frequency visualization
+- **stasis-field** — Static field effects
+- **strange-attractors** — Chaotic attractor rendering
+- **perlin-vortex** — Perlin noise-driven vortex field with particle trails
+- **phase-portraits** — Phase space visualization
+- **temporal-fractures** — Temporal fractal patterns
+- **void-geometry** — Abstract void geometry
+- **recursive-ember** — Recursive fractal embers rising with glowing particles
+- **plasma-field** — Animated plasma effect with color cycling
+- **chladni-patterns** — Standing wave interference patterns creating geometric sand art
+- **voronoi-dreams** — Voronoi cells influenced by moving attractors with pulsing glow
+- **diffraction-grating** — Light spectrum interference patterns with multiple slits
+- **fractal-canopy** — Recursive branching tree with organic sway and golden hour palette
+- **lissajous-knots** — Parametric Lissajous curves forming woven knot patterns
+- **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling
+- **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
+- **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
+- **moire-weave** — Overlapping oscillating grids creating interference moire patterns
+- **concentric-tensions** — Oscillating concentric rings with connecting tension lines
+- **helix-fields** — Rotating helical flow fields with 3D perspective projection
+- **recursive-polygons** — Nested geometric shapes with recursive subdivision
+- **wave-particles** — Wave interference combined with particle dynamics
+- **turbulent-flow** — Perlin noise flow field with particle trails and spectral colors
+- **metaballs** — Organic blob dynamics using marching squares algorithm
+- **crystal-growth** — Procedural crystal growth visualization with glowing edges
+- **lichtenberg-figures** — Fractal branching electrical discharge patterns with glowing trails
 
 ...and more.
 
