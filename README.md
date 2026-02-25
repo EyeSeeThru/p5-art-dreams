@@ -39,6 +39,7 @@ The project cycles through different technique categories to ensure variety:
 | resonance-cavities | Audio | Resonant frequency visualization |
 | stasis-field | Physics | Static field effects |
 | strange-attractors | Math | Chaotic attractor rendering |
+| perlin-vortex | Noise | Perlin noise-driven vortex field with particle trails |
 | phase-portraits | Math | Phase space visualization |
 | temporal-fractures | Fractals | Temporal fractal patterns |
 | void-geometry | Geometry | Abstract void geometry |
