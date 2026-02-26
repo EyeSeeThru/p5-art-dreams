@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fractal Dimensions</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Fractal Dimensions — Exploring the boundary between order and chaos
+// Visualizes how fractals exist at the edge of dimensions
+
+let particles = [];
+let time = 0;
+const NUM_PARTICLES = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new FractalParticle());
+  }
+}
+
+function draw() {
+  background(240, 30, 5, 0.15);
+  
+  // Draw dimension grid
+  drawDimensionGrid();
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Draw dimension indicator
+  drawDimensionIndicator();
+  
+  time += 0.01;
+}
+
+function drawDimensionGrid() {
+  stroke(240, 20, 20, 0.1);
+  strokeWeight(1);
+  
+  let cols = 20;
+  let rows = 12;
+  let cellW = width / cols;
+  let cellH = height / rows;
+  
+  for (let i = 0; i <= cols; i++) {
+    for (let j = 0; j <= rows; j++) {
+      let x = i * cellW;
+      let y = j * cellH;
+      let angle = noise(x * 0.003, y * 0.003, time * 0.5) * TWO_PI;
+      
+      push();
+      translate(x, y);
+      rotate(angle);
+      line(-cellW * 0.1, 0, cellW * 0.1, 0);
+      pop();
+    }
+  }
+}
+
+function drawDimensionIndicator() {
+  let dim = 1.5 + sin(time * 0.3) * 0.5;
+  
+  push();
+  translate(width - 120, 40);
+  
+  noStroke();
+  fill(240, 30, 80);
+  textSize(12);
+  textAlign(LEFT);
+  text('FRACTAL DIMENSION', 0, 0);
+  
+  textSize(32);
+  fill(200, 80, 100);
+  text(dim.toFixed(3), 0, 30);
+  
+  // Dimension scale bar
+  stroke(240, 50, 60);
+  strokeWeight(2);
+  line(0, 45, 80, 45);
+  noStroke();
+  fill(240, 30, 50);
+  textSize(10);
+  text('1D', 0, 60);
+  text('2D', 80, 60);
+  
+  pop();
+}
+
+class FractalParticle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.size = random(1, 4);
+    this.hue = random(160, 280);
+    this.sat = random(60, 90);
+    this.life = random(100, 255);
+    this.decay = random(0.5, 2);
+  }
+  
+  update() {
+    this.prevX = this.x;
+    this.prevY = this.y;
+    
+    // Fractal-like movement using nested noise layers
+    let scale1 = 0.002;
+    let scale2 = 0.01;
+    let scale3 = 0.05;
+    
+    let n1 = noise(this.x * scale1, this.y * scale1, time * 0.2);
+    let n2 = noise(this.x * scale2 + 100, this.y * scale2, time * 0.5);
+    let n3 = noise(this.x * scale3 + 200, this.y * scale3, time);
+    
+    let angle = n1 * TWO_PI * 2 + n2 * PI;
+    let speed = (n3 * 2 + 0.5) * (1 + sin(time + this.x * 0.01) * 0.5);
+    
+    this.x += cos(angle) * speed;
+    this.y += sin(angle) * speed;
+    
+    // Wrap around with slight randomness
+    if (this.x < 0) this.x = width;
+    if (this.x > width) this.x = 0;
+    if (this.y < 0) this.y = height;
+    if (this.y > height) this.y = 0;
+    
+    this.life -= this.decay;
+    if (this.life <= 0) this.reset();
+  }
+  
+  display() {
+    let alpha = this.life / 255;
+    stroke(this.hue, this.sat, 90, alpha);
+    strokeWeight(this.size);
+    line(this.prevX, this.prevY, this.x, this.y);
+    
+    // Glow effect
+    stroke(this.hue, this.sat - 20, 100, alpha * 0.3);
+    strokeWeight(this.size * 3);
+    point(this.x, this.y);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

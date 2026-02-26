@@ -69,6 +69,7 @@ The project cycles through different technique categories to ensure variety:
 - **magnetic-reconnection** — Magnetic field line dynamics with reconnection events and particle flows
 - **stellar-nursery** — Star formation visualization with gravitational attraction and particle dynamics
 - **belousov-zhabotinsky** — Chemical oscillator creating spiral wave patterns via reaction-diffusion
+- **fractal-dimensions** — Visualizes fractal dimension at the edge of order and chaos with flowing particles
 
 ## Running
 
