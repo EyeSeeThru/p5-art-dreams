@@ -28,9 +28,9 @@ let next;
 let cols, rows;
 let scale = 4;
 
-// Gray-Scott reaction-diffusion parameters
-let feed = 0.055;
-let kill = 0.062;
+// Gray-Scott reaction-diffusion parameters (tuned for vibrant spirals)
+let feed = 0.037;
+let kill = 0.06;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -42,20 +42,21 @@ function setup() {
   grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0).map(() => ({ a: 1, b: 0 })));
   next = new Array(cols).fill(0).map(() => new Array(rows).fill(0).map(() => ({ a: 1, b: 0 })));
   
-  // Seed with random b values
+  // Seed with random b values (more aggressive)
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      if (random() < 0.05) {
+      if (random() < 0.15) {
         grid[i][j].b = 1;
+        grid[i][j].a = 0;
       }
     }
   }
   
-  // Add seed clusters
-  for (let n = 0; n < 5; n++) {
-    let cx = floor(random(cols * 0.3, cols * 0.7));
-    let cy = floor(random(rows * 0.3, rows * 0.7));
-    let r = floor(random(5, 15));
+  // Add seed clusters (larger and more)
+  for (let n = 0; n < 12; n++) {
+    let cx = floor(random(cols * 0.2, cols * 0.8));
+    let cy = floor(random(rows * 0.2, rows * 0.8));
+    let r = floor(random(10, 25));
     
     for (let i = cx - r; i < cx + r; i++) {
       for (let j = cy - r; j < cy + r; j++) {
@@ -74,8 +75,8 @@ function setup() {
 function draw() {
   background(10, 10, 15);
   
-  // Run multiple simulation steps per frame
-  for (let step = 0; step < 12; step++) {
+  // Run more simulation steps per frame for faster evolution
+  for (let step = 0; step < 20; step++) {
     simulate();
   }
   
