@@ -63,6 +63,7 @@ The project cycles through different technique categories to ensure variety:
 - **crystal-growth** — Procedural crystal growth visualization with glowing edges
 - **lichtenberg-figures** — Fractal branching electrical discharge patterns with glowing trails
 - **caustic-dreams** — Underwater light caustics with animated ray patterns and floor interference
+- **strange-loops** — Recursive impossible geometries with interlocking shapes and infinite zoom effect
 
 ...and more.
 
