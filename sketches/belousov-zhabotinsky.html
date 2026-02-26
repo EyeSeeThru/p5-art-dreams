@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Belousov-Zhabotinsky — Chemical Oscillations</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Belousov-Zhabotinsky Chemical Oscillator
+// Creates beautiful spiral wave patterns through reaction-diffusion dynamics
+
+let grid = [];
+let nextGrid = [];
+let cols, rows;
+let resolution = 4;
+
+let a, b, c; // Chemical concentrations
+let feed, kill; // Reaction parameters
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize grids
+  grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+  nextGrid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+  
+  // BZ reaction parameters (Gray-Scott model variant)
+  feed = 0.055;
+  kill = 0.062;
+  
+  // Initialize with random values
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = {
+        a: 1.0,
+        b: 0,
+        // Add some initial disturbances
+        a: random() < 0.1 ? 0.5 : 1.0,
+        b: random() < 0.05 ? random(0.2, 0.4) : 0
+      };
+    }
+  }
+  
+  // Add a few circular disturbances to seed the spirals
+  for (let n = 0; n < 8; n++) {
+    let cx = random(cols * 0.2, cols * 0.8);
+    let cy = random(rows * 0.2, rows * 0.8);
+    let r = random(3, 8);
+    
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        let d = dist(i, j, cx, cy);
+        if (d < r) {
+          grid[i][j].b = 0.9;
+          grid[i][j].a = 0.1;
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  // Run multiple steps per frame for faster evolution
+  for (let step = 0; step < 8; step++) {
+    updateGrid();
+  }
+  
+  // Render
+  loadPixels();
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let cell = grid[i][j];
+      let b = cell.b;
+      
+      // Color mapping - psychedelic BZ palette
+      let r, g, bl;
+      
+      if (b < 0.2) {
+        // Deep blues and purples
+        r = lerp(10, 60, b * 5);
+        g = lerp(10, 30, b * 5);
+        bl = lerp(30, 120, b * 5);
+      } else if (b < 0.4) {
+        // Purples to magentas
+        let t = (b - 0.2) * 5;
+        r = lerp(60, 180, t);
+        g = lerp(30, 60, t);
+        bl = lerp(120, 200, t);
+      } else if (b < 0.6) {
+        // Magentas to oranges
+        let t = (b - 0.4) * 5;
+        r = lerp(180, 255, t);
+        g = lerp(60, 140, t);
+        bl = lerp(200, 100, t);
+      } else {
+        // oranges to yellows
+        let t = (b - 0.6) * 2.5;
+        r = 255;
+        g = lerp(140, 220, t);
+        bl = lerp(100, 50, t);
+      }
+      
+      // Draw pixel block
+      let x = i * resolution;
+      let y = j * resolution;
+      
+      for (let px = 0; px < resolution; px++) {
+        for (let py = 0; py < resolution; py++) {
+          let idx = 4 * ((y + py) * width + (x + px));
+          pixels[idx] = r;
+          pixels[idx + 1] = g;
+          pixels[idx + 2] = bl;
+          pixels[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  
+  updatePixels();
+  
+  // Subtle vignette
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let alpha = map(i, 0, 50, 80, 0);
+    fill(0, alpha);
+    rect(0, 0, width, height);
+  }
+}
+
+function updateGrid() {
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let a = grid[i][j].a;
+      let b = grid[i][j].b;
+      
+      // Laplacian (diffusion)
+      let laplaceA = 0;
+      let laplaceB = 0;
+      
+      // 3x3 convolution
+      for (let ni = -1; ni <= 1; ni++) {
+        for (let nj = -1; nj <= 1; nj++) {
+          let ci = (i + ni + cols) % cols;
+          let cj = (j + nj + rows) % rows;
+          
+          let weight = (ni === 0 && nj === 0) ? -1 : 0.2;
+          if (ni !== 0 && nj !== 0) weight = 0.05;
+          
+          laplaceA += grid[ci][cj].a * weight;
+          laplaceB += grid[ci][cj].b * weight;
+        }
+      }
+      
+      // Gray-Scott reaction-diffusion equations
+      let reaction = a * b * b;
+      
+      nextGrid[i][j] = {
+        a: a + (0.21 * laplaceA - reaction + feed * (1 - a)),
+        b: b + (0.21 * laplaceB + reaction - (kill + feed) * b)
+      };
+      
+      // Clamp values
+      nextGrid[i][j].a = constrain(nextGrid[i][j].a, 0, 1);
+      nextGrid[i][j].b = constrain(nextGrid[i][j].b, 0, 1);
+    }
+  }
+  
+  // Swap grids
+  let temp = grid;
+  grid = nextGrid;
+  nextGrid = temp;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+
+// Add mouse interaction - click to add new disturbances
+function mousePressed() {
+  let i = floor(mouseX / resolution);
+  let j = floor(mouseY / resolution);
+  let r = 10;
+  
+  for (let di = -r; di <= r; di++) {
+    for (let dj = -r; dj <= r; dj++) {
+      let ci = (i + di + cols) % cols;
+      let cj = (j + dj + rows) % rows;
+      let d = dist(0, 0, di, dj);
+      if (d < r) {
+        grid[ci][cj].b = 0.9;
+        grid[ci][cj].a = 0.1;
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
