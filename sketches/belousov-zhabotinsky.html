@@ -28,9 +28,11 @@ let next;
 let cols, rows;
 let scale = 4;
 
-// Gray-Scott reaction-diffusion parameters (tuned for vibrant spirals)
-let feed = 0.037;
-let kill = 0.06;
+// Gray-Scott reaction-diffusion parameters (standard values)
+let dA = 1.0;
+let dB = 0.5;
+let feed = 0.055;
+let kill = 0.062;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -138,15 +140,16 @@ function simulate() {
       let laplaceB = 0;
       
       // 3x3 convolution with wrap-around (toroidal boundary)
+      // Standard Laplacian: center=-4, neighbors=1, diagonals=0
       for (let di = -1; di <= 1; di++) {
         for (let dj = -1; dj <= 1; dj++) {
           let ni = (i + di + cols) % cols;
           let nj = (j + dj + rows) % rows;
           
-          let weight = 1;
-          if (di === 0 && dj === 0) weight = -1;
-          else if (abs(di) + abs(dj) === 1) weight = 0.2;
-          else weight = 0.05;
+          let weight = 0;
+          if (di === 0 && dj === 0) weight = -4;
+          else if (abs(di) + abs(dj) === 1) weight = 1;
+          // diagonals remain 0
           
           laplaceA += grid[ni][nj].a * weight;
           laplaceB += grid[ni][nj].b * weight;
@@ -156,8 +159,8 @@ function simulate() {
       // Gray-Scott reaction-diffusion equations
       let ab2 = a * b * b;
       
-      next[i][j].a = a + (0.21 * laplaceA - ab2 + feed * (1 - a));
-      next[i][j].b = b + (0.21 * laplaceB + ab2 - (kill + feed) * b);
+      next[i][j].a = a + (dA * laplaceA - ab2 + feed * (1 - a));
+      next[i][j].b = b + (dB * laplaceB + ab2 - (kill + feed) * b);
       
       // Constrain values
       next[i][j].a = constrain(next[i][j].a, 0, 1);
