@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magnetic Field Lines</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const particles = [];
+const NUM_PARTICLES = 800;
+const dipoles = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Create magnetic dipoles
+  const numDipoles = 4;
+  for (let i = 0; i < numDipoles; i++) {
+    dipoles.push({
+      x: width * (0.2 + i * 0.2),
+      y: height * (0.3 + (i % 2) * 0.4),
+      strength: random(80, 150),
+      polarity: i % 2 === 0 ? 1 : -1
+    });
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: 0,
+    vy: 0,
+    hue: random(180, 260),
+    life: random(100, 255),
+    size: random(1.5, 3.5)
+  };
+}
+
+function getField(x, y) {
+  let fx = 0, fy = 0;
+  
+  for (let d of dipoles) {
+    const dx = x - d.x;
+    const dy = y - d.y;
+    const distSq = dx * dx + dy * dy;
+    const dist = sqrt(distSq) + 10;
+    
+    // Magnetic dipole field
+    const r3 = dist * dist * dist;
+    const r5 = r3 * dist * dist;
+    
+    // Dipole field components
+    const px = d.strength * d.polarity;
+    
+    // Simplified dipole approximation
+    const cosTheta = dy / dist;
+    const sinTheta = dx / dist;
+    
+    const br = 2 * px * cosTheta / r3;
+    const btheta = px * sinTheta / r3;
+    
+    fx += br * sinTheta + btheta * cosTheta;
+    fy += br * cosTheta - btheta * sinTheta;
+  }
+  
+  return { x: fx * 0.5, y: fy * 0.5 };
+}
+
+function draw() {
+  // Trail effect
+  noStroke();
+  fill(10, 10, 15, 15);
+  rect(0, 0, width, height);
+  
+  for (let p of particles) {
+    const field = getField(p.x, p.y);
+    
+    // Apply field as force
+    p.vx += field.x * 0.1;
+    p.vy += field.y * 0.1;
+    
+    // Damping
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+    
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Wrap around edges
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Age particle
+    p.life -= 0.5;
+    if (p.life <= 0) {
+      Object.assign(p, createParticle());
+    }
+    
+    // Draw particle
+    const speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    const brightness = map(speed, 0, 5, 40, 100);
+    const sat = map(speed, 0, 5, 80, 100);
+    
+    fill(p.hue, sat, brightness, p.life / 2);
+    noStroke();
+    ellipse(p.x, p.y, p.size * map(p.life, 0, 255, 0.5, 1));
+  }
+  
+  // Draw dipole markers
+  for (let d of dipoles) {
+    // Glow
+    for (let r = 30; r > 0; r -= 5) {
+      fill(d.polarity > 0 ? 200 : 340, 80, 80, 3);
+      ellipse(d.x, d.y, r * 2);
+    }
+    
+    // Core
+    fill(d.polarity > 0 ? 200 : 340, 90, 100);
+    ellipse(d.x, d.y, 12);
+    
+    // Symbol
+    fill(0);
+    textSize(10);
+    textAlign(CENTER, CENTER);
+    text(d.polarity > 0 ? 'N' : 'S', d.x, d.y);
+  }
+  
+  // Title
+  fill(255);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Magnetic Field Lines', 20, 20);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Reposition dipoles
+  for (let i = 0; i < dipoles.length; i++) {
+    dipoles[i].x = width * (0.2 + i * 0.2);
+    dipoles[i].y = height * (0.3 + (i % 2) * 0.4);
+  }
+}
+</script>
+</body>
+</html>
