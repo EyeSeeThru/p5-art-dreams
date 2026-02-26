@@ -20,7 +20,7 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
-- **differential-growth** — Organic form evolution with growing nodes forming network connections
+- **flocking-murmuration** — Boids simulation with realistic flocking behavior (alignment, cohesion, separation)
 - **dla-clusters** — Diffusion Limited Aggregation with wandering particles forming crystalline clusters
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
 - **wave-interference** — Wave interference patterns with multiple sources

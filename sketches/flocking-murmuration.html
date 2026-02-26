@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flocking Murmuration</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Flocking Murmuration - Boids simulation with realistic flocking behavior
+
+const NUM_BOIDS = 300;
+let boids = [];
+let trailGraphics;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Create trail layer
+  trailGraphics = createGraphics(width, height);
+  trailGraphics.colorMode(HSB, 360, 100, 100, 100);
+  trailGraphics.background(0);
+  
+  // Initialize boids
+  for (let i = 0; i < NUM_BOIDS; i++) {
+    boids.push(new Boid(random(width), random(height)));
+  }
+}
+
+function draw() {
+  // Fade trails
+  trailGraphics.fill(0, 0, 0, 3);
+  trailGraphics.noStroke();
+  trailGraphics.rect(0, 0, width, height);
+  
+  // Update and draw boids
+  for (let boid of boids) {
+    boid.flock(boids);
+    boid.update();
+    boid.edges();
+    boid.show(trailGraphics);
+  }
+  
+  // Draw trails with additive blending
+  blendMode(ADD);
+  image(trailGraphics, 0, 0);
+  blendMode(BLEND);
+  
+  // Subtle overlay for depth
+  fill(230, 30, 5, 5);
+  rect(0, 0, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  let newTrail = createGraphics(width, height);
+  newTrail.colorMode(HSB, 360, 100, 100, 100);
+  newTrail.image(trailGraphics, 0, 0);
+  trailGraphics = newTrail;
+}
+
+class Boid {
+  constructor(x, y) {
+    this.position = createVector(x, y);
+    this.velocity = p5.Vector.random2D().mult(random(2, 4));
+    this.acceleration = createVector(0, 0);
+    this.maxForce = 0.15;
+    this.maxSpeed = 4;
+    this.hue = random(180, 280);
+    this.size = random(3, 6);
+  }
+
+  flock(boids) {
+    let alignment = createVector(0, 0);
+    let cohesion = createVector(0, 0);
+    let separation = createVector(0, 0);
+    let perceptionRadius = 80;
+    let separationRadius = 30;
+    let total = 0;
+
+    for (let other of boids) {
+      let d = dist(this.position.x, this.position.y, other.position.x, other.position.y);
+      
+      if (other !== this && d < perceptionRadius) {
+        alignment.add(other.velocity);
+        cohesion.add(other.position);
+        total++;
+        
+        if (d < separationRadius) {
+          let diff = p5.Vector.sub(this.position, other.position);
+          diff.div(d * d);
+          separation.add(diff);
+        }
+      }
+    }
+
+    if (total > 0) {
+      alignment.div(total);
+      alignment.setMag(this.maxSpeed);
+      alignment.sub(this.velocity);
+      alignment.limit(this.maxForce);
+
+      cohesion.div(total);
+      cohesion.sub(this.position);
+      cohesion.setMag(this.maxSpeed);
+      cohesion.sub(this.velocity);
+      cohesion.limit(this.maxForce);
+      
+      separation.div(total);
+      separation.setMag(this.maxSpeed);
+      separation.sub(this.velocity);
+      separation.limit(this.maxForce * 1.5);
+    }
+
+    // Weighted forces
+    alignment.mult(1.0);
+    cohesion.mult(0.8);
+    separation.mult(1.2);
+
+    this.acceleration.add(alignment);
+    this.acceleration.add(cohesion);
+    this.acceleration.add(separation);
+    
+    // Add slight downward drift for organic feel
+    let drift = createVector(noise(frameCount * 0.01) - 0.5, 0.02);
+    drift.mult(0.3);
+    this.acceleration.add(drift);
+  }
+
+  update() {
+    this.velocity.add(this.acceleration);
+    this.velocity.limit(this.maxSpeed);
+    this.position.add(this.velocity);
+    this.acceleration.mult(0);
+    
+    // Dynamic hue based on velocity
+    this.hue = (this.hue + map(this.velocity.mag(), 0, this.maxSpeed, 0, 2)) % 360;
+  }
+
+  edges() {
+    let margin = 50;
+    let turned = false;
+    
+    if (this.position.x < -margin) {
+      this.position.x = width + margin;
+      turned = true;
+    }
+    if (this.position.x > width + margin) {
+      this.position.x = -margin;
+      turned = true;
+    }
+    if (this.position.y < -margin) {
+      this.position.y = height + margin;
+      turned = true;
+    }
+    if (this.position.y > height + margin) {
+      this.position.y = -margin;
+      turned = true;
+    }
+    
+    // Soft boundary force
+    if (!turned) {
+      let marginForce = 0.5;
+      if (this.position.x < margin) {
+        this.acceleration.x += (margin - this.position.x) / margin * marginForce;
+      }
+      if (this.position.x > width - margin) {
+        this.acceleration.x -= (this.position.x - (width - margin)) / margin * marginForce;
+      }
+      if (this.position.y < margin) {
+        this.acceleration.y += (margin - this.position.y) / margin * marginForce;
+      }
+      if (this.position.y > height - margin) {
+        this.acceleration.y -= (this.position.y - (height - margin)) / margin * marginForce;
+      }
+    }
+  }
+
+  show(g) {
+    let speed = this.velocity.mag();
+    let brightness = map(speed, 0, this.maxSpeed, 60, 100);
+    let saturation = map(speed, 0, this.maxSpeed, 40, 90);
+    
+    g.stroke(this.hue, saturation, brightness, 70);
+    g.strokeWeight(this.size);
+    g.point(this.position.x, this.position.y);
+    
+    // Glow effect
+    g.strokeWeight(this.size * 3);
+    g.stroke(this.hue, saturation * 0.5, brightness, 15);
+    g.point(this.position.x, this.position.y);
+  }
+}
+</script>
+</body>
+</html>
