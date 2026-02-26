@@ -42,8 +42,9 @@ function setup() {
   grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
   nextGrid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
   
-  // BZ reaction parameters (Gray-Scott model variant)
-  feed = 0.055;
+  // BZ reaction parameters (Gray-Scott model)
+  // These values create coral-like patterns
+  feed = 0.0545;
   kill = 0.062;
   
   // Initialize with random values
@@ -51,27 +52,37 @@ function setup() {
     for (let j = 0; j < rows; j++) {
       grid[i][j] = {
         a: 1.0,
-        b: 0,
-        // Add some initial disturbances
-        a: random() < 0.1 ? 0.5 : 1.0,
-        b: random() < 0.05 ? random(0.2, 0.4) : 0
+        b: random() < 0.01 ? random(0.3, 0.5) : 0
       };
     }
   }
   
-  // Add a few circular disturbances to seed the spirals
-  for (let n = 0; n < 8; n++) {
-    let cx = random(cols * 0.2, cols * 0.8);
-    let cy = random(rows * 0.2, rows * 0.8);
-    let r = random(3, 8);
-    
-    for (let i = 0; i < cols; i++) {
-      for (let j = 0; j < rows; j++) {
-        let d = dist(i, j, cx, cy);
-        if (d < r) {
-          grid[i][j].b = 0.9;
-          grid[i][j].a = 0.1;
-        }
+  // Add a single large circular disturbance to seed the spirals
+  let cx = cols / 2;
+  let cy = rows / 2;
+  let r = 20;
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let d = dist(i, j, cx, cy);
+      if (d < r) {
+        grid[i][j].b = 1.0;
+        grid[i][j].a = 0;
+      }
+    }
+  }
+  
+  // Add another disturbance offset
+  cx = cols * 0.6;
+  cy = rows * 0.4;
+  r = 15;
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let d = dist(i, j, cx, cy);
+      if (d < r) {
+        grid[i][j].b = 1.0;
+        grid[i][j].a = 0;
       }
     }
   }
