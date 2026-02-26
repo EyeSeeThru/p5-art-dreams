@@ -64,8 +64,9 @@ The project cycles through different technique categories to ensure variety:
 - **lichtenberg-figures** — Fractal branching electrical discharge patterns with glowing trails
 - **caustic-dreams** — Underwater light caustics with animated ray patterns and floor interference
 - **strange-loops** — Recursive impossible geometries with interlocking shapes and infinite zoom effect
-
-...and more.
+- **magnetic-field** — Magnetic dipole field visualization with flowing particles following field lines
+- **magnetic-reconnection** — Magnetic field line dynamics with reconnection events and particle flows
+- **stellar-nursery** — Star formation visualization with gravitational attraction and particle dynamics
 
 ## Running
 

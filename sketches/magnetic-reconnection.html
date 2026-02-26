@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magnetic Reconnection</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Magnetic Reconnection - Field line dynamics with beautiful visual patterns
+let fieldLines = [];
+let particles = [];
+const NUM_LINES = 24;
+const NUM_PARTICLES = 180;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize field lines
+  for (let i = 0; i < NUM_LINES; i++) {
+    fieldLines.push(new FieldLine(random(width), random(height), random(0.5, 2)));
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  // Deep space background with subtle nebula
+  background(230, 30, 5, 0.15);
+  
+  // Draw nebula effect
+  drawNebula();
+  
+  // Update and draw field lines
+  for (let line of fieldLines) {
+    line.update();
+    line.display();
+  }
+  
+  // Update and draw particles
+  for (let particle of particles) {
+    particle.update();
+    particle.display();
+  }
+}
+
+function drawNebula() {
+  // Subtle nebula clouds
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    let x = (frameCount * 0.2 + i * 200) % (width + 400) - 200;
+    let y = height / 2 + sin(frameCount * 0.01 + i) * 100;
+    let size = 300 + sin(frameCount * 0.02 + i * 2) * 50;
+    
+    // Deep purple/blue nebula
+    fill(260, 60, 15, 0.03);
+    ellipse(x, y, size, size * 0.6);
+  }
+}
+
+class FieldLine {
+  constructor(x, y, speed) {
+    this.segments = [];
+    this.angle = random(TWO_PI);
+    this.speed = speed;
+    this.hue = random(180, 280);
+    this.reconnecting = false;
+    this.reconnectTimer = 0;
+    
+    // Initialize segments along the line
+    for (let i = 0; i < 40; i++) {
+      this.segments.push({
+        x: x + cos(this.angle) * i * 15,
+        y: y + sin(this.angle) * i * 15,
+        vx: 0,
+        vy: 0
+      });
+    }
+  }
+  
+  update() {
+    // Magnetic reconnection effect - periodically reconnect
+    this.reconnectTimer++;
+    if (this.reconnectTimer > 300 + random(200)) {
+      this.reconnecting = true;
+      this.reconnectTimer = 0;
+    }
+    
+    for (let i = 0; i < this.segments.length; i++) {
+      let seg = this.segments[i];
+      
+      // Wave-like motion
+      let wave = sin(frameCount * 0.02 + i * 0.3 + this.angle) * 0.5;
+      
+      // Add some turbulence
+      let turbX = (noise(seg.x * 0.01, frameCount * 0.01) - 0.5) * 2;
+      let turbY = (noise(seg.y * 0.01, frameCount * 0.01 + 100) - 0.5) * 2;
+      
+      // Reconnection burst
+      if (this.reconnecting && i > this.segments.length / 2) {
+        let burst = 3 * sin(this.reconnectTimer * 0.1);
+        turbX += burst * cos(this.angle + HALF_PI);
+        turbY += burst * sin(this.angle + HALF_PI);
+      }
+      
+      seg.vx = seg.vx * 0.95 + (turbX + wave) * 0.05;
+      seg.vy = seg.vy * 0.95 + (turbY + wave) * 0.05;
+      
+      seg.x += seg.vx;
+      seg.y += seg.vy;
+      
+      // Wrap around edges
+      if (seg.x < -50) seg.x = width + 50;
+      if (seg.x > width + 50) seg.x = -50;
+      if (seg.y < -50) seg.y = height + 50;
+      if (seg.y > height + 50) seg.y = -50;
+    }
+    
+    // Reset reconnection
+    if (this.reconnecting && this.reconnectTimer > 30) {
+      this.reconnecting = false;
+    }
+  }
+  
+  display() {
+    noFill();
+    
+    // Outer glow
+    strokeWeight(6);
+    let glowAlpha = this.reconnecting ? 0.4 : 0.15;
+    stroke(this.hue, 60, 80, glowAlpha);
+    
+    beginShape();
+    for (let seg of this.segments) {
+      curveVertex(seg.x, seg.y);
+    }
+    endShape();
+    
+    // Core line
+    strokeWeight(2);
+    let coreAlpha = this.reconnecting ? 0.8 : 0.5;
+    stroke(this.hue, 50, 100, coreAlpha);
+    
+    beginShape();
+    for (let seg of this.segments) {
+      curveVertex(seg.x, seg.y);
+    }
+    endShape();
+    
+    // Bright core during reconnection
+    if (this.reconnecting) {
+      strokeWeight(1);
+      stroke(60, 20, 100, 0.9);
+      
+      beginShape();
+      for (let seg of this.segments) {
+        curveVertex(seg.x, seg.y);
+      }
+      endShape();
+    }
+  }
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(1, 3);
+    this.speed = random(0.5, 2);
+    this.hue = random(160, 300);
+    this.life = random(100, 300);
+    this.maxLife = this.life;
+  }
+  
+  update() {
+    // Flow along field lines with some noise
+    let angle = noise(this.x * 0.005, this.y * 0.005, frameCount * 0.01) * TWO_PI * 2;
+    
+    this.x += cos(angle) * this.speed;
+    this.y += sin(angle) * this.speed;
+    
+    // Attraction to center during reconnection
+    let centerX = width / 2;
+    let centerY = height / 2;
+    let dx = centerX - this.x;
+    let dy = centerY - this.y;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    // Pulsing attraction
+    let attraction = sin(frameCount * 0.02) * 0.3;
+    this.x += (dx / dist) * attraction;
+    this.y += (dy / dist) * attraction;
+    
+    this.life--;
+    
+    if (this.life <= 0 || this.x < -50 || this.x > width + 50 || 
+        this.y < -50 || this.y > height + 50) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    let alpha = map(this.life, 0, this.maxLife, 0, 0.8);
+    let size = this.size * map(this.life, 0, this.maxLife, 0.5, 1);
+    
+    // Glow
+    noStroke();
+    fill(this.hue, 40, 80, alpha * 0.3);
+    ellipse(this.x, this.y, size * 4);
+    
+    // Core
+    fill(this.hue, 60, 100, alpha);
+    ellipse(this.x, this.y, size);
+    
+    // Bright center
+    fill(60, 10, 100, alpha * 0.9);
+    ellipse(this.x, this.y, size * 0.5);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
