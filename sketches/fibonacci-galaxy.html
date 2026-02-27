@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fibonacci Galaxy</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const stars = [];
+const numStars = 3000;
+const PHI = 1.618033988749895;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noLoop();
+  
+  for (let i = 0; i < numStars; i++) {
+    stars.push(new Star(i));
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 0.15);
+  translate(width / 2, height / 2);
+  
+  let time = millis() * 0.0003;
+  
+  // Draw stars
+  for (let star of stars) {
+    star.update(time);
+    star.draw();
+  }
+  
+  // Central glow
+  noStroke();
+  for (let r = 200; r > 0; r -= 20) {
+    fill(45, 80, 100, 0.03);
+    ellipse(0, 0, r * 2);
+  }
+}
+
+class Star {
+  constructor(index) {
+    this.index = index;
+    this.normalizedIndex = index / numStars;
+    this.angle = this.normalizedIndex * TWO_PI * PHI * 10;
+    this.baseRadius = this.normalizedIndex * min(width, height) * 0.45;
+    this.radiusVariation = random(0.8, 1.2);
+    this.hue = random();
+    this.size = random(1, 4);
+    this.speed = random(0.3, 1.2);
+    this.wobble = random(50, 150);
+  }
+  
+  update(time) {
+    this.currentAngle = this.angle + time * this.speed;
+    this.currentRadius = this.baseRadius * this.radiusVariation + 
+      sin(time * 2 + this.index * 0.01) * this.wobble * this.normalizedIndex;
+  }
+  
+  draw() {
+    let x = cos(this.currentAngle) * this.currentRadius;
+    let y = sin(this.currentAngle) * this.currentRadius;
+    
+    // Color based on radius (distance from center)
+    let hueVal = map(this.currentRadius, 0, min(width, height) * 0.45, 30, 280);
+    let satVal = map(this.normalizedIndex, 0, 1, 60, 100);
+    let briVal = map(this.normalizedIndex, 0, 1, 100, 40);
+    
+    // Brightness based on angle for twinkling
+    let twinkle = sin(this.currentAngle * 3 + millis() * 0.002) * 0.3 + 0.7;
+    
+    noStroke();
+    fill((hueVal + millis() * 0.01) % 360, satVal, briVal * twinkle, 0.8);
+    ellipse(x, y, this.size * twinkle);
+    
+    // Glow for brighter stars
+    if (this.size > 2.5) {
+      fill((hueVal + millis() * 0.01) % 360, satVal * 0.5, 100, 0.15);
+      ellipse(x, y, this.size * 4);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+  redraw();
+}
+</script>
+</body>
+</html>
