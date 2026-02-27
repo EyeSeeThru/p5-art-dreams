@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergent Swarm — p5.js</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #0a0a0f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Emergent Swarm — Particle species with emergent collective behaviors
+// Each particle has a type and follows simple rules based on nearby particles
+
+const NUM_PARTICLES = 180;
+const NUM_TYPES = 4;
+const INTERACTION_RADIUS = 60;
+const MAX_SPEED = 2.5;
+const TRAIL_ALPHA = 0.08;
+
+let particles = [];
+let colorPalette;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  // Rich dark palette with glowing accents
+  colorPalette = [
+    [255, 107, 107],   // Coral red
+    [78, 205, 196],    // Teal
+    [255, 230, 109],   // Golden yellow
+    [169, 100, 231],   // Purple
+  ];
+  
+  // Initialize particles with random types
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle(random(width), random(height)));
+  }
+  
+  background(10, 10, 15);
+}
+
+function draw() {
+  // Semi-transparent trail effect
+  noStroke();
+  fill(10, 10, 15, 20);
+  rect(0, 0, width, height);
+  
+  // Update and display all particles
+  for (let p of particles) {
+    p.behaviors(particles);
+    p.update();
+    p.edges();
+    p.display();
+  }
+}
+
+class Particle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = p5.Vector.random2D().mult(random(0.5, 1.5));
+    this.acc = createVector(0, 0);
+    this.type = floor(random(NUM_TYPES));
+    this.maxSpeed = MAX_SPEED;
+    this.maxForce = 0.08;
+    this.size = random(3, 6);
+  }
+  
+  behaviors(particles) {
+    let cohesion = createVector();
+    let separation = createVector();
+    let alignment = createVector();
+    let neighborCount = 0;
+    
+    for (let other of particles) {
+      if (other !== this) {
+        let d = dist(this.pos.x, this.pos.y, other.pos.x, other.pos.y);
+        
+        if (d < INTERACTION_RADIUS && d > 0) {
+          // Different type interactions create interesting behaviors
+          let isSameType = this.type === other.type;
+          
+          // Cohesion — stay together with same type
+          if (isSameType) {
+            cohesion.add(other.pos);
+            alignment.add(other.vel);
+          }
+          
+          // Separation — avoid crowding
+          let diff = p5.Vector.sub(this.pos, other.pos);
+          diff.normalize();
+          diff.div(d); // Weight by distance
+          separation.add(diff);
+          
+          // Cross-type interactions
+          if (!isSameType) {
+            // Some types attract, some repel
+            let attraction = (this.type + other.type) % 2 === 0;
+            if (attraction) {
+              // Gentle attraction to different types
+              let attract = p5.Vector.sub(other.pos, this.pos);
+              attract.normalize();
+              attract.mult(0.3);
+              this.applyForce(attract);
+            } else {
+              // Slight repulsion from opposing types
+              let repel = p5.Vector.sub(this.pos, other.pos);
+              repel.normalize();
+              repel.mult(0.15);
+              this.applyForce(repel);
+            }
+          }
+          
+          neighborCount++;
+        }
+      }
+    }
+    
+    if (neighborCount > 0) {
+      if (this.type === 0 || this.type === 1) {
+        // Flocking types
+        cohesion.div(neighborCount);
+        cohesion.sub(this.pos);
+        cohesion.setMag(this.maxSpeed * 0.5);
+        cohesion.sub(this.vel);
+        cohesion.limit(this.maxForce);
+        this.applyForce(cohesion);
+      }
+      
+      separation.div(neighborCount);
+      separation.setMag(this.maxSpeed);
+      separation.sub(this.vel);
+      separation.limit(this.maxForce * 1.5);
+      this.applyForce(separation);
+      
+      if (this.type === 0 || this.type === 2) {
+        // Alignment for types 0 and 2
+        alignment.div(neighborCount);
+        alignment.setMag(this.maxSpeed);
+        alignment.sub(this.vel);
+        alignment.limit(this.maxForce);
+        this.applyForce(alignment);
+      }
+    }
+    
+    // Add subtle wandering
+    let wander = p5.Vector.random2D().mult(0.2);
+    this.applyForce(wander);
+  }
+  
+  applyForce(force) {
+    this.acc.add(force);
+  }
+  
+  update() {
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+  }
+  
+  edges() {
+    // Wrap around edges with smooth transition
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+  
+  display() {
+    let col = colorPalette[this.type];
+    
+    // Glow effect
+    for (let i = 3; i > 0; i--) {
+      noStroke();
+      fill(col[0], col[1], col[2], 20 / i);
+      ellipse(this.pos.x, this.pos.y, this.size * (1 + i * 2));
+    }
+    
+    // Core
+    noStroke();
+    fill(col[0], col[1], col[2], 230);
+    ellipse(this.pos.x, this.pos.y, this.size);
+    
+    // Bright center
+    fill(255, 255, 255, 150);
+    ellipse(this.pos.x, this.pos.y, this.size * 0.4);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(10, 10, 15);
+}
+
+function mousePressed() {
+  // Add new particles on click
+  for (let i = 0; i < 5; i++) {
+    let p = new Particle(mouseX + random(-20, 20), mouseY + random(-20, 20));
+    particles.push(p);
+  }
+}
+</script>
+</body>
+</html>

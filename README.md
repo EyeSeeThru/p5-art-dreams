@@ -71,6 +71,8 @@ The project cycles through different technique categories to ensure variety:
 - **fibonacci-galaxy** — Spiral galaxy with golden ratio distribution and twinkling stars
 - **terrain-drift** — 3D Perlin noise terrain landscape with elevation-based coloring and gentle drift animation
 - **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
+- **magnetic-pendulum** — Chaotic magnetic pendulum simulation with multiple attractors and particle trails
+- **emergent-swarm** — Particle species with emergent collective behaviors (flocking, separation, cross-type interactions)
 
 ## Running
 
