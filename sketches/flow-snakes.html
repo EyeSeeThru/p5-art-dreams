@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Snakes — p5.js Generative Art</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #0a0a0f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Flow Snakes — Gosper Curve Space-Filling Fractal
+// Iterative rendering of the Gosper Island (Peano-Gosper curve)
+
+let depth = 4;
+let scale = 8;
+let angle;
+let time = 0;
+let colors;
+
+const GOSPER_A = "A-B--B++A++BB--B-A--BB++B++A-B--B++A++BB--B-A";
+const GOSPER_B = "+A-BB--B-A++A++BB--B-A--BB++B++A-BB--B-A++A++BB--B";
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  angle = TWO_PI / 6; // Hexagonal basis
+  colors = [
+    color(255, 107, 107),
+    color(255, 159, 67),
+    color(255, 217, 61),
+    color(168, 230, 99),
+    color(72, 219, 251),
+    color(134, 95, 221),
+  ];
+  strokeCap(ROUND);
+  strokeJoin(ROUND);
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  let spacing = min(width, height) * 0.85 / (Math.pow(sqrt(7), depth));
+  let offsetX = width / 2;
+  let offsetY = height / 2;
+  
+  push();
+  translate(offsetX, offsetY);
+  
+  // Rotating center glow
+  let glowSize = 120 + sin(time * 0.5) * 40;
+  let glowCol = color(255, 107, 107, 15);
+  for (let i = 5; i > 0; i--) {
+    fill(red(glowCol), green(glowCol), blue(glowCol), 15 / i);
+    noStroke();
+    ellipse(0, 0, glowSize * i / 2);
+  }
+  
+  // Draw multiple flow snakes in hexagonal arrangement
+  let hexRadius = spacing * 2.5;
+  for (let h = 0; h < 7; h++) {
+    push();
+    let hexAngle = h * TWO_PI / 7 - PI/2;
+    let hexX = cos(hexAngle) * hexRadius * 0.7;
+    let hexY = sin(hexAngle) * hexRadius * 0.7;
+    translate(hexX, hexY);
+    
+    let hueShift = (h * 30 + time * 10) % 360;
+    drawFlowSnake(0, 0, spacing, depth, time * 0.1 + h);
+    pop();
+  }
+  
+  pop();
+  
+  // Floating particles
+  for (let i = 0; i < 50; i++) {
+    let px = (i * 137.5 + time * 20) % width;
+    let py = (i * 91.3 + time * 15 + sin(i) * 50) % height;
+    let ps = (sin(i * 2.3) + 1) * 2 + 1;
+    let pa = (sin(i + time * 0.5) + 1) * 100;
+    fill(255, 255, 255, pa);
+    noStroke();
+    ellipse(px, py, ps);
+  }
+  
+  time += 0.016;
+}
+
+function drawFlowSnake(x, y, len, d, rot) {
+  if (d === 0) {
+    push();
+    translate(x, y);
+    rotate(rot);
+    let c = colors[floor((x + y + time * 50) / 50) % colors.length];
+    stroke(c);
+    strokeWeight(2);
+    line(0, 0, len * 0.5, 0);
+    pop();
+    return;
+  }
+  
+  let newLen = len / sqrt(7);
+  
+  // Gosper curve replacements
+  // A -> A-B--B++A++BB--B
+  // B -> +A-BB--B-A++A++BB--B
+  
+  let ruleA = [
+    [0, newLen, d-1, rot],
+    [1, newLen, d-1, rot + angle],
+    [1, newLen, d-1, rot + angle],
+    [0, newLen, d-1, rot],
+    [0, newLen, d-1, rot],
+    [0, newLen, d-1, rot],
+    [1, newLen, d-1, rot - angle],
+  ];
+  
+  let ruleB = [
+    [1, newLen, d-1, rot - angle],
+    [0, newLen, d-1, rot],
+    [0, newLen, d-1, rot + angle],
+    [1, newLen, d-1, rot + angle],
+    [1, newLen, d-1, rot + angle],
+    [0, newLen, d-1, rot],
+    [0, newLen, d-1, rot],
+  ];
+  
+  let steps = GOSPER_A.split('').filter(c => c === 'A' || c === 'B' || c === '+' || c === '-');
+  let idx = 0;
+  let currentRule = ruleA;
+  
+  for (let i = 0; i < steps.length; i++) {
+    let s = steps[i];
+    
+    if (s === 'A') {
+      currentRule = ruleA;
+    } else if (s === 'B') {
+      currentRule = ruleB;
+    } else if (s === '+') {
+      drawFlowSnake(x, y, newLen, d-1, rot + angle);
+      x += cos(rot + angle) * newLen;
+      y += sin(rot + angle) * newLen;
+    } else if (s === '-') {
+      drawFlowSnake(x, y, newLen, d-1, rot - angle);
+      x += cos(rot - angle) * newLen;
+      y += sin(rot - angle) * newLen;
+    }
+  }
+  
+  // Simpler approach - draw hexagonal pattern
+  stroke(255, 150, 100, 100);
+  strokeWeight(1.5);
+  noFill();
+  
+  for (let i = 0; i < 6; i++) {
+    let a = i * angle + rot + time * 0.2;
+    let r = len * 0.8;
+    let x1 = x + cos(a) * r;
+    let y1 = y + sin(a) * r;
+    let x2 = x + cos(a + angle) * r;
+    let y2 = y + sin(a + angle) * r;
+    line(x1, y1, x2, y2);
+    
+    // Inner connections
+    let innerR = r * 0.4;
+    let ix = x + cos(a) * innerR;
+    let iy = y + sin(a) * innerR;
+    line(ix, iy, x1, y1);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
