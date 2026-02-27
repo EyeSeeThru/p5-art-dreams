@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dendrite Growth</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Dendrite Growth - Fractal crystal growth visualization
+// Uses probabilistic growth with angular constraints
+
+let branches = [];
+let maxBranches = 3000;
+let colorShift = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  background(0);
+  
+  // Start with several seed points along the bottom
+  let seedCount = floor(width / 80);
+  for (let i = 0; i < seedCount; i++) {
+    let x = 60 + i * (width - 120) / (seedCount - 1);
+    let y = height - 40;
+    branches.push({
+      x: x,
+      y: y,
+      angle: -PI / 2,
+      len: random(3, 8),
+      thickness: random(2, 4),
+      hue: random(180, 240),
+      life: 255
+    });
+  }
+}
+
+function draw() {
+  // Semi-transparent background for trail effect
+  background(0, 0, 0, 0.03);
+  
+  let newBranches = [];
+  
+  for (let b of branches) {
+    if (b.life <= 0) continue;
+    
+    // Calculate new position
+    let nx = b.x + cos(b.angle) * b.len;
+    let ny = b.y + sin(b.angle) * b.len;
+    
+    // Draw segment
+    let hue = (b.hue + colorShift) % 360;
+    stroke(hue, 70, 90, b.life / 255);
+    strokeWeight(b.thickness);
+    point(b.x, b.y);
+    line(b.x, b.y, nx, ny);
+    
+    // Chance to branch
+    if (newBranches.length < maxBranches && random() < 0.08) {
+      let branchAngle = random(-PI / 3, PI / 3);
+      let newAngle1 = b.angle + branchAngle;
+      let newAngle2 = b.angle - branchAngle;
+      
+      // Primary branch
+      if (random() < 0.7) {
+        newBranches.push({
+          x: nx,
+          y: ny,
+          angle: newAngle1,
+          len: b.len * random(0.85, 0.95),
+          thickness: b.thickness * 0.85,
+          hue: b.hue + random(-10, 10),
+          life: b.life * random(0.92, 0.98)
+        });
+      }
+      
+      // Secondary branch (sometimes)
+      if (random() < 0.4) {
+        newBranches.push({
+          x: nx,
+          y: ny,
+          angle: newAngle2,
+          len: b.len * random(0.7, 0.9),
+          thickness: b.thickness * 0.7,
+          hue: b.hue + random(-15, 15),
+          life: b.life * random(0.85, 0.95)
+        });
+      }
+    }
+    
+    // Continue growth
+    if (newBranches.length < maxBranches && b.life > 50) {
+      newBranches.push({
+        x: nx,
+        y: ny,
+        angle: b.angle + random(-0.1, 0.1),
+        len: b.len * random(0.98, 1.02),
+        thickness: b.thickness * 0.995,
+        hue: b.hue + random(-2, 2),
+        life: b.life * random(0.995, 1.001)
+      });
+    }
+  }
+  
+  branches = newBranches;
+  colorShift += 0.1;
+  
+  // Stop when done
+  if (branches.length === 0 || frameCount > 800) {
+    noLoop();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+  branches = [];
+  setup();
+}
+</script>
+</body>
+</html>

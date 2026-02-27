@@ -75,6 +75,7 @@ The project cycles through different technique categories to ensure variety:
 - **magnetic-pendulum** — Chaotic magnetic pendulum simulation with multiple attractors and particle trails
 - **emergent-swarm** — Particle species with emergent collective behaviors (flocking, separation, cross-type interactions)
 - **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
+- **dendrite-growth** — Fractal crystal/dendrite growth with probabilistic branching and color cycling
 
 ## Running
 
