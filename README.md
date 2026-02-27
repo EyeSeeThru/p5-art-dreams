@@ -20,7 +20,7 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
-- **flocking-murmuration** — Boids simulation with realistic flocking behavior (alignment, cohesion, separation)
+- **mandala-flow** — Radial symmetry with flowing noise-driven patterns and center glow
 - **dla-clusters** — Diffusion Limited Aggregation with wandering particles forming crystalline clusters
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
 - **wave-interference** — Wave interference patterns with multiple sources
@@ -73,6 +73,7 @@ The project cycles through different technique categories to ensure variety:
 - **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
 - **magnetic-pendulum** — Chaotic magnetic pendulum simulation with multiple attractors and particle trails
 - **emergent-swarm** — Particle species with emergent collective behaviors (flocking, separation, cross-type interactions)
+- **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
 
 ## Running
 

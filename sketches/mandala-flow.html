@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mandala Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const NUM_LAYERS = 12;
+const NUM_SEGMENTS = 64;
+const NOISE_SCALE = 0.008;
+const TIME_SCALE = 0.0003;
+
+let t = 0;
+let colorShift = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  background(0);
+}
+
+function draw() {
+  background(240, 30, 5, 0.03);
+  
+  translate(width / 2, height / 2);
+  
+  let maxRadius = min(width, height) * 0.45;
+  
+  for (let layer = 0; layer < NUM_LAYERS; layer++) {
+    let layerProgress = layer / NUM_LAYERS;
+    let radius = maxRadius * (0.1 + layerProgress * 0.9);
+    let hueBase = (colorShift + layerProgress * 60) % 360;
+    
+    beginShape();
+    for (let i = 0; i <= NUM_SEGMENTS; i++) {
+      let angle = map(i, 0, NUM_SEGMENTS, 0, TWO_PI);
+      
+      let noiseVal = noise(
+        cos(angle) * NOISE_SCALE * 100 + t,
+        sin(angle) * NOISE_SCALE * 100 + t,
+        layer * 0.5
+      );
+      
+      let radiusOffset = map(noiseVal, 0, 1, -radius * 0.15, radius * 0.15);
+      let r = radius + radiusOffset;
+      
+      let x = cos(angle) * r;
+      let y = sin(angle) * r;
+      
+      let hue = (hueBase + noiseVal * 40) % 360;
+      let sat = 70 + noiseVal * 30;
+      let bri = 60 + noiseVal * 40;
+      let alpha = 0.4 + layerProgress * 0.4;
+      
+      stroke(hue, sat, bri, alpha);
+      strokeWeight(1 + layerProgress * 2);
+      point(x, y);
+    }
+    endShape();
+  }
+  
+  // Inner flowing lines
+  for (let i = 0; i < 24; i++) {
+    let angle = (i / 24) * TWO_PI + t * 0.5;
+    let hue = (colorShift + i * 15) % 360;
+    
+    stroke(hue, 80, 90, 0.3);
+    strokeWeight(1);
+    noFill();
+    
+    beginShape();
+    for (let r = 20; r < maxRadius * 0.8; r += 5) {
+      let wave = sin(r * 0.05 + t * 2 + i) * 10;
+      let x = cos(angle + wave * 0.01) * r;
+      let y = sin(angle + wave * 0.01) * r;
+      point(x, y);
+    }
+    endShape();
+  }
+  
+  // Center glow
+  let glowSize = 50 + sin(t * 3) * 20;
+  for (let r = glowSize; r > 0; r -= 2) {
+    let alpha = map(r, 0, glowSize, 0.5, 0);
+    let hue = (colorShift) % 360;
+    fill(hue, 60, 100, alpha);
+    noStroke();
+    ellipse(0, 0, r * 2);
+  }
+  
+  t += TIME_SCALE;
+  colorShift += 0.2;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>
