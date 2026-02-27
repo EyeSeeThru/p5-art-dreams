@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magnetic Pendulum</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const magnets = [];
+const numMagnets = 5;
+const particles = [];
+const numParticles = 800;
+const friction = 0.985;
+const gravity = 0.15;
+const magneticStrength = 800;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  const radius = min(width, height) * 0.35;
+  for (let i = 0; i < numMagnets; i++) {
+    const angle = (TWO_PI / numMagnets) * i + random(-0.3, 0.3);
+    magnets.push({
+      x: width / 2 + cos(angle) * radius,
+      y: height / 2 + sin(angle) * radius,
+      hue: (i * 360 / numMagnets) % 360,
+      strength: magneticStrength * random(0.8, 1.2)
+    });
+  }
+  
+  for (let i = 0; i < numParticles; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-2, 2),
+    vy: random(-2, 2),
+    prevX: 0,
+    prevY: 0,
+    life: random(50, 150),
+    maxLife: 0,
+    hue: random(360)
+  };
+}
+
+function draw() {
+  background(10, 5, 3, 8);
+  
+  // Draw magnetic field influence zones
+  noStroke();
+  for (let m of magnets) {
+    const pulse = sin(time * 2 + m.hue) * 0.3 + 0.7;
+    fill(m.hue, 60, 30, 3);
+    ellipse(m.x, m.y, 200 * pulse);
+  }
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.prevX = p.x;
+    p.prevY = p.y;
+    
+    // Gravity toward center
+    const dx = width / 2 - p.x;
+    const dy = height / 2 - p.y;
+    p.vx += dx * 0.0001;
+    p.vy += dy * 0.0001;
+    
+    // Magnetic forces
+    for (let m of magnets) {
+      const mx = m.x - p.x;
+      const my = m.y - p.y;
+      const distSq = mx * mx + my * my;
+      const dist = sqrt(distSq);
+      if (dist > 10) {
+        const force = m.strength / (distSq + 100);
+        p.vx += (mx / dist) * force * 0.05;
+        p.vy += (my / dist) * force * 0.05;
+      }
+    }
+    
+    // Friction
+    p.vx *= friction;
+    p.vy *= friction;
+    
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    
+    // Find closest magnet for color
+    let closestDist = Infinity;
+    let closestHue = p.hue;
+    for (let m of magnets) {
+      const d = dist(p.x, p.y, m.x, m.y);
+      if (d < closestDist) {
+        closestDist = d;
+        closestHue = m.hue;
+      }
+    }
+    
+    // Draw trail
+    const alpha = map(p.life, 0, 50, 0, 80);
+    stroke(closestHue, 70, 90, alpha);
+    strokeWeight(1.5);
+    line(p.prevX, p.prevY, p.x, p.y);
+    
+    // Reset particle
+    if (p.life <= 0 || p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+      Object.assign(p, createParticle());
+    }
+  }
+  
+  // Draw magnets
+  for (let m of magnets) {
+    const pulse = sin(time * 3 + m.hue * 0.1) * 5 + 15;
+    
+    // Glow
+    noStroke();
+    for (let r = 40; r > 0; r -= 10) {
+      fill(m.hue, 80, 60, map(r, 40, 0, 5, 30));
+      ellipse(m.x, m.y, r * 2 + pulse);
+    }
+    
+    // Core
+    fill(m.hue, 20, 100);
+    ellipse(m.x, m.y, pulse);
+  }
+  
+  time += 0.016;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  magnets.length = 0;
+  const radius = min(width, height) * 0.35;
+  for (let i = 0; i < numMagnets; i++) {
+    const angle = (TWO_PI / numMagnets) * i;
+    magnets.push({
+      x: width / 2 + cos(angle) * radius,
+      y: height / 2 + sin(angle) * radius,
+      hue: (i * 360 / numMagnets) % 360,
+      strength: magneticStrength
+    });
+  }
+}
+</script>
+</body>
+</html>
