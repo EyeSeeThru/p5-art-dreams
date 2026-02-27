@@ -72,6 +72,7 @@ The project cycles through different technique categories to ensure variety:
 - **fractal-dimensions** — Visualizes fractal dimension at the edge of order and chaos with flowing particles
 - **fibonacci-galaxy** — Spiral galaxy with golden ratio distribution and twinkling stars
 - **terrain-drift** — 3D Perlin noise terrain landscape with elevation-based coloring and gentle drift animation
+- **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
 
 ## Running
 
