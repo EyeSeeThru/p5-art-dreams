@@ -67,7 +67,6 @@ The project cycles through different technique categories to ensure variety:
 - **strange-loops** — Recursive impossible geometries with interlocking shapes and infinite zoom effect
 - **magnetic-field** — Magnetic dipole field visualization with flowing particles following field lines
 - **magnetic-reconnection** — Magnetic field line dynamics with reconnection events and particle flows
-- **stellar-nursery** — Star formation visualization with gravitational attraction and particle dynamics
 - **fractal-dimensions** — Visualizes fractal dimension at the edge of order and chaos with flowing particles
 - **fibonacci-galaxy** — Spiral galaxy with golden ratio distribution and twinkling stars
 - **terrain-drift** — 3D Perlin noise terrain landscape with elevation-based coloring and gentle drift animation
