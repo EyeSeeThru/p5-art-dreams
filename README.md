@@ -77,6 +77,7 @@ The project cycles through different technique categories to ensure variety:
 - **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
 - **slime-mold** — Physarum slime mold simulation with sensory-driven agent movement and species-based coloring
 - **apollonian-gasket** — Fractal generated through recursive circle inversion using Descartes' Circle Theorem
+- **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
 
 ## Running
 
