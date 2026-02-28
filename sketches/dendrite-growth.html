@@ -7,122 +7,161 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #000; }
+    body { 
+      overflow: hidden; 
+      background: #0a0a0f;
+    }
     canvas { display: block; }
   </style>
 </head>
 <body>
 <script>
-// Dendrite Growth - Fractal crystal growth visualization
-// Uses probabilistic growth with angular constraints
-
-let branches = [];
-let maxBranches = 3000;
-let colorShift = 0;
+const CELL_SIZE = 8;
+const PROB_GROWTH = 0.015;
+const MAX_AGE = 800;
+let grid = [];
+let cols, rows;
+let particles = [];
+let colors;
+let time = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  colorMode(HSB, 360, 100, 100, 1);
-  background(0);
+  cols = ceil(width / CELL_SIZE);
+  rows = ceil(height / CELL_SIZE);
   
-  // Start with several seed points along the bottom
-  let seedCount = floor(width / 80);
-  for (let i = 0; i < seedCount; i++) {
-    let x = 60 + i * (width - 120) / (seedCount - 1);
-    let y = height - 40;
-    branches.push({
-      x: x,
-      y: y,
-      angle: -PI / 2,
-      len: random(3, 8),
-      thickness: random(2, 4),
-      hue: random(180, 240),
-      life: 255
+  colors = [
+    color(180, 220, 255),
+    color(140, 200, 255),
+    color(100, 180, 255),
+    color(70, 150, 230),
+    color(40, 120, 210),
+    color(20, 90, 180),
+    color(10, 60, 150),
+  ];
+  
+  // Initialize grid
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = { 
+        active: false, 
+        age: 0,
+        type: 0
+      };
+    }
+  }
+  
+  // Seed from center
+  let cx = floor(cols / 2);
+  let cy = floor(rows / 2);
+  grid[cx][cy] = { active: true, age: 0, type: 0 };
+  
+  // Add initial particles around seed
+  for (let i = 0; i < 6; i++) {
+    let angle = TWO_PI / 6 * i;
+    particles.push({
+      x: cx * CELL_SIZE + cos(angle) * CELL_SIZE,
+      y: cy * CELL_SIZE + sin(angle) * CELL_SIZE,
+      angle: angle,
+      type: floor(random(colors.length))
     });
   }
 }
 
 function draw() {
-  // Semi-transparent background for trail effect
-  background(0, 0, 0, 0.03);
+  background(10, 10, 15);
   
-  let newBranches = [];
-  
-  for (let b of branches) {
-    if (b.life <= 0) continue;
-    
-    // Calculate new position
-    let nx = b.x + cos(b.angle) * b.len;
-    let ny = b.y + sin(b.angle) * b.len;
-    
-    // Draw segment
-    let hue = (b.hue + colorShift) % 360;
-    stroke(hue, 70, 90, b.life / 255);
-    strokeWeight(b.thickness);
-    point(b.x, b.y);
-    line(b.x, b.y, nx, ny);
-    
-    // Chance to branch
-    if (newBranches.length < maxBranches && random() < 0.08) {
-      let branchAngle = random(-PI / 3, PI / 3);
-      let newAngle1 = b.angle + branchAngle;
-      let newAngle2 = b.angle - branchAngle;
-      
-      // Primary branch
-      if (random() < 0.7) {
-        newBranches.push({
-          x: nx,
-          y: ny,
-          angle: newAngle1,
-          len: b.len * random(0.85, 0.95),
-          thickness: b.thickness * 0.85,
-          hue: b.hue + random(-10, 10),
-          life: b.life * random(0.92, 0.98)
-        });
+  // Grow crystals
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j].active && grid[i][j].age < MAX_AGE) {
+        // Random growth direction
+        if (random() < PROB_GROWTH) {
+          let dir = floor(random(4));
+          let ni = i + [0, 1, 0, -1][dir];
+          let nj = j + [-1, 0, 1, 0][dir];
+          
+          if (ni >= 0 && ni < cols && nj >= 0 && nj < rows && !grid[ni][nj].active) {
+            grid[ni][nj] = { 
+              active: true, 
+              age: 0,
+              type: grid[i][j].type
+            };
+          }
+        }
+        grid[i][j].age++;
       }
-      
-      // Secondary branch (sometimes)
-      if (random() < 0.4) {
-        newBranches.push({
-          x: nx,
-          y: ny,
-          angle: newAngle2,
-          len: b.len * random(0.7, 0.9),
-          thickness: b.thickness * 0.7,
-          hue: b.hue + random(-15, 15),
-          life: b.life * random(0.85, 0.95)
-        });
-      }
-    }
-    
-    // Continue growth
-    if (newBranches.length < maxBranches && b.life > 50) {
-      newBranches.push({
-        x: nx,
-        y: ny,
-        angle: b.angle + random(-0.1, 0.1),
-        len: b.len * random(0.98, 1.02),
-        thickness: b.thickness * 0.995,
-        hue: b.hue + random(-2, 2),
-        life: b.life * random(0.995, 1.001)
-      });
     }
   }
   
-  branches = newBranches;
-  colorShift += 0.1;
-  
-  // Stop when done
-  if (branches.length === 0 || frameCount > 800) {
-    noLoop();
+  // Draw crystals with glow
+  noStroke();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j].active) {
+        let age = grid[i][j].age;
+        let type = grid[i][j].type;
+        let alpha = map(age, 0, MAX_AGE, 255, 80);
+        
+        // Outer glow
+        let glowColor = color(red(colors[type]), green(colors[type]), blue(colors[type]), alpha * 0.2);
+        fill(glowColor);
+        rect(i * CELL_SIZE - 2, j * CELL_SIZE - 2, CELL_SIZE + 4, CELL_SIZE + 4);
+        
+        // Core
+        fill(red(colors[type]), green(colors[type]), blue(colors[type]), alpha);
+        rect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        
+        // Bright center
+        if (age < 100) {
+          fill(255, 255, 255, map(age, 0, 100, 200, 0));
+          rect(i * CELL_SIZE + 2, j * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+        }
+      }
+    }
   }
+  
+  // Add new growth particles occasionally
+  if (frameCount % 10 === 0 && particles.length < 50) {
+    let cx = floor(cols / 2);
+    let cy = floor(rows / 2);
+    let angle = random(TWO_PI);
+    let dist = random(50, 200);
+    particles.push({
+      x: cx * CELL_SIZE + cos(angle) * dist,
+      y: cy * CELL_SIZE + sin(angle) * dist,
+      angle: angle + PI + random(-0.5, 0.5),
+      type: floor(random(colors.length))
+    });
+  }
+  
+  // Animate particles looking for growth
+  for (let p of particles) {
+    p.x += cos(p.angle) * 2;
+    p.y += sin(p.angle) * 2;
+    
+    let gi = floor(p.x / CELL_SIZE);
+    let gj = floor(p.y / CELL_SIZE);
+    
+    if (gi >= 0 && gi < cols && gj >= 0 && gj < rows) {
+      if (!grid[gi][gj].active && random() < 0.1) {
+        grid[gi][gj] = { active: true, age: 0, type: p.type };
+        p.angle += random(-PI/2, PI/2);
+      }
+    }
+    
+    // Draw particle
+    let alpha = map(sin(frameCount * 0.1 + p.x * 0.01), -1, 1, 100, 255);
+    fill(red(colors[p.type]), green(colors[p.type]), blue(colors[p.type]), alpha);
+    ellipse(p.x, p.y, 4, 4);
+  }
+  
+  time += 0.01;
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  background(0);
-  branches = [];
-  setup();
 }
 </script>
 </body>
