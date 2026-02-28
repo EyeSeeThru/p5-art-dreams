@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slime Mold — Physarum</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden; 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Physarum Polycephalum - Slime Mold Simulation
+// Based on Sebastian Lague's implementation
+
+let agents = [];
+let trailBuffer;
+let sensorAngle = PI / 4;
+let sensorDist = 15;
+let turnSpeed = 0.2;
+let moveSpeed = 1.5;
+let decayRate = 0.96;
+let agentCount = 3000;
+let width, height;
+
+function setup() {
+  width = windowWidth;
+  height = windowHeight;
+  createCanvas(width, height);
+  
+  trailBuffer = createGraphics(width, height);
+  trailBuffer.pixelDensity(1);
+  trailBuffer.background(10, 8, 15);
+  
+  // Initialize agents in a circle
+  for (let i = 0; i < agentCount; i++) {
+    let angle = random(TWO_PI);
+    let radius = random(min(width, height) * 0.25);
+    agents.push({
+      x: width / 2 + cos(angle) * radius,
+      y: height / 2 + sin(angle) * radius,
+      angle: angle + PI / 2,
+      species: floor(random(3))
+    });
+  }
+}
+
+function draw() {
+  // Draw trail buffer to main canvas
+  trailBuffer.loadPixels();
+  
+  // Update and draw agents
+  for (let agent of agents) {
+    // Sense environment
+    let left = sense(agent, sensorAngle);
+    let center = sense(agent, 0);
+    let right = sense(agent, -sensorAngle);
+    
+    // Steer based on sensor readings
+    if (center > left && center > right) {
+      // Continue straight
+    } else if (center < left && center < right) {
+      agent.angle += (random() > 0.5 ? 1 : -1) * turnSpeed * random();
+    } else if (left > right) {
+      agent.angle += turnSpeed;
+    } else if (right > left) {
+      agent.angle -= turnSpeed;
+    }
+    
+    // Move agent
+    agent.x += cos(agent.angle) * moveSpeed;
+    agent.y += sin(agent.angle) * moveSpeed;
+    
+    // Wrap around edges
+    if (agent.x < 0) agent.x = width;
+    if (agent.x > width) agent.x = 0;
+    if (agent.y < 0) agent.y = height;
+    if (agent.y > height) agent.y = 0;
+    
+    // Deposit trail
+    let px = floor(agent.x);
+    let py = floor(agent.y);
+    let idx = 4 * (px + py * width);
+    
+    if (idx >= 0 && idx < trailBuffer.pixels.length - 3) {
+      // Color based on species
+      let r, g, b;
+      if (agent.species === 0) {
+        r = 255; g = 200; b = 80;
+      } else if (agent.species === 1) {
+        r = 80; g = 200; b = 255;
+      } else {
+        r = 255; g = 100; b = 180;
+      }
+      
+      trailBuffer.pixels[idx] = r;
+      trailBuffer.pixels[idx + 1] = g;
+      trailBuffer.pixels[idx + 2] = b;
+      trailBuffer.pixels[idx + 3] = 255;
+    }
+  }
+  
+  trailBuffer.updatePixels();
+  
+  // Apply decay to entire trail
+  trailBuffer.loadPixels();
+  for (let i = 0; i < trailBuffer.pixels.length; i += 4) {
+    trailBuffer.pixels[i] *= decayRate;
+    trailBuffer.pixels[i + 1] *= decayRate;
+    trailBuffer.pixels[i + 2] *= decayRate;
+  }
+  trailBuffer.updatePixels();
+  
+  // Draw to main canvas with slight blur
+  image(trailBuffer, 0, 0);
+  
+  // Add subtle glow overlay
+  noStroke();
+  fill(10, 8, 15, 15);
+  rect(0, 0, width, height);
+}
+
+function sense(agent, sensorOffset) {
+  let sensorAngle = agent.angle + sensorOffset;
+  let sx = agent.x + cos(sensorAngle) * sensorDist;
+  let sy = agent.y + sin(sensorAngle) * sensorDist;
+  
+  // Wrap sensor position
+  sx = (sx + width) % width;
+  sy = (sy + height) % height;
+  
+  let px = floor(sx);
+  let py = floor(sy);
+  let idx = 4 * (px + py * width);
+  
+  if (idx >= 0 && idx < trailBuffer.pixels.length - 3) {
+    return trailBuffer.pixels[idx] + trailBuffer.pixels[idx + 1] + trailBuffer.pixels[idx + 2];
+  }
+  return 0;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailBuffer = createGraphics(windowWidth, windowHeight);
+  trailBuffer.background(10, 8, 15);
+}
+</script>
+</body>
+</html>
