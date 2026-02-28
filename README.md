@@ -76,6 +76,7 @@ The project cycles through different technique categories to ensure variety:
 - **emergent-swarm** — Particle species with emergent collective behaviors (flocking, separation, cross-type interactions)
 - **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
 - **slime-mold** — Physarum slime mold simulation with sensory-driven agent movement and species-based coloring
+- **fermat-spiral** — Golden spiral phyllotaxis with harmonic oscillation and connecting filaments
 
 ## Running
 
