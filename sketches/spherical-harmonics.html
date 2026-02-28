@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spherical Harmonics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Spherical Harmonics Visualization
+// Renders Y_l^m spherical harmonic functions on a sphere surface
+// with animated rotation and color mapping
+
+let t = 0;
+const spheres = [];
+const numSpheres = 5;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < numSpheres; i++) {
+    spheres.push({
+      l: floor(random(2, 8)),      // degree
+      m: 0,                         // order (will vary)
+      phase: random(TWO_PI),
+      speed: random(0.005, 0.015),
+      radius: 80 + i * 45,
+      hueOffset: random(360)
+    });
+  }
+}
+
+function draw() {
+  background(10, 8, 12);
+  
+  // Ambient glow
+  ambientLight(40);
+  pointLight(255, 255, 255, 0, 0, 400);
+  
+  rotateY(t * 0.15);
+  rotateX(t * 0.1);
+  
+  for (let i = 0; i < spheres.length; i++) {
+    drawSphericalHarmonic(spheres[i], i);
+  }
+  
+  t += 0.02;
+}
+
+function drawSphericalHarmonic(s, index) {
+  push();
+  
+  let hue = (s.hueOffset + t * 30) % 360;
+  let phaseVal = sin(t * 2 + s.phase);
+  
+  // Draw sphere surface with vertex displacement based on Y_l^m
+  noStroke();
+  
+  beginShape(TRIANGLE_STRIP);
+  for (let lat = 0; lat <= PI; lat += PI / 40) {
+    for (let lon = 0; lon <= TWO_PI; lon += TWO_PI / 80) {
+      
+      // Spherical harmonics calculation
+      let theta = lat;
+      let phi = lon + t * s.speed * 50;
+      
+      // Simplified spherical harmonic approximation
+      let l = s.l;
+      let m = floor(sin(t * 0.5 + index) * l);
+      
+      // Associated Legendre polynomial approximation
+      let Y = sin(l * theta) * cos(m * phi + phaseVal * PI);
+      Y += cos(l * theta) * sin(m * phi + phaseVal * PI) * 0.5;
+      
+      // Displacement
+      let displacement = map(Y, -1, 1, -15, 15);
+      let r = s.radius + displacement;
+      r *= 0.7 + 0.3 * sin(t * 2 + lat * 3 + lon * 2);
+      
+      // Convert to Cartesian
+      let x = r * sin(lat) * cos(lon);
+      let y = r * sin(lat) * sin(lon);
+      let z = r * cos(lat);
+      
+      // Color based on displacement and position
+      let h = (hue + map(displacement, -15, 15, -60, 60)) % 360;
+      let b = map(sin(lat + lon + t), -1, 1, 50, 100);
+      let alpha = map(r, s.radius * 0.5, s.radius * 1.2, 0.4, 0.9);
+      
+      fill(h, 80, b, alpha);
+      vertex(x, y, z);
+    }
+  }
+  endShape();
+  
+  // Inner glow sphere
+  push();
+  noFill();
+  stroke(hue, 60, 80, 0.15);
+  strokeWeight(1);
+  sphere(s.radius * 0.65);
+  pop();
+  
+  pop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
