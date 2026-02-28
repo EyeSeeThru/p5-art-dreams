@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apollonian Gasket</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Apollonian Gasket - Fractal of mutually tangent circles
+// Generated through circle inversion and recursive tangent circle finding
+
+let circles = [];
+let maxDepth = 5;
+let baseHue = 0;
+let animPhase = 0;
+
+class Circle {
+  constructor(x, y, r) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.curvature = 1 / r;
+  }
+  
+  draw() {
+    noFill();
+    strokeWeight(this.r > 50 ? 2 : 1);
+    let hue = (baseHue + this.curvature * 50) % 360;
+    let sat = 70 + sin(this.curvature * 10 + animPhase) * 20;
+    let bri = 60 + this.r * 0.3;
+    
+    stroke(hue, sat, bri, 180);
+    ellipse(this.x, this.y, this.r * 2);
+    
+    // Inner glow for larger circles
+    if (this.r > 30) {
+      stroke(hue, sat * 0.5, bri + 20, 80);
+      strokeWeight(this.r * 0.1);
+      ellipse(this.x, this.y, this.r * 2);
+    }
+  }
+}
+
+function generateGasket(x1, y1, r1, x2, y2, r2, x3, y3, r3, depth) {
+  if (depth > maxDepth || r1 < 2 || r2 < 2 || r3 < 2) return;
+  
+  // Calculate the fourth circle using Descartes' Circle Theorem
+  // (k1 + k2 + k3 + k4)^2 = 2 * (k1^2 + k2^2 + k3^2 + k4^2)
+  // For three tangent circles, there are two solutions
+  
+  let k1 = 1 / r1;
+  let k2 = 1 / r2;
+  let k3 = 1 / r3;
+  
+  let k4a = k1 + k2 + k3 + 2 * sqrt(k1*k2 + k2*k3 + k3*k1);
+  let k4b = k1 + k2 + k3 - 2 * sqrt(k1*k2 + k2*k3 + k3*k1);
+  
+  [k4a, k4b].forEach(k4 => {
+    if (k4 > 0 && k4 < 50) {
+      let r4 = 1 / k4;
+      
+      // Find center using circle inversion
+      let c1 = {x: x1, y: y1, r: r1};
+      let c2 = {x: x2, y: y2, r: r2};
+      let c3 = {x: x3, y: y3, r: r3};
+      
+      // Solve for center using intersection of two circles
+      let d12 = dist(c1.x, c1.y, c2.x, c2.y);
+      let d13 = dist(c1.x, c1.y, c3.x, c3.y);
+      let d23 = dist(c2.x, c2.y, c3.x, c3.y);
+      
+      let a = (r1*r1 - r2*r2 + d12*d12) / (2 * d12);
+      let h = sqrt(max(0, r1*r1 - a*a));
+      
+      let cx2 = c1.x + a * (c2.x - c1.x) / d12;
+      let cy2 = c1.y + a * (c2.y - c1.y) / d12;
+      
+      let sign = (c3.y - c1.y) * (c2.x - c1.x) > (c3.x - c1.x) * (c2.y - c1.y) ? 1 : -1;
+      
+      let x4 = cx2 + sign * h * (c2.y - c1.y) / d12;
+      let y4 = cy2 - sign * h * (c2.x - c1.x) / d12;
+      
+      // Check if this is a valid new circle
+      let valid = true;
+      for (let c of circles) {
+        let d = dist(x4, y4, c.x, c.y);
+        if (d < abs(r4 - c.r) - 1 || d > r4 + c.r + 1) {
+          valid = false;
+          break;
+        }
+      }
+      
+      if (valid && r4 > 2) {
+        circles.push(new Circle(x4, y4, r4));
+        
+        // Recurse with the new circle
+        generateGasket(x4, y4, r4, x1, y1, r1, x2, y2, r2, depth + 1);
+        generateGasket(x4, y4, r4, x2, y2, r2, x3, y3, r3, depth + 1);
+        generateGasket(x4, y4, r4, x3, y3, r3, x1, y1, r1, depth + 1);
+      }
+    }
+  });
+}
+
+function generateSimpleGasket() {
+  circles = [];
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  let r = min(width, height) * 0.4;
+  
+  // Three initial circles forming a curved triangle
+  let angle1 = -PI / 2;
+  let angle2 = -PI / 2 + TWO_PI / 3;
+  let angle3 = -PI / 2 + 2 * TWO_PI / 3;
+  
+  let x1 = cx + cos(angle1) * r * 0.5;
+  let y1 = cy + sin(angle1) * r * 0.5;
+  let r1 = r * 0.5;
+  
+  let x2 = cx + cos(angle2) * r * 0.5;
+  let y2 = cy + sin(angle2) * r * 0.5;
+  let r2 = r * 0.5;
+  
+  let x3 = cx + cos(angle3) * r * 0.5;
+  let y3 = cy + sin(angle3) * r * 0.5;
+  let r3 = r * 0.5;
+  
+  // Add boundary circle (negative curvature)
+  let boundaryR = r * 1.2;
+  circles.push(new Circle(cx, cy, boundaryR));
+  
+  // Add the three initial circles
+  circles.push(new Circle(x1, y1, r1));
+  circles.push(new Circle(x2, y2, r2));
+  circles.push(new Circle(x3, y3, r3));
+  
+  // Generate recursively
+  generateGasket(x1, y1, r1, x2, y2, r2, x3, y3, r3, 0);
+  generateGasket(x1, y1, r1, x3, y3, r3, cx, cy, boundaryR, 0);
+  generateGasket(x2, y2, r2, x3, y3, r3, cx, cy, boundaryR, 0);
+  generateGasket(x1, y1, r1, x2, y2, r2, cx, cy, boundaryR, 0);
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 255);
+  generateSimpleGasket();
+}
+
+function draw() {
+  background(250, 20, 8, 30);
+  
+  animPhase += 0.02;
+  baseHue = (baseHue + 0.3) % 360;
+  
+  // Draw all circles
+  for (let c of circles) {
+    c.draw();
+  }
+  
+  // Add subtle animation - pulse some circles
+  noFill();
+  strokeWeight(0.5);
+  stroke(baseHue, 60, 80, 50);
+  let pulseR = 100 + sin(frameCount * 0.03) * 50;
+  ellipse(width/2, height/2, pulseR * 2);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  generateSimpleGasket();
+}
+
+function mousePressed() {
+  generateSimpleGasket();
+  baseHue = random(360);
+}
+</script>
+</body>
+</html>
