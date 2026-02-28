@@ -20,7 +20,7 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
-- **flow-snakes** — Gosper curve space-filling fractal with hexagonal symmetry and rotating patterns
+- **ifs-fractal** — Iterated Function System with Barnsley-inspired transforms and rotating animations
 - **mandala-flow** — Radial symmetry with flowing noise-driven patterns and center glow
 - **dla-clusters** — Diffusion Limited Aggregation with wandering particles forming crystalline clusters
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
