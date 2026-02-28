@@ -17,6 +17,7 @@ The project cycles through different technique categories to ensure variety:
 - **Noise-Driven (Perlin, Simplex)** — Flow fields, noise-based generative art
 - **Fractals & Recursive Algorithms** — Self-similar patterns, recursive geometry
 - **Data Visualization / Sonification** — Audio-reactive and data-driven visuals
+- **Additional Reference Materials in EyeOS Vault** - located in EyeOS vault at: EyeOS/Notes/Generative Art. Use as additional source of inspiration for methods/techniques to research, incorporate, remix, alter, etc.
 
 ## Sketches
 
@@ -80,6 +81,7 @@ The project cycles through different technique categories to ensure variety:
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
+- **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
 
 ## Running
 

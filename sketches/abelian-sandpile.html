@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abelian Sandpile</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Abelian Sandpile Model - Self-organized criticality visualization
+// When a cell exceeds threshold (4), it topples distributing grains to neighbors
+
+let grid;
+let cols, rows;
+let resolution = 4;
+let colors = [];
+let isRunning = true;
+let avalancheCount = 0;
+let maxAvalanche = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize grid with zeros
+  grid = Array(cols).fill().map(() => Array(rows).fill(0));
+  
+  // Precompute colors for stability states 0-4
+  colors = [
+    color(10, 8, 15),      // 0 - Empty, dark
+    color(45, 35, 65),     // 1 - Light purple
+    color(85, 55, 95),     // 2 - Medium purple  
+    color(145, 85, 165),   // 3 - Bright purple
+    color(255, 200, 100),  // 4 - Critical, golden
+    color(255, 255, 255)   // 5+ - White hot
+  ];
+  
+  // Seed with random grains
+  seedSandpile();
+  
+  noStroke();
+}
+
+function seedSandpile() {
+  // Create random clusters of sand
+  for (let i = 0; i < 150; i++) {
+    let cx = floor(random(cols * 0.2, cols * 0.8));
+    let cy = floor(random(rows * 0.2, rows * 0.8));
+    let radius = floor(random(5, 20));
+    
+    for (let x = cx - radius; x < cx + radius; x++) {
+      for (let y = cy - radius; y < cy + radius; y++) {
+        if (x > 0 && x < cols - 1 && y > 0 && y < rows - 1) {
+          let d = dist(x, y, cx, cy);
+          if (d < radius) {
+            grid[x][y] += floor(random(10, 50));
+          }
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  background(10, 8, 15);
+  
+  // Run multiple toppling steps per frame for speed
+  for (let step = 0; step < 50; step++) {
+    avalancheCount = 0;
+    topple();
+  }
+  
+  // Render grid
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let val = grid[i][j];
+      let c = val < 5 ? colors[val] : colors[5];
+      fill(c);
+      rect(i * resolution, j * resolution, resolution, resolution);
+    }
+  }
+  
+  // Add new sand periodically
+  if (frameCount % 30 === 0) {
+    let cx = floor(random(cols * 0.3, cols * 0.7));
+    let cy = floor(random(rows * 0.3, rows * 0.7));
+    grid[cx][cy] += floor(random(5, 15));
+  }
+  
+  // Draw info
+  fill(255);
+  textSize(14);
+  text('Abelian Sandpile — Self-Organized Criticality', 20, 30);
+  textSize(11);
+  fill(180);
+  text('Grains cascade when stability threshold (4) is exceeded', 20, 50);
+}
+
+function topple() {
+  let nextGrid = grid.map(arr => [...arr]);
+  let changed = false;
+  
+  for (let i = 1; i < cols - 1; i++) {
+    for (let j = 1; j < rows - 1; j++) {
+      if (grid[i][j] >= 4) {
+        let toppleCount = floor(grid[i][j] / 4);
+        nextGrid[i][j] -= toppleCount * 4;
+        nextGrid[i+1][j] += toppleCount;
+        nextGrid[i-1][j] += toppleCount;
+        nextGrid[i][j+1] += toppleCount;
+        nextGrid[i][j-1] += toppleCount;
+        avalancheCount += toppleCount;
+        changed = true;
+      }
+    }
+  }
+  
+  grid = nextGrid;
+  
+  // Stop if stable (for demo purposes, but we keep running)
+  if (!changed && frameCount % 60 === 0) {
+    seedSandpile();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  grid = Array(cols).fill().map(() => Array(rows).fill(0));
+  seedSandpile();
+}
+</script>
+</body>
+</html>
