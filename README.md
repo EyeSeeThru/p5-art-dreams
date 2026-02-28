@@ -79,6 +79,7 @@ The project cycles through different technique categories to ensure variety:
 - **apollonian-gasket** — Fractal generated through recursive circle inversion using Descartes' Circle Theorem
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
+- **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 
 ## Running
 
