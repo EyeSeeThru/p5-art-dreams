@@ -88,6 +88,7 @@ The project cycles through different technique categories to ensure variety:
 - **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
 - **electrostatic-breakdown** — Dielectric discharge visualization with branching electrical patterns
 - **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
+- **audio-aurora** — Audio-reactive aurora visualization with flowing particle ribbons responding to simulated frequency bands
 
 ## Running
 

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Aurora</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const bands = 64;
+const bandHeights = [];
+const targetBandHeights = [];
+let particles = [];
+const numParticles = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  
+  for (let i = 0; i < bands; i++) {
+    bandHeights[i] = 0;
+    targetBandHeights[i] = 0;
+  }
+  
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height * 0.3, height * 0.7),
+      vx: random(-0.5, 0.5),
+      vy: random(-0.3, 0.3),
+      size: random(2, 6),
+      hue: random(120, 220),
+      speed: random(0.5, 1.5)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 15);
+  
+  // Simulate audio frequencies with smooth sine waves
+  let time = frameCount * 0.02;
+  for (let i = 0; i < bands; i++) {
+    let freq = i * 0.1;
+    let amp = sin(time + freq * 2) * 0.5 + 0.5;
+    amp *= sin(time * 0.7 + i * 0.2) * 0.5 + 0.5;
+    targetBandHeights[i] = amp * height * 0.35;
+    bandHeights[i] = lerp(bandHeights[i], targetBandHeights[i], 0.1);
+  }
+  
+  // Draw aurora ribbons
+  for (let layer = 0; layer < 3; layer++) {
+    let layerOffset = layer * 40;
+    let layerHue = 160 + layer * 30;
+    
+    beginShape();
+    for (let i = 0; i <= bands; i++) {
+      let idx = i % bands;
+      let x = (i / bands) * width;
+      let y = height * 0.4 + layerOffset + bandHeights[idx] * 0.5;
+      y += sin(x * 0.01 + time + layer) * 30;
+      
+      let alpha = map(i, 0, bands, 0, 100) * map(abs(layer - 1), 0, 1, 0.5, 1);
+      fill((layerHue + bandHeights[idx] * 0.1) % 360, 70, 90, alpha);
+      ellipse(x, y, 20 + bandHeights[idx] * 0.3, 80);
+    }
+    endShape();
+  }
+  
+  // Update and draw particles
+  for (let p of particles) {
+    let bandIdx = floor((p.x / width) * bands);
+    let bandInfluence = bandHeights[bandIdx] / height;
+    
+    p.vx += (noise(p.x * 0.001, p.y * 0.001, time) - 0.5) * 0.2;
+    p.vy += sin(time + p.x * 0.01) * 0.1;
+    p.vy += bandInfluence * 0.5;
+    
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    
+    p.x += p.vx * p.speed;
+    p.y += p.vy * p.speed;
+    
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < height * 0.2) p.y = height * 0.8;
+    if (p.y > height * 0.8) p.y = height * 0.2;
+    
+    let brightness = map(bandInfluence, 0, 0.5, 60, 100);
+    fill(p.hue, 40, brightness, 60);
+    ellipse(p.x, p.y, p.size + bandInfluence * 5);
+  }
+  
+  // Frequency bars at bottom
+  for (let i = 0; i < bands; i++) {
+    let x = (i / bands) * width;
+    let h = bandHeights[i];
+    let barHue = map(i, 0, bands, 180, 280);
+    fill(barHue, 60, 80, 50);
+    rect(x, height - h * 0.3, width / bands - 1, h * 0.3);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
