@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electrostatic Breakdown</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Electrostatic Breakdown - Dielectric discharge visualization
+let branches = [];
+let decayTime = 0;
+const MAX_BRANCHES = 12;
+const BRANCH_DECAY = 90;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  background(0);
+}
+
+function draw() {
+  // Semi-transparent background for trail effect
+  background(0, 0, 0, 0.08);
+  
+  // Spawn new breakdown periodically
+  if (frameCount % 60 === 0 && branches.length < MAX_BRANCHES) {
+    spawnBreakdown();
+  }
+  
+  // Update and draw all branches
+  for (let i = branches.length - 1; i >= 0; i--) {
+    branches[i].update();
+    branches[i].draw();
+    
+    if (branches[i].dead()) {
+      branches.splice(i, 1);
+    }
+  }
+  
+  decayTime++;
+}
+
+function spawnBreakdown() {
+  // Random starting point on edges
+  let startX, startY;
+  let edge = floor(random(4));
+  
+  switch(edge) {
+    case 0: // top
+      startX = random(width);
+      startY = 0;
+      break;
+    case 1: // right
+      startX = width;
+      startY = random(height);
+      break;
+    case 2: // bottom
+      startX = random(width);
+      startY = height;
+      break;
+    case 3: // left
+      startX = 0;
+      startY = random(height);
+      break;
+  }
+  
+  // Determine target point on opposite side
+  let targetX, targetY;
+  let targetEdge = (edge + 2) % 4;
+  
+  switch(targetEdge) {
+    case 0:
+      targetX = random(width);
+      targetY = 0;
+      break;
+    case 1:
+      targetX = width;
+      targetY = random(height);
+      break;
+    case 2:
+      targetX = random(width);
+      targetY = height;
+      break;
+    case 3:
+      targetX = 0;
+      targetY = random(height);
+      break;
+  }
+  
+  let branch = new BreakdownBranch(startX, startY, targetX, targetY);
+  branches.push(branch);
+}
+
+class BreakdownBranch {
+  constructor(x1, y1, x2, y2) {
+    this.segments = [];
+    this.life = BRANCH_DECAY;
+    this.maxLife = BRANCH_DECAY;
+    this.generate(x1, y1, x2, y2);
+    
+    // Color based on position
+    this.hue = random(280, 340); // Purple to pink range
+    this.sat = random(70, 100);
+  }
+  
+  generate(x1, y1, x2, y2) {
+    let points = [];
+    let numPoints = floor(random(15, 30));
+    
+    for (let i = 0; i <= numPoints; i++) {
+      let t = i / numPoints;
+      let x = lerp(x1, x2, t);
+      let y = lerp(y1, y2, t);
+      
+      // Add noise displacement
+      let noiseAmt = 80 * sin(t * PI);
+      x += random(-noiseAmt, noiseAmt);
+      y += random(-noiseAmt, noiseAmt);
+      
+      points.push({x, y});
+    }
+    
+    // Create segments from points
+    for (let i = 0; i < points.length - 1; i++) {
+      this.segments.push({
+        x1: points[i].x,
+        y1: points[i].y,
+        x2: points[i+1].x,
+        y2: points[i+1].y
+      });
+    }
+  }
+  
+  update() {
+    this.life--;
+  }
+  
+  draw() {
+    let alpha = map(this.life, 0, this.maxLife, 0, 1);
+    let brightness = map(this.life, 0, this.maxLife, 30, 100);
+    
+    // Glow effect
+    for (let i = 0; i < 3; i++) {
+      stroke(this.hue, this.sat - i * 20, brightness, alpha * (0.3 - i * 0.08));
+      strokeWeight(8 - i * 2);
+      
+      for (let seg of this.segments) {
+        // Add slight jitter for electricity effect
+        let jx = random(-2, 2);
+        let jy = random(-2, 2);
+        line(seg.x1 + jx, seg.y1 + jy, seg.x2 + jx, seg.y2 + jy);
+      }
+    }
+    
+    // Core bright line
+    stroke(this.hue, this.sat, 100, alpha);
+    strokeWeight(2);
+    
+    for (let seg of this.segments) {
+      let jx = random(-1, 1);
+      let jy = random(-1, 1);
+      line(seg.x1 + jx, seg.y1 + jy, seg.x2 + jx, seg.y2 + jy);
+    }
+    
+    // Branching sub-discharges
+    if (this.life > this.maxLife * 0.5) {
+      let branchChance = map(this.life, this.maxLife, 0, 0.02, 0.1);
+      
+      for (let seg of this.segments) {
+        if (random() < branchChance) {
+          this.drawSubDischarge(seg.x2, seg.y2);
+        }
+      }
+    }
+  }
+  
+  drawSubDischarge(x, y) {
+    let angle = random(TWO_PI);
+    let len = random(20, 60);
+    let steps = floor(random(5, 12));
+    
+    let px = x, py = y;
+    let alpha = 0.6;
+    
+    for (let i = 0; i < steps; i++) {
+      let nx = px + cos(angle) * (len / steps);
+      let ny = py + sin(angle) * (len / steps);
+      
+      stroke(this.hue + random(-20, 20), this.sat, 90, alpha);
+      strokeWeight(random(1, 3));
+      line(px, py, nx, ny);
+      
+      px = nx;
+      py = ny;
+      angle += random(-0.8, 0.8);
+      alpha *= 0.9;
+    }
+  }
+  
+  dead() {
+    return this.life <= 0;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>
