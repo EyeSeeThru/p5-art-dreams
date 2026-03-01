@@ -25,6 +25,7 @@ The project cycles through different technique categories to ensure variety:
 - **ifs-fractal** — Iterated Function System with Barnsley-inspired transforms and rotating animations
 - **mandala-flow** — Radial symmetry with flowing noise-driven patterns and center glow
 - **dla-clusters** — Diffusion Limited Aggregation with wandering particles forming crystalline clusters
+- **droplet-ripples** — Interactive water droplet ripple interference patterns with mouse interaction
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
 - **wave-interference** — Wave interference patterns with multiple sources
 - **wave-particle-duality** — Particles exhibiting wave-particle duality with interference patterns

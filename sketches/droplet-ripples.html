@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Droplet Ripples</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Droplet Ripples - Interactive water droplet ripple interference
+const ripples = [];
+const MAX_RIPPLES = 50;
+let palette;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  palette = [
+    [200, 80, 90],   // cyan-blue
+    [260, 70, 85],   // purple
+    [320, 60, 95],   // magenta-pink
+    [180, 50, 80],   // teal
+    [240, 65, 90],   // blue-violet
+  ];
+  noStroke();
+}
+
+function draw() {
+  // Dark background with subtle depth
+  background(240, 30, 5);
+  
+  // Ambient glow at center
+  let cx = width / 2;
+  let cy = height / 2;
+  for (let i = 3; i > 0; i--) {
+    fill(240, 40, 8 + i * 2, 15);
+    ellipse(cx, cy, i * 300, i * 300);
+  }
+  
+  // Auto-generate ripples periodically
+  if (frameCount % 40 === 0 && ripples.length < MAX_RIPPLES) {
+    let rx = random(width * 0.2, width * 0.8);
+    let ry = random(height * 0.2, height * 0.8);
+    let size = random(20, 60);
+    let col = random(palette);
+    ripples.push(new Ripple(rx, ry, size, col));
+  }
+  
+  // Update and draw ripples
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    ripples[i].update();
+    ripples[i].display();
+    if (ripples[i].isDead()) {
+      ripples.splice(i, 1);
+    }
+  }
+  
+  // Mouse interaction - create ripple on click or drag
+  if (mouseIsPressed && frameCount % 8 === 0 && ripples.length < MAX_RIPPLES) {
+    let col = random(palette);
+    ripples.push(new Ripple(mouseX, mouseY, random(30, 70), col));
+  }
+  
+  // Subtle vignette
+  drawVignette();
+}
+
+function drawVignette() {
+  let grad = drawingContext;
+  let ctx = grad.createRadialGradient(cx, cy, 0, cx, cy, max(width, height) * 0.7);
+  ctx.addColorStop(0, 'rgba(0,0,0,0)');
+  ctx.addColorStop(1, 'rgba(0,0,0,0.4)');
+  grad.fillStyle = ctx;
+  grad.fillRect(0, 0, width, height);
+}
+
+let cx, cy;
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cx = width / 2;
+  cy = height / 2;
+}
+
+class Ripple {
+  constructor(x, y, maxRadius, col) {
+    this.x = x;
+    this.y = y;
+    this.radius = 1;
+    this.maxRadius = maxRadius;
+    this.life = 100;
+    this.decay = random(0.4, 0.8);
+    this.col = col;
+    this.rings = floor(random(3, 6));
+  }
+  
+  update() {
+    this.radius += (this.maxRadius - this.radius) * 0.03;
+    this.life -= this.decay;
+  }
+  
+  display() {
+    let alpha = map(this.life, 0, 100, 0, 60);
+    let ringSpacing = this.maxRadius / this.rings;
+    
+    for (let r = 0; r < this.rings; r++) {
+      let ringRadius = this.radius + r * ringSpacing * 0.5;
+      let ringAlpha = alpha * (1 - r / this.rings) * 0.4;
+      let hue = (this.col[0] + r * 20) % 360;
+      
+      // Outer glow
+      fill(hue, this.col[1], this.col[2], ringAlpha);
+      ellipse(this.x, this.y, ringRadius * 2, ringRadius * 2);
+      
+      // Ring stroke
+      noFill();
+      stroke(hue, this.col[1], this.col[2], ringAlpha * 1.5);
+      strokeWeight(map(this.life, 0, 100, 0.5, 2));
+      ellipse(this.x, this.y, ringRadius * 2, ringRadius * 2);
+      noStroke();
+    }
+    
+    // Center bright spot
+    if (this.life > 70) {
+      let centerAlpha = map(this.life, 70, 100, 0, 40);
+      fill(this.col[0], this.col[1] * 0.5, 100, centerAlpha);
+      ellipse(this.x, this.y, 8, 8);
+    }
+  }
+  
+  isDead() {
+    return this.life <= 0;
+  }
+}
+</script>
+</body>
+</html>
