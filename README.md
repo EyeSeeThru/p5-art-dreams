@@ -83,6 +83,7 @@ The project cycles through different technique categories to ensure variety:
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
+- **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
 
 ## Running
 

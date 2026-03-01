@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wavefunction Collapse</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #0a0a0f; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const CELL_SIZE = 12;
+const GRID_WIDTH = 64;
+const GRID_HEIGHT = 64;
+const STATES = 4;
+const ENTROPY_THRESHOLD = 1.5;
+
+let grid = [];
+let collapsed = [];
+let history = [];
+let t = 0;
+let animating = true;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  pixelDensity(1);
+  
+  for (let x = 0; x < GRID_WIDTH; x++) {
+    grid[x] = [];
+    collapsed[x] = [];
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+      grid[x][y] = [...Array(STATES).keys()].map(i => i + 1);
+      collapsed[x][y] = false;
+    }
+  }
+}
+
+function getEntropy(x, y) {
+  if (collapsed[x][y]) return Infinity;
+  return grid[x][y].length;
+}
+
+function getLowestEntropy() {
+  let minEntropy = Infinity;
+  let candidates = [];
+  
+  for (let x = 0; x < GRID_WIDTH; x++) {
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+      if (!collapsed[x][y]) {
+        const e = getEntropy(x, y);
+        if (e < minEntropy) {
+          minEntropy = e;
+          candidates = [{x, y}];
+        } else if (e === minEntropy) {
+          candidates.push({x, y});
+        }
+      }
+    }
+  }
+  
+  if (candidates.length === 0 || minEntropy > STATES) return null;
+  return random(candidates);
+}
+
+function propagate(x, y) {
+  const state = grid[x][y][0];
+  const stack = [{x, y}];
+  
+  while (stack.length > 0) {
+    const {x: cx, y: cy} = stack.pop();
+    
+    const neighbors = [
+      {x: cx - 1, y: cy},
+      {x: cx + 1, y: cy},
+      {x: cx, y: cy - 1},
+      {x: cx, y: cy + 1}
+    ];
+    
+    for (const n of neighbors) {
+      if (n.x >= 0 && n.x < GRID_WIDTH && n.y >= 0 && n.y < GRID_HEIGHT) {
+        if (!collapsed[n.x][n.y] && grid[n.x][n.y].includes(state)) {
+          grid[n.x][n.y] = grid[n.x][n.y].filter(s => s !== state);
+          
+          if (grid[n.x][n.y].length === 0) {
+            resetGrid();
+            return;
+          }
+          
+          stack.push(n);
+        }
+      }
+    }
+  }
+}
+
+function resetGrid() {
+  for (let x = 0; x < GRID_WIDTH; x++) {
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+      grid[x][y] = [...Array(STATES).keys()].map(i => i + 1);
+      collapsed[x][y] = false;
+    }
+  }
+  history = [];
+}
+
+function collapse() {
+  const cell = getLowestEntropy();
+  if (!cell) {
+    if (frameCount % 60 === 0) resetGrid();
+    return;
+  }
+  
+  const {x, y} = cell;
+  const states = grid[x][y];
+  const chosen = random(states);
+  grid[x][y] = [chosen];
+  collapsed[x][y] = true;
+  history.push({x, y, state: chosen});
+  
+  if (history.length > 500) {
+    history.shift();
+  }
+  
+  propagate(x, y);
+}
+
+function draw() {
+  background(10, 20, 5);
+  
+  const cols = floor(width / CELL_SIZE);
+  const rows = floor(height / CELL_SIZE);
+  const offsetX = (width - cols * CELL_SIZE) / 2;
+  const offsetY = (height - rows * CELL_SIZE) / 2;
+  
+  noStroke();
+  
+  for (let x = 0; x < cols && x < GRID_WIDTH; x++) {
+    for (let y = 0; y < rows && y < GRID_HEIGHT; y++) {
+      const px = offsetX + x * CELL_SIZE;
+      const py = offsetY + y * CELL_SIZE;
+      
+      if (collapsed[x][y]) {
+        const state = grid[x][y][0];
+        const hue = map(state, 1, STATES, 180, 320);
+        const brightness = 70 + sin(t * 0.02 + x * 0.1 + y * 0.1) * 20;
+        
+        fill(hue, 60, brightness, 0.9);
+        rect(px, py, CELL_SIZE - 1, CELL_SIZE - 1);
+        
+        fill(hue, 20, 100, 0.6);
+        ellipse(px + CELL_SIZE/2, py + CELL_SIZE/2, CELL_SIZE * 0.3);
+      } else {
+        const entropy = grid[x][y].length;
+        const alpha = map(entropy, 1, STATES, 0.8, 0.1);
+        fill(240, 30, 40, alpha);
+        rect(px, py, CELL_SIZE - 1, CELL_SIZE - 1);
+      }
+    }
+  }
+  
+  for (let i = 0; i < 3; i++) {
+    if (animating) collapse();
+  }
+  
+  if (random() < 0.005) resetGrid();
+  
+  t++;
+  
+  fill(0, 0, 100);
+  textSize(12);
+  text('WAVEFUNCTION COLLAPSE', 20, 30);
+  textSize(10);
+  fill(0, 0, 60);
+  text('Superposition → Observation → Collapse', 20, 48);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
