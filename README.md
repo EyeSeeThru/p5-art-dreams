@@ -57,6 +57,7 @@ The project cycles through different technique categories to ensure variety:
 - **diffraction-grating** — Light spectrum interference patterns with multiple slits
 - **fractal-canopy** — Recursive branching tree with organic sway and golden hour palette
 - **lissajous-knots** — Parametric Lissajous curves forming woven knot patterns
+- **levy-flight** — Heavy-tailed random walk visualization inspired by animal foraging patterns
 - **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling
 - **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
