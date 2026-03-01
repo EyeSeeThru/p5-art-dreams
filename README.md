@@ -44,6 +44,7 @@ The project cycles through different technique categories to ensure variety:
 - **orbital-decay** — Orbital mechanics simulation
 - **resonance-cavities** — Resonant frequency visualization
 - **stasis-field** — Static field effects
+- **string-art** — Parametric woven curves connecting rotating geometric frames
 - **strange-attractors** — Chaotic attractor rendering
 - **perlin-vortex** — Perlin noise-driven vortex field with particle trails
 - **phase-portraits** — Phase space visualization
