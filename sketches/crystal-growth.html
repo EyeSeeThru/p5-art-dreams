@@ -101,6 +101,19 @@ function draw() {
   frame++;
 }
 
+function getEmptyNeighbors(x, y) {
+  let empty = [];
+  let dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+  for (let d of dirs) {
+    let nx = x + d[0];
+    let ny = y + d[1];
+    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && grid[nx][ny] === 0) {
+      empty.push({x: nx, y: ny});
+    }
+  }
+  return empty;
+}
+
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   background(10, 10, 15);
