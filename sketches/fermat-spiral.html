@@ -15,7 +15,7 @@
 <script>
 const dots = [];
 const numDots = 800;
-const goldenAngleRad = 2.39996; // ~137.5 degrees in radians
+const goldenAngleRadRad = 2.39996; // ~137.5 degrees in radians
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -43,7 +43,7 @@ function draw() {
     
     // Fermat's spiral: r = c * sqrt(n), theta = n * golden angle
     let r = 8 * sqrt(i + 1);
-    let theta = i * goldenAngle;
+    let theta = i * goldenAngleRad;
     
     // Add subtle animation
     let animOffset = sin(frameCount * 0.02 + i * 0.05) * 3;
@@ -81,13 +81,13 @@ function draw() {
   strokeWeight(0.5);
   for (let i = 0; i < numDots; i += 3) {
     let r1 = 8 * sqrt(i + 1);
-    let theta1 = i * goldenAngle;
+    let theta1 = i * goldenAngleRad;
     let x1 = centerX + r1 * cos(theta1);
     let y1 = centerY + r1 * sin(theta1);
     
     for (let j = i + 1; j < min(i + 15, numDots); j++) {
       let r2 = 8 * sqrt(j + 1);
-      let theta2 = j * goldenAngle;
+      let theta2 = j * goldenAngleRad;
       let x2 = centerX + r2 * cos(theta2);
       let y2 = centerY + r2 * sin(theta2);
       
