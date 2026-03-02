@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prism Dispersion</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const waves = [];
+const numWaves = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noLoop();
+  
+  for (let i = 0; i < numWaves; i++) {
+    waves.push({
+      offset: i * (TWO_PI / numWaves),
+      speed: 0.02 + random(0.01),
+      amplitude: 30 + i * 8,
+      frequency: 0.02 + random(0.01),
+      hue: (i * 30) % 360
+    });
+  }
+}
+
+function draw() {
+  background(10, 10, 5);
+  
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const maxRadius = min(width, height) * 0.4;
+  
+  // Draw prism shape
+  drawPrism(centerX, centerY, maxRadius * 0.3);
+  
+  // Draw dispersion rays
+  for (let angle = -PI/3; angle <= PI/3; angle += 0.02) {
+    let hue = map(angle, -PI/3, PI/3, 260, 400) % 360;
+    let alpha = map(abs(angle), 0, PI/3, 0.8, 0.1);
+    
+    stroke(hue, 80, 90, alpha);
+    strokeWeight(1);
+    
+    let rayLength = maxRadius * 1.5;
+    let startX = centerX + cos(angle) * maxRadius * 0.35;
+    let startY = centerY + sin(angle) * maxRadius * 0.35;
+    
+    // Wavy ray path
+    beginShape();
+    for (let t = 0; t < rayLength; t += 3) {
+      let wave = sin(t * 0.05 + frameCount * 0.02) * 5;
+      let x = startX + cos(angle) * t + wave * sin(angle);
+      let y = startY + sin(angle) * t - wave * cos(angle);
+      vertex(x, y);
+    }
+    endShape();
+  }
+  
+  // Animated spectral particles
+  for (let i = 0; i < 80; i++) {
+    let angle = map(i, 0, 80, -PI/3, PI/3);
+    let dist = (frameCount * 2 + i * 8) % (maxRadius * 1.5);
+    let hue = map(angle, -PI/3, PI/3, 260, 400) % 360;
+    
+    let x = centerX + cos(angle) * (maxRadius * 0.35 + dist);
+    let y = centerY + sin(angle) * (maxRadius * 0.35 + dist);
+    let wave = sin(dist * 0.1 + frameCount * 0.03) * 8;
+    
+    x += wave * sin(angle);
+    y -= wave * cos(angle);
+    
+    noStroke();
+    fill(hue, 70, 100, 0.7);
+    ellipse(x, y, 4, 4);
+    
+    // Glow
+    fill(hue, 60, 100, 0.2);
+    ellipse(x, y, 12, 12);
+  }
+  
+  // Rainbow arc at bottom
+  for (let a = 0; a < PI; a += 0.01) {
+    let hue = map(a, 0, PI, 0, 300);
+    stroke(hue, 80, 90, 0.6);
+    strokeWeight(2);
+    let r = maxRadius * 0.8 + sin(a * 8 + frameCount * 0.03) * 20;
+    point(centerX + cos(a - PI/2) * r, centerY + sin(a - PI/2) * r);
+  }
+  
+  // Floating light orbs
+  for (let i = 0; i < 5; i++) {
+    let orbX = centerX + sin(frameCount * 0.01 + i * 1.2) * maxRadius * 0.6;
+    let orbY = centerY + cos(frameCount * 0.015 + i * 0.8) * maxRadius * 0.4;
+    let orbHue = (frameCount * 2 + i * 60) % 360;
+    
+    // Outer glow
+    noStroke();
+    for (let r = 60; r > 0; r -= 10) {
+      fill(orbHue, 60, 100, 0.05);
+      ellipse(orbX, orbY, r, r);
+    }
+    // Core
+    fill(orbHue, 40, 100, 0.9);
+    ellipse(orbX, orbY, 8, 8);
+  }
+}
+
+function drawPrism(cx, cy, size) {
+  push();
+  translate(cx, cy);
+  
+  // Prism glow
+  noStroke();
+  for (let i = 20; i > 0; i--) {
+    fill(280, 40, 20, 0.02);
+    beginShape();
+    for (let a = 0; a < TWO_PI; a += 0.1) {
+      let r = size + i * 3;
+      vertex(cos(a) * r, sin(a) * r * 0.7);
+    }
+    endShape(CLOSE);
+  }
+  
+  // Main prism body
+  fill(280, 30, 15, 0.3);
+  stroke(300, 50, 80, 0.8);
+  strokeWeight(2);
+  beginShape();
+  for (let a = 0; a < TWO_PI; a += 0.1) {
+    vertex(cos(a) * size, sin(a) * size * 0.7);
+  }
+  endShape(CLOSE);
+  
+  // Inner facets
+  stroke(320, 40, 100, 0.5);
+  strokeWeight(1);
+  for (let i = 0; i < 6; i++) {
+    let angle = (TWO_PI / 6) * i + frameCount * 0.01;
+    line(0, 0, cos(angle) * size * 0.8, sin(angle) * size * 0.8 * 0.7);
+  }
+  
+  // Center bright spot
+  fill(0, 0, 100, 0.8);
+  noStroke();
+  ellipse(0, 0, 20, 20);
+  
+  pop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
