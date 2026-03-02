@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Belousov Reactant</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Belousov-Zhabotinsky Reaction Simulation
+// Using a simplified 3-component Oregonator model with cellular automaton approach
+
+let grid;
+let nextGrid;
+let cellSize = 4;
+let cols, rows;
+let t = 0;
+
+const A = 0; // Activator (hydrogen bromide)
+const B = 1; // Inhibitor (bromous acid)  
+const C = 2; // Catalyst (cerium)
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = ceil(width / cellSize);
+  rows = ceil(height / cellSize);
+  
+  grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0).map(() => ({
+    a: random(0.5, 1),
+    b: random(0.5, 1),
+    c: random(0.5, 1)
+  })));
+  
+  nextGrid = new Array(cols).fill(0).map(() => new Array(rows).fill(0).map(() => ({
+    a: 0, b: 0, c: 0
+  })));
+  
+  noStroke();
+}
+
+function draw() {
+  background(0);
+  
+  // Oregonator model parameters
+  const epsilon = 0.04;
+  const q = 0.002;
+  const f = 1.0;
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let cell = grid[i][j];
+      
+      // Get neighbors (Moore neighborhood)
+      let sumA = 0, sumB = 0, sumC = 0;
+      let neighbors = 0;
+      
+      for (let di = -1; di <= 1; di++) {
+        for (let dj = -1; dj <= 1; dj++) {
+          if (di === 0 && dj === 0) continue;
+          let ni = (i + di + cols) % cols;
+          let nj = (j + dj + rows) % rows;
+          sumA += grid[ni][nj].a;
+          sumB += grid[ni][nj].b;
+          sumC += grid[ni][nj].c;
+          neighbors++;
+        }
+      }
+      
+      let avgA = sumA / neighbors;
+      let avgB = sumB / neighbors;
+      let avgC = sumC / neighbors;
+      
+      // Oregonator equations (simplified)
+      let da = (epsilon * (avgA * (1 - avgA) - avgB * (avgA + q) / (avgA + q))) / epsilon;
+      let db = (epsilon * (avgB * (1 - avgB) - avgC * (avgB + q) / (avgB + q))) / epsilon;
+      let dc = (epsilon * (avgC * (1 - avgC) - avgA * (avgC + q) / (avgC + q))) / epsilon;
+      
+      // Add noise
+      da += random(-0.01, 0.01);
+      db += random(-0.01, 0.01);
+      dc += random(-0.01, 0.01);
+      
+      // Update
+      nextGrid[i][j].a = constrain(cell.a + da * 0.5, 0, 1);
+      nextGrid[i][j].b = constrain(cell.b + db * 0.5, 0, 1);
+      nextGrid[i][j].c = constrain(cell.c + dc * 0.5, 0, 1);
+      
+      // Color mapping - BZ reaction palette
+      let r = nextGrid[i][j].a * 255;
+      let g = nextGrid[i][j].b * 180 + nextGrid[i][j].c * 75;
+      let b = nextGrid[i][j].c * 255;
+      
+      // Add wave-like coloring
+      let wave = sin(t * 0.02 + i * 0.05 + j * 0.05) * 0.5 + 0.5;
+      r = lerp(r, 255 * wave, 0.2);
+      b = lerp(b, 150 + 105 * wave, 0.3);
+      
+      fill(r, g * wave, b);
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+  
+  // Swap grids
+  let temp = grid;
+  grid = nextGrid;
+  nextGrid = temp;
+  
+  t++;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = ceil(width / cellSize);
+  rows = ceil(height / cellSize);
+  
+  grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0).map(() => ({
+    a: random(0.5, 1),
+    b: random(0.5, 1),
+    c: random(0.5, 1)
+  })));
+  
+  nextGrid = new Array(cols).fill(0).map(() => new Array(rows).fill(0).map(() => ({
+    a: 0, b: 0, c: 0
+  })));
+}
+</script>
+</body>
+</html>

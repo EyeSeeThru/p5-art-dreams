@@ -91,6 +91,7 @@ The project cycles through different technique categories to ensure variety:
 - **electrostatic-breakdown** — Dielectric discharge visualization with branching electrical patterns
 - **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
 - **audio-aurora** — Audio-reactive aurora visualization with flowing particle ribbons responding to simulated frequency bands
+- **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
 
 ## Running
 
