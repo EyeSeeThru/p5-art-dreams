@@ -97,6 +97,7 @@ The project cycles through different technique categories to ensure variety:
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
 - **prism-dispersion** — Light dispersion through a prism with spectral rainbow refraction and animated particles
 - **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
+- **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
 
 ## Running
 

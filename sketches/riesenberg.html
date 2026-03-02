@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riesenberg — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<script>
+const circles = [];
+const numCircles = 12;
+const maxRadius = 180;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < numCircles; i++) {
+    circles.push({
+      r: map(i, 0, numCircles - 1, 30, maxRadius),
+      angle: 0,
+      speed: random(0.002, 0.008) * (i % 2 === 0 ? 1 : -1),
+      hue: map(i, 0, numCircles, 180, 320),
+      offset: random(TWO_PI)
+    });
+  }
+}
+
+function draw() {
+  background(10, 8, 6);
+  translate(width / 2, height / 2);
+  
+  const t = frameCount * 0.01;
+  
+  // Draw Riesenberg-style geometric patterns
+  for (let i = 0; i < circles.length; i++) {
+    const c = circles[i];
+    c.angle += c.speed;
+    
+    const x = cos(c.angle + c.offset) * c.r * 0.5;
+    const y = sin(c.angle + c.offset) * c.r * 0.5;
+    
+    push();
+    rotate(c.angle + t);
+    
+    // Outer ring points
+    const numPoints = 60;
+    for (let j = 0; j < numPoints; j++) {
+      const a = map(j, 0, numPoints, 0, TWO_PI);
+      const px = cos(a) * c.r;
+      const py = sin(a) * c.r;
+      
+      // Connect to opposite point
+      const ox = cos(a + PI) * c.r;
+      const oy = sin(a + PI) * c.r;
+      
+      const alpha = map(sin(a * 2 + t * 2), -1, 1, 0.05, 0.3);
+      stroke(c.hue, 70, 90, alpha);
+      strokeWeight(0.5);
+      line(px, py, ox * 0.3, oy * 0.3);
+    }
+    
+    // Inner connecting lines
+    for (let j = 0; j < numPoints; j += 3) {
+      const a = map(j, 0, numPoints, 0, TWO_PI);
+      const r = c.r * 0.6;
+      const px = cos(a) * r;
+      const py = sin(a) * r;
+      
+      const nextJ = (j + 15) % numPoints;
+      const a2 = map(nextJ, 0, numPoints, 0, TWO_PI);
+      const px2 = cos(a2) * r;
+      const py2 = sin(a2) * r;
+      
+      stroke(c.hue + 30, 60, 80, 0.15);
+      line(px, py, px2, py2);
+    }
+    
+    pop();
+    
+    // Draw circle boundary
+    noFill();
+    stroke(c.hue, 50, 60, 0.2);
+    strokeWeight(1);
+    ellipse(0, 0, c.r * 2, c.r * 2);
+  }
+  
+  // Center geometric star
+  push();
+  const starPoints = 8;
+  const starR = 40 + sin(t * 2) * 10;
+  rotate(t * 0.5);
+  for (let i = 0; i < starPoints; i++) {
+    const a1 = map(i, 0, starPoints, 0, TWO_PI);
+    const a2 = map(i + starPoints / 2, 0, starPoints, 0, TWO_PI);
+    const x1 = cos(a1) * starR;
+    const y1 = sin(a1) * starR;
+    const x2 = cos(a2) * starR * 0.4;
+    const y2 = sin(a2) * starR * 0.4;
+    
+    stroke(280, 80, 100, 0.4);
+    line(x1, y1, x2, y2);
+  }
+  pop();
+  
+  // Floating particles
+  for (let i = 0; i < 100; i++) {
+    const a = i * 0.1 + t;
+    const r = 50 + i * 2 + sin(i * 0.3 + t) * 20;
+    const px = cos(a) * r;
+    const py = sin(a) * r;
+    
+    const pHue = (i * 2 + frameCount * 0.5) % 360;
+    fill(pHue, 60, 80, 0.3);
+    noStroke();
+    circle(px, py, 1.5);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
