@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chromatic Vortex</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Chromatic Vortex - Rotating vortex with chromatic aberration
+let t = 0;
+const particles = [];
+const NUM_PARTICLES = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  let angle = random(TWO_PI);
+  let radius = random(50, min(width, height) * 0.45);
+  return {
+    angle: angle,
+    radius: radius,
+    baseRadius: radius,
+    hue: random(360),
+    speed: random(0.002, 0.008),
+    wobble: random(0.5, 2),
+    size: random(2, 6),
+    spiral: random() > 0.7
+  };
+}
+
+function draw() {
+  // Trail effect with slight transparency
+  fill(0, 0, 0, 0.08);
+  rect(0, 0, width, height);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Update and draw particles
+  for (let p of particles) {
+    // Spiral motion inward
+    p.angle += p.speed * (1 + p.radius * 0.001);
+    p.radius -= 0.15;
+    
+    // Wobble
+    let wobbleOffset = sin(t * p.wobble + p.baseRadius * 0.01) * 20;
+    
+    // Reset particle when too close to center
+    if (p.radius < 20) {
+      p.radius = p.baseRadius;
+      p.angle = random(TWO_PI);
+    }
+    
+    // Calculate position with chromatic offset
+    let effectiveRadius = p.radius + wobbleOffset;
+    
+    // Red channel (outer)
+    let r1 = p.size * 1.2;
+    fill((p.hue + 340) % 360, 80, 100, 0.6);
+    ellipse(
+      cx + cos(p.angle - 0.02) * effectiveRadius,
+      cy + sin(p.angle - 0.02) * effectiveRadius,
+      r1, r1
+    );
+    
+    // Green channel (middle)
+    fill((p.hue + 360) % 360, 70, 90, 0.7);
+    ellipse(
+      cx + cos(p.angle) * effectiveRadius,
+      cy + sin(p.angle) * effectiveRadius,
+      p.size, p.size
+    );
+    
+    // Blue channel (inner)
+    fill((p.hue + 20) % 360, 85, 100, 0.5);
+    ellipse(
+      cx + cos(p.angle + 0.02) * effectiveRadius,
+      cy + sin(p.angle + 0.02) * effectiveRadius,
+      r1 * 0.8, r1 * 0.8
+    );
+    
+    // Center glow
+    if (p.spiral) {
+      let glowSize = map(p.radius, 20, min(width, height) * 0.45, 30, 3);
+      fill(p.hue, 60, 100, 0.15);
+      ellipse(cx, cy, glowSize * 2, glowSize * 2);
+    }
+  }
+  
+  // Central bright core
+  let pulseSize = 40 + sin(t * 2) * 10;
+  fill(0, 0, 100, 0.3);
+  ellipse(cx, cy, pulseSize, pulseSize);
+  fill(0, 0, 100, 0.6);
+  ellipse(cx, cy, pulseSize * 0.5, pulseSize * 0.5);
+  
+  t += 0.016;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Reinitialize particles for new size
+  particles.length = 0;
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+</script>
+</body>
+</html>

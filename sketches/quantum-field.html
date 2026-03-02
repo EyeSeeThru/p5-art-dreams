@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quantum Field</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #000;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const particles = [];
+const NUM_PAIRS = 80;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  for (let i = 0; i < NUM_PAIRS; i++) {
+    particles.push(new ParticlePair());
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 0.08);
+  
+  for (let pair of particles) {
+    pair.update();
+    pair.display();
+  }
+  
+  drawFieldLines();
+}
+
+function drawFieldLines() {
+  stroke(280, 60, 80, 0.03);
+  strokeWeight(1);
+  let spacing = 60;
+  for (let x = 0; x < width; x += spacing) {
+    for (let y = 0; y < height; y += spacing) {
+      let angle = noise(x * 0.002, y * 0.002, frameCount * 0.005) * TWO_PI * 2;
+      let len = 20;
+      line(x, y, x + cos(angle) * len, y + sin(angle) * len);
+    }
+  }
+  noStroke();
+}
+
+class ParticlePair {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.life = random(100, 255);
+    this.maxLife = this.life;
+    this.size = random(3, 8);
+    this.vx = random(-0.5, 0.5);
+    this.vy = random(-0.5, 0.5);
+    this.charge = random() > 0.5 ? 1 : -1;
+    this.hue = this.charge > 0 ? random(180, 220) : random(280, 320);
+    this.partner = {
+      x: this.x + random(-15, 15),
+      y: this.y + random(-15, 15)
+    };
+  }
+  
+  update() {
+    this.life -= 1.5;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.partner.x += this.vx * 0.8;
+    this.partner.y += this.vy * 0.8;
+    
+    let dist = sqrt(pow(this.x - this.partner.x, 2) + pow(this.y - this.partner.y, 2));
+    if (dist > 30) {
+      this.vx += (this.partner.x - this.x) * 0.001;
+      this.vy += (this.partner.y - this.y) * 0.001;
+    }
+    
+    if (this.life <= 0 || this.x < -50 || this.x > width + 50 || this.y < -50 || this.y > height + 50) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    let alpha = map(this.life, 0, this.maxLife, 0, 1);
+    alpha *= sin(map(this.life, 0, this.maxLife, 0, PI));
+    
+    let hue1 = this.hue;
+    let hue2 = (this.hue + 180) % 360;
+    
+    fill(hue1, 70, 100, alpha);
+    ellipse(this.x, this.y, this.size);
+    
+    fill(hue2, 70, 100, alpha);
+    ellipse(this.partner.x, this.partner.y, this.size);
+    
+    stroke(hue1, 50, 100, alpha * 0.3);
+    strokeWeight(0.5);
+    line(this.x, this.y, this.partner.x, this.partner.y);
+    noStroke();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

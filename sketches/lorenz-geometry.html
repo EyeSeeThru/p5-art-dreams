@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lorenz Geometry</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #000;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const sigma = 10;
+const rho = 28;
+const beta = 8/3;
+
+let particles = [];
+const NUM_PARTICLES = 2000;
+let time = 0;
+let hueOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new LorenzParticle());
+  }
+  
+  background(0);
+}
+
+function draw() {
+  fill(0, 0, 0, 0.03);
+  rect(0, 0, width, height);
+  
+  translate(width/2, height/2);
+  scale(min(width, height) / 60);
+  
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  time += 0.01;
+  hueOffset += 0.2;
+}
+
+class LorenzParticle {
+  constructor() {
+    this.reset();
+    this.trail = [];
+    this.maxTrail = 50;
+  }
+  
+  reset() {
+    this.x = random(-10, 10);
+    this.y = random(-10, 10);
+    this.z = random(0, 40);
+    this.hue = random(360);
+  }
+  
+  update() {
+    let dx = sigma * (this.y - this.x);
+    let dy = this.x * (rho - this.z) - this.y;
+    let dz = this.x * this.y - beta * this.z;
+    
+    let dt = 0.005;
+    this.x += dx * dt;
+    this.y += dy * dt;
+    this.z += dz * dt;
+    
+    this.trail.push({x: this.x, y: this.y, z: this.z});
+    if (this.trail.length > this.maxTrail) {
+      this.trail.shift();
+    }
+    
+    if (random() < 0.002) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    let projected = this.project(this.x, this.y, this.z);
+    
+    let h = (this.hue + hueOffset) % 360;
+    let brightness = map(sin(time * 2 + this.x * 0.1), -1, 1, 60, 100);
+    
+    noStroke();
+    fill(h, 80, brightness, 0.8);
+    ellipse(projected.x, projected.y, 0.4);
+    
+    if (this.trail.length > 2) {
+      noFill();
+      for (let i = 1; i < this.trail.length; i++) {
+        let p1 = this.project(this.trail[i-1].x, this.trail[i-1].y, this.trail[i-1].z);
+        let p2 = this.project(this.trail[i].x, this.trail[i].y, this.trail[i].z);
+        
+        let alpha = map(i, 0, this.trail.length, 0, 0.5);
+        stroke(h, 70, brightness, alpha);
+        strokeWeight(0.2);
+        line(p1.x, p1.y, p2.x, p2.y);
+      }
+    }
+  }
+  
+  project(x, y, z) {
+    let angle = time * 0.3;
+    let cosA = cos(angle);
+    let sinA = sin(angle);
+    
+    let x1 = x;
+    let y1 = y * cosA - z * sinA;
+    let z1 = y * sinA + z * cosA;
+    
+    let fov = 300;
+    let scale = fov / (fov + z1 + 50);
+    
+    return {
+      x: x1 * scale,
+      y: y1 * scale
+    };
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>

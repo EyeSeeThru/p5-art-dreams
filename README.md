@@ -39,6 +39,7 @@ The project cycles through different technique categories to ensure variety:
 - **iso-density** — Perlin noise flow field
 - **cellular-tessellation** — Hexagonal grid with pulsing cells
 - **chromatic-strata** — Abstract layered bands with emergent color blending
+- **chromatic-vortex** — Rotating vortex with chromatic aberration color separation and spiral particle trails
 - **quantum-foam** — Quantum foam visualization
 - **quantum-tunneling** — Quantum particle tunneling through potential barriers with wave interference
 - **neural-bloom** — Neural network-inspired patterns
@@ -58,6 +59,7 @@ The project cycles through different technique categories to ensure variety:
 - **diffraction-grating** — Light spectrum interference patterns with multiple slits
 - **fractal-canopy** — Recursive branching tree with organic sway and golden hour palette
 - **lissajous-knots** — Parametric Lissajous curves forming woven knot patterns
+- **lorenz-geometry** — Lorenz attractor visualization with particle trails and color cycling
 - **levy-flight** — Heavy-tailed random walk visualization inspired by animal foraging patterns
 - **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling
 - **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
@@ -94,6 +96,7 @@ The project cycles through different technique categories to ensure variety:
 - **audio-aurora** — Audio-reactive aurora visualization with flowing particle ribbons responding to simulated frequency bands
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
 - **prism-dispersion** — Light dispersion through a prism with spectral rainbow refraction and animated particles
+- **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
 
 ## Running
 
