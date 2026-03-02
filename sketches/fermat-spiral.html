@@ -15,7 +15,7 @@
 <script>
 const dots = [];
 const numDots = 800;
-const goldenAngle = PI * (3 - sqrt(5));
+const goldenAngleRad = 2.39996; // ~137.5 degrees in radians
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -39,7 +39,7 @@ function draw() {
   const maxRadius = min(width, height) * 0.45;
   
   for (let i = 0; i < numDots; i++) {
-    let dot = dots[i];
+    let d = dots[i];
     
     // Fermat's spiral: r = c * sqrt(n), theta = n * golden angle
     let r = 8 * sqrt(i + 1);
@@ -53,7 +53,7 @@ function draw() {
     let y = centerY + (r + animOffset) * sin(animAngle);
     
     // Color with cycling
-    let hue = (dot.hue + frameCount * 0.3) % 360;
+    let hue = (d.hue + frameCount * 0.3) % 360;
     let sat = map(r, 0, maxRadius, 80, 40);
     let bri = map(r, 0, maxRadius, 100, 60);
     let alpha = map(r, 0, maxRadius, 0.9, 0.4);
@@ -62,17 +62,17 @@ function draw() {
     noStroke();
     for (let g = 20; g > 0; g -= 4) {
       fill(hue, sat * 0.6, bri, alpha * 0.03);
-      ellipse(x, y, dot.size + g, dot.size + g);
+      ellipse(x, y, d.size + g, d.size + g);
     }
     
     // Core dot
     fill(hue, sat, bri, alpha);
-    ellipse(x, y, dot.size, dot.size);
+    ellipse(x, y, d.size, d.size);
     
     // Bright center
     if (i < 50) {
       fill((hue + 30) % 360, 30, 100, 0.8);
-      ellipse(x, y, dot.size * 0.6, dot.size * 0.6);
+      ellipse(x, y, d.size * 0.6, d.size * 0.6);
     }
   }
   
