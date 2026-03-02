@@ -40,6 +40,7 @@ The project cycles through different technique categories to ensure variety:
 - **cellular-tessellation** — Hexagonal grid with pulsing cells
 - **chromatic-strata** — Abstract layered bands with emergent color blending
 - **quantum-foam** — Quantum foam visualization
+- **quantum-tunneling** — Quantum particle tunneling through potential barriers with wave interference
 - **neural-bloom** — Neural network-inspired patterns
 - **orbital-decay** — Orbital mechanics simulation
 - **resonance-cavities** — Resonant frequency visualization
