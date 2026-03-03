@@ -28,6 +28,7 @@ The project cycles through different technique categories to ensure variety:
 - **double-pendulum** — Chaotic double pendulum simulation using Lagrangian mechanics with colorful trail visualization
 - **droplet-ripples** — Interactive water droplet ripple interference patterns with mouse interaction
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
+- **soap-film-interference** — Thin film interference patterns with iridescent colors simulating soap bubbles
 - **wave-interference** — Wave interference patterns with multiple sources
 - **wave-particle-duality** — Particles exhibiting wave-particle duality with interference patterns
 - **trochoidal-waves** — Parametric trochoid curves creating mesmerizing geometric patterns
