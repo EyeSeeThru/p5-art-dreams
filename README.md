@@ -98,6 +98,7 @@ The project cycles through different technique categories to ensure variety:
 - **prism-dispersion** — Light dispersion through a prism with spectral rainbow refraction and animated particles
 - **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
+- **tesla-discharge** — Electrical discharge simulation with branching lightning from Tesla coils
 
 ## Running
 
