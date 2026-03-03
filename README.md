@@ -68,6 +68,7 @@ The project cycles through different technique categories to ensure variety:
 - **moire-weave** — Overlapping oscillating grids creating interference moire patterns
 - **concentric-tensions** — Oscillating concentric rings with connecting tension lines
 - **helix-fields** — Rotating helical flow fields with 3D perspective projection
+- **huygens-waves** — Wave interference simulation following Huygens' principle with multiple wave sources
 - **recursive-polygons** — Nested geometric shapes with recursive subdivision
 - **wave-particles** — Wave interference combined with particle dynamics
 - **turbulent-flow** — Perlin noise flow field with particle trails and spectral colors
