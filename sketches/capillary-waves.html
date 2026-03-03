@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capillary Waves</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const cols = 80;
+const rows = 60;
+let u = [];
+let v = [];
+let uNext = [];
+let vNext = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  for (let i = 0; i <= cols; i++) {
+    u[i] = [];
+    v[i] = [];
+    uNext[i] = [];
+    vNext[i] = [];
+    for (let j = 0; j <= rows; j++) {
+      u[i][j] = 0;
+      v[i][j] = 0;
+      uNext[i][j] = 0;
+      vNext[i][j] = 0;
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 5);
+  
+  // Add oscillating sources
+  let sources = [
+    { x: cols * 0.3 + sin(t * 0.7) * 5, y: rows * 0.4 + cos(t * 0.5) * 3, phase: 0 },
+    { x: cols * 0.7 + cos(t * 0.6) * 5, y: rows * 0.6 + sin(t * 0.8) * 3, phase: PI },
+    { x: cols * 0.5 + sin(t * 0.4) * 8, y: rows * 0.5 + cos(t * 0.9) * 5, phase: PI / 2 }
+  ];
+  
+  for (let s of sources) {
+    let si = Math.floor(s.x);
+    let sj = Math.floor(s.y);
+    if (si > 0 && si < cols && sj > 0 && sj < rows) {
+      let amp = 1.5;
+      u[si][sj] = amp * sin(t * 3 + s.phase);
+      v[si][sj] = amp * cos(t * 3 + s.phase);
+    }
+  }
+  
+  // Wave equation with surface tension (capillary)
+  let c = 0.4;
+  let sigma = 0.03;
+  
+  for (let i = 1; i < cols; i++) {
+    for (let j = 1; j < rows; j++) {
+      let laplacianU = (u[i+1][j] + u[i-1][j] + u[i][j+1] + u[i][j-1] - 4*u[i][j]);
+      let laplacianV = (v[i+1][j] + v[i-1][j] + v[i][j+1] + v[i][j-1] - 4*v[i][j]);
+      
+      // Add surface tension effect (curvature-driven)
+      let curvatureU = laplacianU;
+      let curvatureV = laplacianV;
+      
+      uNext[i][j] = 2*u[i][j] - uNext[i][j] + c*c * laplacianU + sigma * curvatureU;
+      vNext[i][j] = 2*v[i][j] - vNext[i][j] + c*c * laplacianV + sigma * curvatureV;
+      
+      // Damping
+      uNext[i][j] *= 0.998;
+      vNext[i][j] *= 0.998;
+    }
+  }
+  
+  // Swap arrays
+  let tempU = u; u = uNext; uNext = tempU;
+  let tempV = v; v = vNext; vNext = tempV;
+  
+  // Render
+  let cellW = width / cols;
+  let cellH = height / rows;
+  
+  noStroke();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let val = u[i][j];
+      let val2 = v[i][j];
+      let mag = sqrt(val*val + val2*val2);
+      
+      if (mag > 0.01) {
+        let hue = map(atan2(val2, val), -PI, PI, 180, 300) + t * 20;
+        hue = (hue + 360) % 360;
+        let sat = map(mag, 0, 2, 30, 90);
+        let bri = map(mag, 0, 2, 20, 100);
+        
+        fill(hue, sat, bri, 0.7);
+        let x = i * cellW;
+        let y = j * cellH;
+        rect(x, y, cellW + 1, cellH + 1);
+      }
+    }
+  }
+  
+  // Add glowing particles at wave peaks
+  for (let k = 0; k < 50; k++) {
+    let px = random(width);
+    let py = random(height);
+    let gx = floor(px / cellW);
+    let gy = py / cellH;
+    
+    if (gx > 0 && gx < cols && gy > 0 && gy < rows) {
+      let waveVal = u[gx][floor(gy)];
+      if (abs(waveVal) > 0.5) {
+        let hue = map(waveVal, -2, 2, 240, 320);
+        fill(hue, 60, 100, 0.8);
+        let size = map(abs(waveVal), 0.5, 2, 2, 8);
+        ellipse(px, py, size);
+      }
+    }
+  }
+  
+  t += 0.05;
+  
+  // Frame counter
+  if (frameCount === 1) {
+    fill(255);
+    textSize(12);
+    text("capillary-waves", 20, 30);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>

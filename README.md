@@ -100,6 +100,7 @@ The project cycles through different technique categories to ensure variety:
 - **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
 - **tesla-discharge** — Electrical discharge simulation with branching lightning from Tesla coils
+- **capillary-waves** — Surface tension wave simulation with oscillating sources and curvature-driven dynamics
 
 ## Running
 
