@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Benard Convection</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Benard Convection - Thermal convection patterns
+// Rayleigh-Benard convection cells with rising and falling plumes
+
+let grid = [];
+let cols, rows;
+let cellSize = 8;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = floor(width / cellSize);
+  rows = floor(height / cellSize);
+  
+  // Initialize temperature field
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      // Warmer at bottom, cooler at top
+      let temp = map(j, 0, rows, 1, 0);
+      grid[i][j] = {
+        temp: temp,
+        velocity: createVector(0, 0)
+      };
+    }
+  }
+  
+  noStroke();
+}
+
+function draw() {
+  background(10, 8, 15);
+  
+  // Evolve temperature field
+  evolveTemperature();
+  
+  // Draw cells
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let cell = grid[i][j];
+      let x = i * cellSize;
+      let y = j * cellSize;
+      
+      // Color based on temperature
+      // Hot = orange/yellow/white, Cold = deep blue/purple
+      let t = cell.temp;
+      
+      let r, g, b;
+      if (t > 0.6) {
+        // Hot - orange to white
+        r = lerp(255, 255, (t - 0.6) / 0.4);
+        g = lerp(120, 220, (t - 0.6) / 0.4);
+        b = lerp(20, 200, (t - 0.6) / 0.4);
+      } else if (t > 0.4) {
+        // Warm - red to orange
+        r = lerp(180, 255, (t - 0.4) / 0.2);
+        g = lerp(40, 120, (t - 0.4) / 0.2);
+        b = lerp(60, 20, (t - 0.4) / 0.2);
+      } else if (t > 0.2) {
+        // Cool - purple to red
+        r = lerp(80, 180, (t - 0.2) / 0.2);
+        g = lerp(20, 40, (t - 0.2) / 0.2);
+        b = lerp(120, 60, (t - 0.2) / 0.2);
+      } else {
+        // Cold - deep blue to purple
+        r = lerp(20, 80, t / 0.2);
+        g = lerp(10, 20, t / 0.2);
+        b = lerp(80, 120, t / 0.2);
+      }
+      
+      fill(r, g, b, 220);
+      rect(x, y, cellSize, cellSize);
+    }
+  }
+  
+  // Draw convection cell boundaries
+  drawConvectionCells();
+  
+  time += 0.015;
+}
+
+function evolveTemperature() {
+  let newGrid = [];
+  
+  for (let i = 0; i < cols; i++) {
+    newGrid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      let current = grid[i][j].temp;
+      
+      // Buoyancy - hot rises, cold sinks
+      let buoyancy = 0;
+      if (j > 0 && j < rows - 1) {
+        // Hot fluid rises
+        if (grid[i][j].temp > grid[i][j-1].temp) {
+          buoyancy = 0.008 * (grid[i][j].temp - grid[i][j-1].temp);
+        }
+        // Cold fluid sinks
+        if (grid[i][j].temp < grid[i][j+1].temp) {
+          buoyancy = -0.008 * (grid[i][j+1].temp - grid[i][j].temp);
+        }
+      }
+      
+      // Horizontal diffusion
+      let diffusion = 0.02 * (
+        (i > 0 ? grid[i-1][j].temp : current) +
+        (i < cols-1 ? grid[i+1][j].temp : current) +
+        (j > 0 ? grid[i][j-1].temp : current) +
+        (j < rows-1 ? grid[i][j+1].temp : current) -
+        4 * current
+      );
+      
+      // Convection cells - periodic plumes
+      let cellWidth = cols / 6;
+      let plumePhase = (i % cellWidth) / cellWidth;
+      let plume = sin(plumePhase * TWO_PI + time * 2) * 0.5 + 0.5;
+      let plumeIntensity = sin(plumePhase * TWO_PI * 3 + time * 1.5) * 0.3;
+      
+      // Rising plumes from sides, sinking in center
+      let convectionPattern = 0;
+      let cellCenter = floor(cols / 2);
+      let distFromCenter = abs(i - cellCenter) / cellCenter;
+      
+      if (j < rows * 0.3) {
+        // Near bottom - heating
+        convectionPattern = 0.003 * (1 - distFromCenter * 0.5);
+      } else if (j > rows * 0.7) {
+        // Near top - cooling
+        convectionPattern = -0.002 * (1 - distFromCenter * 0.3);
+      }
+      
+      // Add turbulence
+      let turbulence = (
+        noise(i * 0.1 + time, j * 0.1 + time * 0.5) - 0.5
+      ) * 0.01;
+      
+      // Boundary layer instability
+      let boundaryNoise = noise(i * 0.05 + time * 2, j * 0.2) * 0.015;
+      
+      let newTemp = current + buoyancy + diffusion + convectionPattern + turbulence + boundaryNoise;
+      newTemp = constrain(newTemp, 0, 1);
+      
+      newGrid[i][j] = newTemp;
+    }
+  }
+  
+  // Copy back
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = { temp: newGrid[i][j], velocity: createVector(0, 0) };
+    }
+  }
+}
+
+function drawConvectionCells() {
+  // Draw subtle convection cell boundaries
+  stroke(255, 255, 255, 15);
+  strokeWeight(1);
+  noFill();
+  
+  let cellWidth = width / 6;
+  
+  for (let c = 0; c < 6; c++) {
+    let cx = c * cellWidth + cellWidth / 2;
+    let cellTime = time + c * 0.5;
+    
+    // Draw rolling convection pattern
+    for (let y = 20; y < height - 20; y += 40) {
+      let offset = sin(y * 0.02 + cellTime) * 30;
+      let x = cx + offset;
+      
+      beginShape();
+      for (let py = y; py < y + 20; py += 5) {
+        let px = cx + sin(py * 0.03 + cellTime + c) * 40;
+        vertex(px, py);
+      }
+      endShape();
+    }
+  }
+  
+  noStroke();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / cellSize);
+  rows = floor(height / cellSize);
+  
+  // Reinitialize grid
+  grid = [];
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      let temp = map(j, 0, rows, 1, 0);
+      grid[i][j] = {
+        temp: temp,
+        velocity: createVector(0, 0)
+      };
+    }
+  }
+}
+</script>
+</body>
+</html>

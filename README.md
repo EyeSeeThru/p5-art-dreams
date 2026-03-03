@@ -97,6 +97,7 @@ The project cycles through different technique categories to ensure variety:
 - **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
 - **audio-aurora** — Audio-reactive aurora visualization with flowing particle ribbons responding to simulated frequency bands
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
+- **benard-convection** — Thermal convection patterns with rising warm plumes and sinking cool fluid creating Rayleigh-Bénard cells
 - **prism-dispersion** — Light dispersion through a prism with spectral rainbow refraction and animated particles
 - **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
