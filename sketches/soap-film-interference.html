@@ -17,7 +17,7 @@
 // Based on the physics of light interference in thin films
 
 let t = 0;
-constfilmThickness = [];
+const filmThickness = [];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -31,7 +31,7 @@ function setup() {
       y: random(height),
       r: random(100, 300),
       speed: random(0.5, 2),
-      phase: random(TWO_PI),
+      phaseAngle: random(TWO_PI),
       thickness: random(200, 600)
     });
   }
@@ -46,7 +46,7 @@ function draw() {
     let f = filmThickness[i];
     
     // Animate thickness variation
-    let thickness = f.thickness + sin(t * f.speed + f.phase) * 150;
+    let thickness = f.thickness + sin(t * f.speed + f.phaseAngle) * 150;
     
     // Draw interference pattern
     for (let r = 0; r < f.r; r += 3) {
@@ -57,10 +57,10 @@ function draw() {
       
       let pathDiff = 2 * 1.33 * thickness * cos(r / f.r * PI / 4);
       let wavelength = map(r, 0, f.r, 380, 750); // nm
-      let phase = (pathDiff / wavelength) * TWO_PI;
+      let phaseVal = (pathDiff / wavelength) * TWO_PI;
       
       // Interference intensity
-      let intensity = cos(phase) * 0.5 + 0.5;
+      let intensity = cos(phaseVal) * 0.5 + 0.5;
       intensity *= map(r, 0, f.r, 1, 0.3); // Fade at edges
       
       // Convert wavelength to RGB approximation
@@ -164,7 +164,7 @@ function windowResized() {
       y: random(height),
       r: random(100, 300),
       speed: random(0.5, 2),
-      phase: random(TWO_PI),
+      phaseAngle: random(TWO_PI),
       thickness: random(200, 600)
     });
   }
