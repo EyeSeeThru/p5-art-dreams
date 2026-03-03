@@ -17,7 +17,7 @@
 // Based on the physics of light interference in thin films
 
 let t = 0;
-const薄膜厚度 = [];
+constfilmThickness = [];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -26,7 +26,7 @@ function setup() {
   
   // Initialize film thickness field
   for (let i = 0; i < 30; i++) {
-    薄膜厚度.push({
+    filmThickness.push({
       x: random(width),
       y: random(height),
       r: random(100, 300),
@@ -42,8 +42,8 @@ function draw() {
   t += 0.01;
   
   // Draw interfering soap film regions
-  for (let i = 0; i < 薄膜厚度.length; i++) {
-    let f = 薄膜厚度[i];
+  for (let i = 0; i < filmThickness.length; i++) {
+    let f = filmThickness[i];
     
     // Animate thickness variation
     let thickness = f.thickness + sin(t * f.speed + f.phase) * 150;
@@ -157,9 +157,9 @@ function wavelengthToRGB(wavelength) {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  薄膜厚度.length = 0;
+  filmThickness.length = 0;
   for (let i = 0; i < 30; i++) {
-    薄膜厚度.push({
+    filmThickness.push({
       x: random(width),
       y: random(height),
       r: random(100, 300),
