@@ -133,13 +133,13 @@ function project(velocX, velocY, p, div) {
 function velStep(dt) {
   addSource(u, u_prev, dt);
   addSource(v, v_prev, dt);
-  u_prev.set(u);
-  v_prev.set(v);
+  for(let i=0; i<u.length; i++) u_prev[i] = u[i];
+  for(let i=0; i<v.length; i++) v_prev[i] = v[i];
   diffuse(1, u, u_prev, 0.0001, dt);
   diffuse(2, v, v_prev, 0.0001, dt);
   project(u, v, u_prev, v_prev);
-  u_prev.set(u);
-  v_prev.set(v);
+  for(let i=0; i<u.length; i++) u_prev[i] = u[i];
+  for(let i=0; i<v.length; i++) v_prev[i] = v[i];
   advect(1, u, u_prev, u_prev, v_prev, dt);
   advect(2, v, v_prev, u_prev, v_prev, dt);
   project(u, v, u_prev, v_prev);
@@ -147,9 +147,9 @@ function velStep(dt) {
 
 function densStep(dt) {
   addSource(dens, dens_prev, dt);
-  dens_prev.set(dens);
+  for(let i=0; i<dens.length; i++) dens_prev[i] = dens[i];
   diffuse(0, dens, dens_prev, 0.0001, dt);
-  dens_prev.set(dens);
+  for(let i=0; i<dens.length; i++) dens_prev[i] = dens[i];
   advect(0, dens, dens_prev, u, v, dt);
 }
 
