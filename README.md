@@ -109,6 +109,7 @@ The project cycles through different technique categories to ensure variety:
 - **islands-of-chaos** — Self-organized criticality via sandpile model with cluster visualization
 - **kelvin-helmholtz** — Fluid dynamics simulation of Kelvin-Helmholtz instability with curling vortex patterns
 - **navier-stokes** — 2D fluid simulation with Navier-Stokes equations, interactive swirling density patterns
+- **tentacle-bloom** — Bioluminescent jellyfish-like generative art with flowing tentacles and pulsing center glow
 
 ## Running
 
