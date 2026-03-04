@@ -106,6 +106,7 @@ The project cycles through different technique categories to ensure variety:
 - **tesla-discharge** — Electrical discharge simulation with branching lightning from Tesla coils
 - **capillary-waves** — Surface tension wave simulation with oscillating sources and curvature-driven dynamics
 - **kelvin-helmholtz** — Fluid dynamics simulation of Kelvin-Helmholtz instability with curling vortex patterns
+- **navier-stokes** — 2D fluid simulation with Navier-Stokes equations, interactive swirling density patterns
 
 ## Running
 

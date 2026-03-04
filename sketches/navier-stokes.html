@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navier-Stokes Fluid Simulation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #0a0a0f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// 2D Fluid Simulation using simplified Navier-Stokes
+const N = 128;
+const iter = 4;
+let scale;
+let u, v, u_prev, v_prev;
+let dens, dens_prev;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  scale = floor(width / N);
+  resizeCanvas(floor(N * scale), floor(N * scale));
+  
+  u = new Array(N * N).fill(0);
+  v = new Array(N * N).fill(0);
+  u_prev = new Array(N * N).fill(0);
+  v_prev = new Array(N * N).fill(0);
+  dens = new Array(N * N).fill(0);
+  dens_prev = new Array(N * N).fill(0);
+  
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+}
+
+function idx(x, y) {
+  x = constrain(x, 0, N - 1);
+  y = constrain(y, 0, N - 1);
+  return x + y * N;
+}
+
+function addSource(x, s, dt) {
+  for (let i = 0; i < N * N; i++) {
+    x[i] += dt * s[i];
+  }
+}
+
+function setBnd(b, x) {
+  for (let i = 1; i < N - 1; i++) {
+    x[idx(0, i)] = b === 1 ? -x[idx(1, i)] : x[idx(1, i)];
+    x[idx(N - 1, i)] = b === 1 ? -x[idx(N - 2, i)] : x[idx(N - 2, i)];
+    x[idx(i, 0)] = b === 2 ? -x[idx(i, 1)] : x[idx(i, 1)];
+    x[idx(i, N - 1)] = b === 2 ? -x[idx(i, N - 2)] : x[idx(i, N - 2)];
+  }
+  x[idx(0, 0)] = 0.5 * (x[idx(1, 0)] + x[idx(0, 1)]);
+  x[idx(0, N - 1)] = 0.5 * (x[idx(1, N - 1)] + x[idx(0, N - 2)]);
+  x[idx(N - 1, 0)] = 0.5 * (x[idx(N - 2, 0)] + x[idx(N - 1, 1)]);
+  x[idx(N - 1, N - 1)] = 0.5 * (x[idx(N - 2, N - 1)] + x[idx(N - 1, N - 2)]);
+}
+
+function linSolve(b, x, x0, a, c) {
+  const cRecip = 1.0 / c;
+  for (let k = 0; k < iter; k++) {
+    for (let j = 1; j < N - 1; j++) {
+      for (let i = 1; i < N - 1; i++) {
+        x[idx(i, j)] = (x0[idx(i, j)] + a * (x[idx(i + 1, j)] + x[idx(i - 1, j)] + x[idx(i, j + 1)] + x[idx(i, j - 1)])) * cRecip;
+      }
+    }
+    setBnd(b, x);
+  }
+}
+
+function diffuse(b, x, x0, diff, dt) {
+  const a = dt * diff * (N - 2) * (N - 2);
+  linSolve(b, x, x0, a, 1 + 4 * a);
+}
+
+function advect(b, d, d0, velocX, velocY, dt) {
+  const dt0 = dt * (N - 2);
+  for (let j = 1; j < N - 1; j++) {
+    for (let i = 1; i < N - 1; i++) {
+      let x = i - dt0 * velocX[idx(i, j)];
+      let y = j - dt0 * velocY[idx(i, j)];
+      x = constrain(x, 0.5, N - 1.5);
+      y = constrain(y, 0.5, N - 1.5);
+      const i0 = floor(x);
+      const i1 = i0 + 1;
+      const j0 = floor(y);
+      const j1 = j0 + 1;
+      const s1 = x - i0;
+      const s0 = 1 - s1;
+      const t1 = y - j0;
+      const t0 = 1 - t1;
+      d[idx(i, j)] = s0 * (t0 * d0[idx(i0, j0)] + t1 * d0[idx(i0, j1)]) +
+                     s1 * (t0 * d0[idx(i1, j0)] + t1 * d0[idx(i1, j1)]);
+    }
+  }
+  setBnd(b, d);
+}
+
+function project(velocX, velocY, p, div) {
+  for (let j = 1; j < N - 1; j++) {
+    for (let i = 1; i < N - 1; i++) {
+      div[idx(i, j)] = -0.5 * (velocX[idx(i + 1, j)] - velocX[idx(i - 1, j)] + velocY[idx(i, j + 1)] - velocY[idx(i, j - 1)]) / N;
+      p[idx(i, j)] = 0;
+    }
+  }
+  setBnd(0, div);
+  setBnd(0, p);
+  linSolve(0, p, div, 1, 4);
+  
+  for (let j = 1; j < N - 1; j++) {
+    for (let i = 1; i < N - 1; i++) {
+      velocX[idx(i, j)] -= 0.5 * (p[idx(i + 1, j)] - p[idx(i - 1, j)]) * N;
+      velocY[idx(i, j)] -= 0.5 * (p[idx(i, j + 1)] - p[idx(i, j - 1)]) * N;
+    }
+  }
+  setBnd(1, velocX);
+  setBnd(2, velocY);
+}
+
+function velStep(dt) {
+  addSource(u, u_prev, dt);
+  addSource(v, v_prev, dt);
+  u_prev.set(u);
+  v_prev.set(v);
+  diffuse(1, u, u_prev, 0.0001, dt);
+  diffuse(2, v, v_prev, 0.0001, dt);
+  project(u, v, u_prev, v_prev);
+  u_prev.set(u);
+  v_prev.set(v);
+  advect(1, u, u_prev, u_prev, v_prev, dt);
+  advect(2, v, v_prev, u_prev, v_prev, dt);
+  project(u, v, u_prev, v_prev);
+}
+
+function densStep(dt) {
+  addSource(dens, dens_prev, dt);
+  dens_prev.set(dens);
+  diffuse(0, dens, dens_prev, 0.0001, dt);
+  dens_prev.set(dens);
+  advect(0, dens, dens_prev, u, v, dt);
+}
+
+let t = 0;
+
+function draw() {
+  background(10);
+  
+  const dt = 0.1;
+  const visc = 0.0001;
+  
+  // Add forces based on mouse
+  if (mouseIsPressed) {
+    const mx = floor(mouseX / scale);
+    const my = floor(mouseY / scale);
+    for (let i = -2; i <= 2; i++) {
+      for (let j = -2; j <= 2; j++) {
+        const idxVal = idx(mx + i, my + j);
+        u_prev[idxVal] += (mouseX - pmouseX) * 0.5;
+        v_prev[idxVal] += (mouseY - pmouseY) * 0.5;
+        dens_prev[idxVal] += 50;
+      }
+    }
+  }
+  
+  // Add swirling forces automatically
+  const cx = N / 2 + sin(t * 0.02) * N * 0.3;
+  const cy = N / 2 + cos(t * 0.015) * N * 0.3;
+  for (let i = -3; i <= 3; i++) {
+    for (let j = -3; j <= 3; j++) {
+      const idxVal = idx(floor(cx) + i, floor(cy) + j);
+      u_prev[idxVal] += sin(t * 0.05 + i * 0.5) * 3;
+      v_prev[idxVal] += cos(t * 0.04 + j * 0.5) * 3;
+      dens_prev[idxVal] += 25;
+    }
+  }
+  
+  // Add secondary swirl
+  const cx2 = N / 2 + cos(t * 0.018) * N * 0.25;
+  const cy2 = N / 2 + sin(t * 0.022) * N * 0.25;
+  for (let i = -2; i <= 2; i++) {
+    for (let j = -2; j <= 2; j++) {
+      const idxVal = idx(floor(cx2) + i, floor(cy2) + j);
+      u_prev[idxVal] += cos(t * 0.06 + j * 0.4) * 2.5;
+      v_prev[idxVal] += sin(t * 0.055 + i * 0.4) * 2.5;
+      dens_prev[idxVal] += 20;
+    }
+  }
+  
+  velStep(dt);
+  densStep(dt);
+  
+  // Render
+  loadPixels();
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      const d = dens[idx(i, j)];
+      const vel = sqrt(u[idx(i, j)] ** 2 + v[idx(i, j)] ** 2);
+      
+      const hue = (180 + vel * 5 + d * 0.5) % 360;
+      const sat = min(80 + vel * 2, 100);
+      const bri = min(d * 1.5 + vel * 3, 100);
+      const alpha = min(d * 0.02 + 0.1, 0.9);
+      
+      // Draw scaled pixel
+      for (let py = 0; py < scale; py++) {
+        for (let px = 0; px < scale; px++) {
+          const screenX = i * scale + px;
+          const screenY = j * scale + py;
+          if (screenX < width && screenY < height) {
+            const pixIdx = (screenX + screenY * width) * 4;
+            const c = color(hue, sat, bri, alpha);
+            pixels[pixIdx] = red(c);
+            pixels[pixIdx + 1] = green(c);
+            pixels[pixIdx + 2] = blue(c);
+            pixels[pixIdx + 3] = 255;
+          }
+        }
+      }
+    }
+  }
+  updatePixels();
+  
+  // Decay density
+  for (let i = 0; i < N * N; i++) {
+    dens[i] *= 0.995;
+    u[i] *= 0.99;
+    v[i] *= 0.99;
+  }
+  
+  t++;
+}
+
+function windowResized() {
+  setup();
+}
+</script>
+</body>
+</html>
