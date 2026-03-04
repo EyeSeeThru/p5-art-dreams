@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dielectric Lattices</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Dielectric Lattices - Electric discharge patterns forming crystalline lattice structures
+
+let grid = [];
+let nextGrid = [];
+let cols, rows;
+let resolution = 4;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize grid with random charges
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    nextGrid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = random() < 0.02 ? random(255) : 0;
+      nextGrid[i][j] = grid[i][j];
+    }
+  }
+  
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  // Apply dielectric breakdown rules
+  for (let i = 1; i < cols - 1; i++) {
+    for (let j = 1; j < rows - 1; j++) {
+      let sum = 0;
+      let count = 0;
+      
+      // Check 8 neighbors
+      for (let di = -1; di <= 1; di++) {
+        for (let dj = -1; dj <= 1; dj++) {
+          if (di !== 0 || dj !== 0) {
+            sum += grid[i + di][j + dj];
+            count++;
+          }
+        }
+      }
+      
+      let avg = sum / count;
+      let current = grid[i][j];
+      
+      // Decay
+      current *= 0.96;
+      
+      // Add neighbor influence with threshold
+      if (avg > 50 && random() < 0.15) {
+        current = max(current, avg * 0.8);
+      }
+      
+      // Random sparking
+      if (random() < 0.0005) {
+        current = random(150, 255);
+      }
+      
+      // Lattice reinforcement - prefer grid-aligned patterns
+      if (i % 8 === 0 || j % 8 === 0) {
+        current *= 1.02;
+      }
+      
+      nextGrid[i][j] = constrain(current, 0, 255);
+    }
+  }
+  
+  // Swap grids
+  let temp = grid;
+  grid = nextGrid;
+  nextGrid = temp;
+  
+  // Render with lattice overlay
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let val = grid[i][j];
+      
+      if (val > 5) {
+        let x = i * resolution;
+        let y = j * resolution;
+        
+        // Color based on value and position
+        let hue = (val * 0.5 + i * 0.3 + j * 0.2 + t * 20) % 360;
+        let sat = 80;
+        let bri = map(val, 0, 255, 20, 100);
+        
+        // Lattice lines
+        let isLatticePoint = (i % 8 === 0 || j % 8 === 0);
+        if (isLatticePoint) {
+          sat = 90;
+          bri = min(bri * 1.3, 100);
+        }
+        
+        fill(hue, sat, bri, 0.7);
+        rect(x, y, resolution, resolution);
+        
+        // Glow for bright areas
+        if (val > 150) {
+          fill(hue, sat * 0.5, 100, 0.3);
+          rect(x - resolution, y - resolution, resolution * 3, resolution * 3);
+        }
+      }
+    }
+  }
+  
+  // Draw lattice grid overlay
+  stroke(280, 60, 40, 0.15);
+  strokeWeight(0.5);
+  for (let i = 0; i < cols; i += 8) {
+    line(i * resolution, 0, i * resolution, height);
+  }
+  for (let j = 0; j < rows; j += 8) {
+    line(0, j * resolution, width, j * resolution);
+  }
+  noStroke();
+  
+  t += 0.01;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Reinitialize grid
+  grid = [];
+  nextGrid = [];
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    nextGrid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = random() < 0.02 ? random(255) : 0;
+      nextGrid[i][j] = grid[i][j];
+    }
+  }
+}
+</script>
+</body>
+</html>

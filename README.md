@@ -58,7 +58,7 @@ The project cycles through different technique categories to ensure variety:
 - **plasma-field** — Animated plasma effect with color cycling
 - **chladni-patterns** — Standing wave interference patterns creating geometric sand art
 - **voronoi-dreams** — Voronoi cells influenced by moving attractors with pulsing glow
-- **diffraction-grating** — Light spectrum interference patterns with multiple slits
+- **dielectric-lattices** — Electric discharge patterns forming crystalline lattice structures with glowing nodes
 - **diffusive-precipitation** — Chemical reaction visualization with diffusing chemicals forming precipitates
 - **fractal-canopy** — Recursive branching tree with organic sway and golden hour palette
 - **lissajous-knots** — Parametric Lissajous curves forming woven knot patterns
