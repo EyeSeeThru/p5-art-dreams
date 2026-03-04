@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gyroid Surface</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Gyroid Surface - Mathematical minimal surface visualization
+// Formula: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0
+
+let angle = 0;
+let scale = 0.08;
+let detail = 40;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  background(240, 20, 5);
+  
+  rotateX(angle * 0.3);
+  rotateY(angle * 0.5);
+  
+  let t = frameCount * 0.005;
+  
+  // Render gyroid surface as point cloud
+  let range = 6;
+  let step = 0.15;
+  
+  for (let x = -range; x <= range; x += step) {
+    for (let y = -range; y <= range; y += step) {
+      for (let z = -range; z <= range; z += step) {
+        
+        // Gyroid equation: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0
+        let g = sin(x * scale + t) * cos(y * scale + t * 0.7) +
+                sin(y * scale) * cos(z * scale) +
+                sin(z * scale + t * 0.5) * cos(x * scale + t * 0.3);
+        
+        // Threshold for surface
+        let threshold = 0.15;
+        if (abs(g) < threshold) {
+          // Calculate normal direction for shading
+          let hue = map(sin(x * scale + y * scale + z * scale + t), -1, 1, 180, 320);
+          let sat = map(abs(g), 0, threshold, 80, 40);
+          let bri = map(z, -range, range, 60, 100);
+          
+          fill(hue, sat, bri, 85);
+          
+          push();
+          translate(x * 30, y * 30, z * 30);
+          sphere(1.5);
+          pop();
+        }
+      }
+    }
+  }
+  
+  angle += 0.008;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

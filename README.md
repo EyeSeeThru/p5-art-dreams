@@ -112,6 +112,7 @@ The project cycles through different technique categories to ensure variety:
 - **tentacle-bloom** — Bioluminescent jellyfish-like generative art with flowing tentacles and pulsing center glow
 - **sand-oscillation** — Granular wave patterns with oscillating particles creating hypnotic flow effects
 - **fractal-brush** — Recursive brush strokes creating organic fractal patterns with golden/amber palette
+- **gyroid-surface** — Mathematical minimal surface visualization with animated gyroid equation and flowing color gradients
 
 ## Running
 
