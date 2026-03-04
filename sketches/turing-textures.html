@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turing-Textures | p5.js Generative Art</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<script>
+// Turing-Textures: Gray-Scott Reaction-Diffusion with creative color mapping
+// Explores the emergence of spots, stripes, and labyrinthine patterns
+
+let grid;
+let nextGrid;
+let cellSize = 3;
+let cols, rows;
+let feed = 0.055;
+let kill = 0.062;
+let da = 1.0;
+let db = 0.5;
+let f = feed;
+let k = kill;
+let t = 0;
+let paletteOffset = 0;
+
+function setup() {
+  createCanvas(800, 800);
+  cols = floor(width / cellSize);
+  rows = floor(height / cellSize);
+  
+  grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+  nextGrid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+  
+  // Initialize with chemical B in center region
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = { a: 1, b: 0 };
+      
+      // Add initial seeds of chemical B
+      let cx = cols / 2;
+      let cy = rows / 2;
+      let d = dist(i, j, cx, cy);
+      if (d < 30 && random() < 0.3) {
+        grid[i][j].b = 1;
+      }
+      
+      // Add scattered seeds
+      if (random() < 0.01) {
+        grid[i][j].b = 1;
+      }
+    }
+  }
+  
+  colorMode(HSB, 360, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  // Run multiple diffusion steps per frame for faster evolution
+  for (let step = 0; step < 8; step++) {
+    diffuse();
+    t++;
+  }
+  
+  // Render with creative color mapping
+  loadPixels();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let a = grid[i][j].a;
+      let b = grid[i][j].b;
+      let val = constrain(a - b, 0, 1);
+      
+      // Map chemical concentration to color
+      let pixX = i * cellSize;
+      let pixY = j * cellSize;
+      
+      // Fill each cell with pixels
+      for (let px = 0; px < cellSize; px++) {
+        for (let py = 0; py < cellSize; py++) {
+          let idx = 4 * ((pixY + py) * width + (pixX + px));
+          
+          // Creative color palette based on concentration
+          let hue, sat, bri;
+          
+          if (val < 0.2) {
+            // Deep background - dark purple
+            hue = 280 + sin(t * 0.01) * 20;
+            sat = 40;
+            bri = 8 + val * 20;
+          } else if (val < 0.4) {
+            // Mid tones - transitioning
+            hue = 200 + val * 100;
+            sat = 60;
+            bri = 30 + val * 80;
+          } else if (val < 0.6) {
+            // Active region - cyan to teal
+            hue = 170 + sin(val * 5 + t * 0.02) * 30;
+            sat = 70;
+            bri = 50 + val * 50;
+          } else if (val < 0.8) {
+            // High concentration - warm transition
+            hue = 40 + (val - 0.6) * 100;
+            sat = 80;
+            bri = 70 + val * 30;
+          } else {
+            // Peak concentration - golden glow
+            hue = 30 + sin(t * 0.03) * 15;
+            sat = 90;
+            bri = 95;
+          }
+          
+          // Add subtle pulse
+          hue = (hue + sin(t * 0.005 + i * 0.01 + j * 0.01) * 10) % 360;
+          
+          let c = color(hue, sat, bri);
+          
+          pixels[idx] = red(c);
+          pixels[idx + 1] = green(c);
+          pixels[idx + 2] = blue(c);
+          pixels[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  updatePixels();
+  
+  // Slow parameter drift for evolving patterns
+  if (frameCount % 60 === 0) {
+    f = feed + sin(frameCount * 0.001) * 0.005;
+    k = kill + cos(frameCount * 0.0015) * 0.003;
+  }
+  
+  // Add seeds occasionally
+  if (frameCount % 30 === 0 && frameCount < 300) {
+    let rx = floor(random(cols * 0.2, cols * 0.8));
+    let ry = floor(random(rows * 0.2, rows * 0.8));
+    for (let di = -3; di <= 3; di++) {
+      for (let dj = -3; dj <= 3; dj++) {
+        let ni = constrain(rx + di, 0, cols - 1);
+        let nj = constrain(ry + dj, 0, rows - 1);
+        if (random() < 0.5) grid[ni][nj].b = 1;
+      }
+    }
+  }
+}
+
+function diffuse() {
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let a = grid[i][j].a;
+      let b = grid[i][j].b;
+      
+      let laplacianA = laplacian(i, j, 'a');
+      let laplacianB = laplacian(i, j, 'b');
+      
+      let newA = a + (da * laplacianA - a * b * b + f * (1 - a));
+      let newB = b + (db * laplacianB + a * b * b - (k + f) * b);
+      
+      nextGrid[i][j] = {
+        a: constrain(newA, 0, 1),
+        b: constrain(newB, 0, 1)
+      };
+    }
+  }
+  
+  // Swap grids
+  let temp = grid;
+  grid = nextGrid;
+  nextGrid = temp;
+}
+
+function laplacian(x, y, chemical) {
+  let sum = 0;
+  let center = grid[x][y][chemical];
+  
+  // 9-point stencil
+  sum += grid[(x + 1) % cols][y][chemical] * 0.2;
+  sum += grid[(x - 1 + cols) % cols][y][chemical] * 0.2;
+  sum += grid[x][(y + 1) % rows][chemical] * 0.2;
+  sum += grid[x][(y - 1 + rows) % rows][chemical] * 0.2;
+  sum += grid[(x + 1) % cols][(y + 1) % rows][chemical] * 0.05;
+  sum += grid[(x - 1 + cols) % cols][(y + 1) % rows][chemical] * 0.05;
+  sum += grid[(x + 1) % cols][(y - 1 + rows) % rows][chemical] * 0.05;
+  sum += grid[(x - 1 + cols) % cols][(y - 1 + rows) % rows][chemical] * 0.05;
+  sum += center * -1;
+  
+  return sum;
+}
+</script>
+</body>
+</html>

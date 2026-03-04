@@ -34,6 +34,7 @@ The project cycles through different technique categories to ensure variety:
 - **trochoidal-waves** — Parametric trochoid curves creating mesmerizing geometric patterns
 - **thermal-drift** — GLSL shader with FBM noise, thermal color palette
 - **turing-patterns** — Reaction-diffusion patterns creating spots and stripes
+- **turing-textures** — Gray-Scott reaction-diffusion with evolving patterns and creative color mapping
 - **coriolis-field** — Particle simulation with Coriolis force
 - **reaction-diffusion** — Gray-Scott reaction-diffusion model
 - **akashic-brush** — Brush strokes on textured canvas
