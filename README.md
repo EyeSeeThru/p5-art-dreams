@@ -111,6 +111,7 @@ The project cycles through different technique categories to ensure variety:
 - **navier-stokes** — 2D fluid simulation with Navier-Stokes equations, interactive swirling density patterns
 - **tentacle-bloom** — Bioluminescent jellyfish-like generative art with flowing tentacles and pulsing center glow
 - **sand-oscillation** — Granular wave patterns with oscillating particles creating hypnotic flow effects
+- **fractal-brush** — Recursive brush strokes creating organic fractal patterns with golden/amber palette
 
 ## Running
 
