@@ -97,6 +97,7 @@ The project cycles through different technique categories to ensure variety:
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
 - **electrostatic-breakdown** — Dielectric discharge visualization with branching electrical patterns
+- **electrohydrodynamics** — Electric field driven fluid patterns with charged particles and Coulomb forces
 - **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
 - **audio-aurora** — Audio-reactive aurora visualization with flowing particle ribbons responding to simulated frequency bands
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
