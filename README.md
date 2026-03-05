@@ -69,6 +69,7 @@ The project cycles through different technique categories to ensure variety:
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
 - **moire-weave** — Overlapping oscillating grids creating interference moire patterns
 - **concentric-tensions** — Oscillating concentric rings with connecting tension lines
+- **coulomb-explosion** — Charged particle repulsion visualization with Coulomb force physics
 - **helix-fields** — Rotating helical flow fields with 3D perspective projection
 - **huygens-waves** — Wave interference simulation following Huygens' principle with multiple wave sources
 - **recursive-polygons** — Nested geometric shapes with recursive subdivision
