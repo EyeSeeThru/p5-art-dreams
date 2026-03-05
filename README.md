@@ -50,6 +50,7 @@ The project cycles through different technique categories to ensure variety:
 - **stasis-field** — Static field effects
 - **string-art** — Parametric woven curves connecting rotating geometric frames
 - **strange-attractors** — Chaotic attractor rendering
+- **stochastic-resonance** — Noise-enhanced signal detection demonstrating stochastic resonance phenomenon
 - **perlin-vortex** — Perlin noise-driven vortex field with particle trails
 - **phase-portraits** — Phase space visualization
 - **temporal-fractures** — Temporal fractal patterns
