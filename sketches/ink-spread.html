@@ -25,13 +25,18 @@
 
 let inkDrops = [];
 let paperTexture;
-let time = 0;
+let vignetteG;
+let t = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+
   paperTexture = createGraphics(width, height);
   generatePaperTexture();
-  
+
+  vignetteG = createGraphics(width, height);
+  generateVignette();
+
   // Initial ink drops
   for (let i = 0; i < 8; i++) {
     addInkDrop(random(width), random(height), random(20, 60));
@@ -41,7 +46,7 @@ function setup() {
 function generatePaperTexture() {
   paperTexture.background(245, 240, 230);
   paperTexture.noStroke();
-  
+
   // Subtle fiber noise
   for (let i = 0; i < 5000; i++) {
     let x = random(width);
@@ -50,7 +55,7 @@ function generatePaperTexture() {
     paperTexture.fill(200, 190, 170, alpha);
     paperTexture.ellipse(x, y, random(1, 3), random(1, 3));
   }
-  
+
   // Larger texture variations
   for (let i = 0; i < 500; i++) {
     let x = random(width);
@@ -61,19 +66,33 @@ function generatePaperTexture() {
   }
 }
 
+function generateVignette() {
+  vignetteG.clear();
+  vignetteG.noStroke();
+
+  // Build once (and rebuild on resize)
+  for (let r = max(width, height); r > 0; r -= 10) {
+    let a = map(r, 0, max(width, height), 30, 0);
+    vignetteG.fill(245, 240, 230, a);
+    vignetteG.ellipse(width / 2, height / 2, r * 2, r * 2);
+  }
+}
+
 function addInkDrop(x, y, size) {
+  const density = floor(random(200, 500));
+
   inkDrops.push({
-    x: x,
-    y: y,
-    size: size,
+    x,
+    y,
+    size,
     maxSize: size * random(3, 5),
     growth: random(0.3, 0.8),
-    density: random(200, 500),
+    density,
     age: 0,
     fibers: [],
     done: false
   });
-  
+
   // Add fiber-guided paths
   let drop = inkDrops[inkDrops.length - 1];
   for (let i = 0; i < drop.density; i++) {
@@ -93,105 +112,111 @@ function addInkDrop(x, y, size) {
 function draw() {
   // Draw paper background
   image(paperTexture, 0, 0);
-  
+
   // Update and draw ink
   for (let drop of inkDrops) {
     if (drop.done) continue;
-    
+
     drop.age++;
-    
+
     // Grow the ink
-    if (drop.size < drop.maxSize) {
-      drop.size += drop.growth;
-    }
-    
-    // Draw ink particles with fiber guidance
+    if (drop.size < drop.maxSize) drop.size += drop.growth;
+
     noStroke();
-    
+
     for (let fiber of drop.fibers) {
-      // Fiber creates organic spread pattern
-      let noiseVal = noise(
-        fiber.ox * 0.01 + drop.x * 0.005 + time * 0.1,
-        fiber.oy * 0.01 + drop.y * 0.005 + time * 0.1
+      const noiseVal = noise(
+        fiber.ox * 0.01 + drop.x * 0.005 + t * 0.1,
+        fiber.oy * 0.01 + drop.y * 0.005 + t * 0.1
       );
-      
+
+      // Always define spread (was the runtime bug)
+      let spread = 1.0;
+
       // Probabilistic spread along fibers
       if (noiseVal > 0.3 || random() < 0.1) {
-        let spread = map(noiseVal, 0, 1, 0.5, 2);
+        spread = map(noiseVal, 0, 1, 0.5, 2);
         fiber.dx += (noiseVal - 0.5) * 0.5;
         fiber.dy += (noiseVal - 0.5) * 0.5;
       }
-      
+
       // Damping
       fiber.dx *= 0.98;
       fiber.dy *= 0.98;
-      
-      let px = drop.x + fiber.ox * (drop.size / drop.maxSize) + fiber.dx;
-      let py = drop.y + fiber.oy * (drop.size / drop.maxSize) + fiber.dy;
-      
-      // Ink density varies
-      let alpha = fiber.alpha * (1 - drop.age / 800);
-      alpha *= map(drop.size / drop.maxSize, 0, 1, 0.3, 1);
-      
+
+      const growthFactor = drop.size / drop.maxSize;
+      const px = drop.x + fiber.ox * growthFactor + fiber.dx;
+      const py = drop.y + fiber.oy * growthFactor + fiber.dy;
+
+      // Ink density varies (clamped so it never goes negative)
+      let a = fiber.alpha * (1 - drop.age / 800);
+      a = max(0, a);
+      a *= map(growthFactor, 0, 1, 0.3, 1);
+
       // Color gradient from dark center to lighter edges
-      let dx = px - drop.x;
-      let dy = py - drop.y;
-      let d = sqrt(dx*dx + dy*dy) / drop.size;
-      let redVal = 20 + d * 30;
-      let greenVal = 20 + d * 25;
-      let blueVal = 25 + d * 20;
-      
-      fill(redVal, greenVal, blueVal, alpha * 0.15);
+      const dx = px - drop.x;
+      const dy = py - drop.y;
+      const d = sqrt(dx * dx + dy * dy) / max(1, drop.size);
+
+      const r = 20 + d * 30;
+      const g = 20 + d * 25;
+      const b = 25 + d * 20;
+
+      fill(r, g, b, a * 0.15);
       ellipse(px, py, fiber.w * spread, fiber.w * spread);
     }
-    
-    // Add wispy edges
+
+    // Wispy edges
     if (drop.age % 3 === 0 && drop.size < drop.maxSize * 0.9) {
       for (let i = 0; i < 3; i++) {
         let angle = random(TWO_PI);
-        let rad = drop.size * random(0.8, 1.2);
-        let px = drop.x + cos(angle) * rad;
-        let py = drop.y + sin(angle) * rad;
-        
+        let rr = drop.size * random(0.8, 1.2);
+        let px = drop.x + cos(angle) * rr;
+        let py = drop.y + sin(angle) * rr;
+
         fill(30, 25, 20, random(5, 20));
         ellipse(px, py, random(2, 8), random(2, 8));
       }
     }
-    
+
     // Mark as done
-    if (drop.age > 600 && drop.size >= drop.maxSize) {
-      drop.done = true;
-    }
+    if (drop.age > 600 && drop.size >= drop.maxSize) drop.done = true;
   }
-  
-  // Add occasional drips
+
+  // Occasional drips
   if (frameCount % 60 === 0 && frameCount < 300) {
-    let x = random(width * 0.1, width * 0.9);
-    let y = random(height * 0.1, height * 0.9);
-    addInkDrop(x, y, random(15, 40));
+    addInkDrop(
+      random(width * 0.1, width * 0.9),
+      random(height * 0.1, height * 0.9),
+      random(15, 40)
+    );
   }
-  
-  time += 0.01;
-  
-  // Add subtle vignette
-  let vignette = createGraphics(width, height);
-  for (let rad = max(width, height); rad > 0; rad -= 10) {
-    let alpha = map(rad, 0, max(width, height), 30, 0);
-    vignette.noStroke();
-    vignette.fill(245, 240, 230, alpha);
-    vignette.ellipse(width/2, height/2, rad * 2, rad * 2);
-  }
-  image(vignette, 0, 0);
+
+  t += 0.01;
+
+  // Vignette (precomputed)
+  image(vignetteG, 0, 0);
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+
   paperTexture = createGraphics(width, height);
   generatePaperTexture();
+
+  vignetteG = createGraphics(width, height);
+  generateVignette();
 }
 
 function mousePressed() {
   addInkDrop(mouseX, mouseY, random(20, 50));
+}
+
+// Press S to save an image
+function keyPressed() {
+  if (key === 's' || key === 'S') {
+    saveCanvas('ink-spread', 'png');
+  }
 }
 </script>
 </body>
