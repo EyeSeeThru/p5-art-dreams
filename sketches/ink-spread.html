@@ -78,10 +78,10 @@ function addInkDrop(x, y, size) {
   let drop = inkDrops[inkDrops.length - 1];
   for (let i = 0; i < drop.density; i++) {
     let angle = random(TWO_PI);
-    let dist = random(drop.size);
+    let d = random(drop.size);
     drop.fibers.push({
-      ox: cos(angle) * dist,
-      oy: sin(angle) * dist,
+      ox: cos(angle) * d,
+      oy: sin(angle) * d,
       dx: 0,
       dy: 0,
       alpha: random(150, 255),
