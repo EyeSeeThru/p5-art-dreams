@@ -115,6 +115,7 @@ The project cycles through different technique categories to ensure variety:
 - **sand-oscillation** — Granular wave patterns with oscillating particles creating hypnotic flow effects
 - **fractal-brush** — Recursive brush strokes creating organic fractal patterns with golden/amber palette
 - **gyroid-surface** — Mathematical minimal surface visualization with animated gyroid equation and flowing color gradients
+- **halvorsen-attractor** — Chaotic Halvorsen attractor particle simulation with colorful trail visualization
 - **solar-flare** — Solar corona visualization with plasma arcs, magnetic field particles, and coronal mass ejection effects
 - **tesla-coils** — Electrical discharge simulation with branching lightning from multiple Tesla coil sources with glowing particles
 

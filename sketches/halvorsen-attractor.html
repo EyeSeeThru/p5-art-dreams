@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Halvorsen Attractor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Halvorsen Attractor - Chaotic dynamical system
+// dx/dt = -a*x - 4*y - 4*z - y^2
+// dy/dt = -a*y - 4*z - 4*x - z^2
+// dz/dt = -a*z - 4*x - 4*y - x^2
+
+let particles = [];
+let numParticles = 800;
+let a = 1.4; // Halvorsen parameter
+let time = 0;
+let colorOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(0);
+  
+  // Initialize particles at random positions
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(-5, 5),
+      y: random(-5, 5),
+      z: random(-5, 5),
+      hue: random(360)
+    });
+  }
+}
+
+function draw() {
+  // Semi-transparent background for trail effect
+  background(240, 30, 5, 8);
+  
+  let dt = 0.008;
+  
+  for (let p of particles) {
+    // Halvorsen attractor equations
+    let dx = -a * p.x - 4 * p.y - 4 * p.z - p.y * p.y;
+    let dy = -a * p.y - 4 * p.z - 4 * p.x - p.z * p.z;
+    let dz = -a * p.z - 4 * p.x - 4 * p.y - p.x * p.x;
+    
+    // Update position
+    p.x += dx * dt;
+    p.y += dy * dt;
+    p.z += dz * dt;
+    
+    // Color cycling
+    p.hue = (p.hue + 0.3) % 360;
+    
+    // Project 3D to 2D with perspective
+    let scale = 60;
+    let projX = width / 2 + p.x * scale;
+    let projY = height / 2 + p.y * scale;
+    let depth = p.z * 0.3 + 5;
+    let size = map(depth, -3, 8, 1, 4);
+    
+    // Draw particle
+    let sat = map(sin(time * 2 + p.hue * 0.01), -1, 1, 50, 100);
+    let bri = map(cos(time * 3 + p.hue * 0.02), -1, 1, 60, 100);
+    
+    noStroke();
+    fill(p.hue, sat, bri, 70);
+    ellipse(projX, projY, size, size);
+    
+    // Add glow for brighter particles
+    if (bri > 80) {
+      fill(p.hue, sat * 0.5, 100, 20);
+      ellipse(projX, projY, size * 3, size * 3);
+    }
+  }
+  
+  // Slowly rotate the entire attractor
+  time += 0.01;
+  
+  // Reset occasionally
+  if (frameCount % 600 === 0) {
+    for (let p of particles) {
+      p.x = random(-5, 5);
+      p.y = random(-5, 5);
+      p.z = random(-5, 5);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>
