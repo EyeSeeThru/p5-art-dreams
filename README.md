@@ -88,6 +88,7 @@ The project cycles through different technique categories to ensure variety:
 - **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
 - **magnetic-pendulum** — Chaotic magnetic pendulum simulation with multiple attractors and particle trails
 - **emergent-swarm** — Particle species with emergent collective behaviors (flocking, separation, cross-type interactions)
+- **eulers-spiral** — Clothoid curve visualization with Fresnel integrals creating elegant spiral patterns
 - **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
 - **ink-spread** — Sumi-e style ink diffusion simulation with fiber-guided organic spread patterns
 - **slime-mold** — Physarum slime mold simulation with sensory-driven agent movement and species-based coloring
