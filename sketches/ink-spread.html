@@ -134,7 +134,9 @@ function draw() {
       alpha *= map(drop.size / drop.maxSize, 0, 1, 0.3, 1);
       
       // Color gradient from dark center to lighter edges
-      let d = dist(px, py, drop.x, drop.y) / drop.size;
+      let dx = px - drop.x;
+      let dy = py - drop.y;
+      let d = sqrt(dx*dx + dy*dy) / drop.size;
       let r = 20 + d * 30;
       let g = 20 + d * 25;
       let b = 25 + d * 20;
