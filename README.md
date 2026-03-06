@@ -123,6 +123,7 @@ The project cycles through different technique categories to ensure variety:
 - **solar-flare** — Solar corona visualization with plasma arcs, magnetic field particles, and coronal mass ejection effects
 - **tesla-coils** — Electrical discharge simulation with branching lightning from multiple Tesla coil sources with glowing particles
 - **plasma-sphere** — Glowing plasma sphere with animated tendrils and particle effects
+- **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
 
 ## Running
 
