@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rössler Attractor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Rössler Attractor - Chaotic Dynamical System
+// dx/dt = -y - z
+// dy/dt = x + a*y
+// dz/dt = b + z*(x - c)
+
+let points = [];
+let a = 0.2;
+let b = 0.2;
+let c = 5.7;
+let dt = 0.01;
+let scale = 12;
+let time = 0;
+let hueOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(10);
+  
+  // Initialize at a point on the attractor
+  let x = 1.0;
+  let y = 1.0;
+  let z = 1.0;
+  
+  // Pre-evolve to reach the attractor
+  for (let i = 0; i < 1000; i++) {
+    let dx = -y - z;
+    let dy = x + a * y;
+    let dz = b + z * (x - c);
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+  }
+  
+  // Record initial points
+  for (let i = 0; i < 3000; i++) {
+    let dx = -y - z;
+    let dy = x + a * y;
+    let dz = b + z * (x - c);
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+    
+    points.push({x, y, z});
+  }
+  
+  background(240, 20, 5);
+}
+
+function draw() {
+  // Fade background slowly for trail effect
+  noStroke();
+  fill(240, 20, 5, 3);
+  rect(0, 0, width, height);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Slowly rotate the attractor
+  let rotAngle = time * 0.1;
+  let rotX = cos(rotAngle);
+  let rotY = sin(rotAngle);
+  
+  // Project and draw points
+  for (let i = 0; i < points.length; i++) {
+    let p = points[i];
+    
+    // 3D rotation around Y axis
+    let rx = p.x * rotX - p.z * rotY;
+    let rz = p.x * rotY + p.z * rotX;
+    let ry = p.y;
+    
+    // Perspective projection
+    let fov = 400;
+    let zDepth = fov / (fov + rz * scale + 300);
+    let sx = cx + rx * scale * zDepth;
+    let sy = cy + ry * scale * zDepth;
+    
+    // Color based on position and time
+    let hue = (200 + p.z * 15 + hueOffset) % 360;
+    let sat = 70 + sin(p.x * 0.3 + time) * 20;
+    let bri = 80 + zDepth * 20;
+    let alpha = 40 + zDepth * 40;
+    
+    stroke(hue, sat, bri, alpha);
+    strokeWeight(1.5 * zDepth);
+    point(sx, sy);
+  }
+  
+  // Evolve new points
+  if (frameCount % 2 === 0 && points.length < 5000) {
+    let x = points[points.length - 1].x;
+    let y = points[points.length - 1].y;
+    let z = points[points.length - 1].z;
+    
+    let dx = -y - z;
+    let dy = x + a * y;
+    let dz = b + z * (x - c);
+    
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+    
+    points.push({x, y, z});
+  }
+  
+  time += 0.01;
+  hueOffset += 0.3;
+  
+  // Slow parameter variation
+  a = 0.2 + sin(time * 0.5) * 0.05;
+  b = 0.2 + cos(time * 0.3) * 0.05;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(240, 20, 5);
+}
+</script>
+</body>
+</html>

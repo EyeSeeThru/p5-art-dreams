@@ -125,6 +125,7 @@ The project cycles through different technique categories to ensure variety:
 - **tesla-coils** — Electrical discharge simulation with branching lightning from multiple Tesla coil sources with glowing particles
 - **plasma-sphere** — Glowing plasma sphere with animated tendrils and particle effects
 - **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
+- **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
 
 ## Running
 
