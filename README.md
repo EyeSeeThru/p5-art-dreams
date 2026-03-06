@@ -127,6 +127,7 @@ The project cycles through different technique categories to ensure variety:
 - **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
 - **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
 - **wavefront** — Wavefront reconstruction visualization with holographic interference patterns and flowing particles
+- **percolation** — Percolation threshold simulation with cluster visualization and connectivity emergence
 
 ## Running
 

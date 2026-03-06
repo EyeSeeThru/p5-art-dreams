@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Percolation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #0a0a0f; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const GRID_SIZE = 80;
+const CELL_SIZE = 10;
+let grid = [];
+let cols, rows;
+let filledCells = [];
+let connectedToTop = [];
+let clusters = [];
+let percolationThreshold = 0;
+let targetProbability = 0;
+let animating = true;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = floor(width / CELL_SIZE);
+  rows = floor(height / CELL_SIZE);
+  resetSimulation();
+}
+
+function resetSimulation() {
+  grid = [];
+  filledCells = [];
+  connectedToTop = [];
+  clusters = [];
+  targetProbability = 0;
+  
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    connectedToTop[i] = false;
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = 0;
+    }
+  }
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  if (animating && targetProbability < 1) {
+    targetProbability += 0.003;
+    addRandomCell();
+  }
+  
+  // Find clusters and check percolation
+  findClusters();
+  
+  // Draw cells
+  noStroke();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j] === 1) {
+        let isConnected = connectedToTop[i];
+        let clusterId = grid[i][j] - 2;
+        
+        if (isConnected) {
+          // Percolated - vibrant cyan/teal
+          fill(0, 220, 200, 200);
+        } else {
+          // Not percolated - muted purple/pink based on cluster
+          let hue = (clusterId * 37) % 255;
+          colorMode(HSB, 255);
+          fill(hue, 180, 150, 180);
+          colorMode(RGB, 255);
+        }
+        
+        rect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
+      }
+    }
+  }
+  
+  // Draw threshold line
+  fill(255);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Percolation Threshold: ' + nf(percolationThreshold * 100, 2, 1) + '%', 20, 30);
+  text('Probability: ' + nf(targetProbability * 100, 2, 1) + '%', 20, 50);
+  
+  if (targetProbability >= 1 && frameCount % 60 === 0) {
+    setTimeout(resetSimulation, 2000);
+  }
+}
+
+function addRandomCell() {
+  let attempts = 0;
+  while (attempts < 10) {
+    let i = floor(random(cols));
+    let j = floor(random(rows));
+    if (grid[i][j] === 0) {
+      grid[i][j] = 1;
+      filledCells.push({x: i, y: j});
+      break;
+    }
+    attempts++;
+  }
+}
+
+function findClusters() {
+  // Reset cluster tracking
+  let clusterId = 2;
+  connectedToTop = new Array(cols).fill(false);
+  
+  // Union-Find
+  let parent = [];
+  let rank = [];
+  
+  for (let i = 0; i < cols; i++) {
+    parent[i] = [];
+    rank[i] = [];
+    for (let j = 0; j < rows; j++) {
+      parent[i][j] = {x: i, y: j};
+      rank[i][j] = 0;
+    }
+  }
+  
+  function find(i, j) {
+    if (parent[i][j].x === i && parent[i][j].y === j) {
+      return parent[i][j];
+    }
+    parent[i][j] = find(parent[i][j].x, parent[i][j].y);
+    return parent[i][j];
+  }
+  
+  function union(i1, j1, i2, j2) {
+    let root1 = find(i1, j1);
+    let root2 = find(i2, j2);
+    
+    if (root1.x === root2.x && root1.y === root2.y) return;
+    
+    let r1 = rank[root1.x][root1.y];
+    let r2 = rank[root2.x][root2.y];
+    
+    if (r1 < r2) {
+      parent[root1.x][root1.y] = root2;
+    } else if (r1 > r2) {
+      parent[root2.x][root2.y] = root1;
+    } else {
+      parent[root2.x][root2.y] = root1;
+      rank[root1.x][root1.y]++;
+    }
+  }
+  
+  // Connect neighbors
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j] === 1) {
+        if (i > 0 && grid[i-1][j] === 1) union(i, j, i-1, j);
+        if (j > 0 && grid[i][j-1] === 1) union(i, j, i, j-1);
+      }
+    }
+  }
+  
+  // Check which columns connect to top
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j] === 1) {
+        let root = find(i, j);
+        // Check if any cell in this cluster is in row 0
+        for (let k = 0; k < cols; k++) {
+          for (let l = 0; l < rows; l++) {
+            if (grid[k][l] === 1 && find(k, l).x === root.x && find(k, l).y === root.y) {
+              if (l === 0) {
+                connectedToTop[i] = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Calculate threshold
+  let totalCells = filledCells.length;
+  let percolatedCells = 0;
+  for (let i = 0; i < cols; i++) {
+    if (connectedToTop[i]) {
+      for (let j = 0; j < rows; j++) {
+        if (grid[i][j] === 1) {
+          let root = find(i, j);
+          let connectedToTopRow = false;
+          for (let k = 0; k < cols; k++) {
+            for (let l = 0; l < rows; l++) {
+              if (grid[k][l] === 1 && find(k, l).x === root.x && find(k, l).y === root.y && l === 0) {
+                connectedToTopRow = true;
+                break;
+              }
+            }
+            if (connectedToTopRow) break;
+          }
+          if (connectedToTopRow) percolatedCells++;
+        }
+      }
+    }
+  }
+  
+  if (totalCells > 0) {
+    percolationThreshold = percolatedCells / totalCells;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / CELL_SIZE);
+  rows = floor(height / CELL_SIZE);
+  resetSimulation();
+}
+</script>
+</body>
+</html>
