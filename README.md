@@ -27,6 +27,7 @@ The project cycles through different technique categories to ensure variety:
 - **dla-clusters** — Diffusion Limited Aggregation with wandering particles forming crystalline clusters
 - **double-pendulum** — Chaotic double pendulum simulation using Lagrangian mechanics with colorful trail visualization
 - **droplet-ripples** — Interactive water droplet ripple interference patterns with mouse interaction
+- **dust-devil** — Spiraling particle vortex simulation with rising dust and turbulence dynamics
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
 - **soap-film-interference** — Thin film interference patterns with iridescent colors simulating soap bubbles
 - **wave-interference** — Wave interference patterns with multiple sources
