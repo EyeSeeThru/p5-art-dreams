@@ -126,6 +126,7 @@ The project cycles through different technique categories to ensure variety:
 - **plasma-sphere** — Glowing plasma sphere with animated tendrils and particle effects
 - **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
 - **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
+- **wavefront** — Wavefront reconstruction visualization with holographic interference patterns and flowing particles
 
 ## Running
 

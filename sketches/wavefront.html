@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wavefront</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Wavefront - Wavefront reconstruction / holographic interference patterns
+
+let t = 0;
+const particles = [];
+const NUM_PARTICLES = 800;
+const WAVE_SOURCES = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  // Initialize wave sources
+  for (let i = 0; i < 5; i++) {
+    WAVE_SOURCES.push({
+      x: width * (0.2 + Math.random() * 0.6),
+      y: height * (0.2 + Math.random() * 0.6),
+      freq: 0.02 + Math.random() * 0.03,
+      phase: Math.random() * TWO_PI,
+      amp: 50 + Math.random() * 100
+    });
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      baseX: random(width),
+      baseY: random(height),
+      size: random(1, 4),
+      hue: random(160, 280),
+      speed: random(0.5, 2),
+      offset: random(1000)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 0.08);
+  
+  // Calculate wave field
+  const waveField = [];
+  const gridSize = 30;
+  const cols = Math.ceil(width / gridSize);
+  const rows = Math.ceil(height / gridSize);
+  
+  for (let j = 0; j < rows; j++) {
+    waveField[j] = [];
+    for (let i = 0; i < cols; i++) {
+      const x = i * gridSize;
+      const y = j * gridSize;
+      let z = 0;
+      
+      for (const src of WAVE_SOURCES) {
+        const d = dist(x, y, src.x, src.y);
+        const wave = sin(d * src.freq - t + src.phase) * src.amp;
+        z += wave / (1 + d * 0.005);
+      }
+      
+      waveField[j][i] = z;
+    }
+  }
+  
+  // Draw interference field as points
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const z = waveField[j][i];
+      const brightness = map(z, -200, 200, 20, 100);
+      const x = i * gridSize;
+      const y = j * gridSize;
+      
+      // Only draw prominent peaks
+      if (abs(z) > 100) {
+        fill(200, 60, brightness, 0.3);
+        ellipse(x, y, 3, 3);
+      }
+    }
+  }
+  
+  // Animate particles along wave field
+  for (const p of particles) {
+    const col = Math.floor(p.baseX / gridSize);
+    const row = Math.floor(p.baseY / gridSize);
+    
+    if (row >= 0 && row < rows && col >= 0 && col < cols) {
+      const z = waveField[row][col];
+      const forceX = (col + 1 < cols) ? waveField[row][col + 1] - z : 0;
+      const forceY = (row + 1 < rows) ? waveField[row + 1][col] - z : 0;
+      
+      p.x += forceX * 0.02 * p.speed;
+      p.y += forceY * 0.02 * p.speed;
+    }
+    
+    // Wrap around
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Draw particle with glow
+    const d = dist(p.x, p.y, width/2, height/2);
+    const alpha = map(d, 0, width/2, 0.8, 0.2);
+    fill(p.hue, 70, 100, alpha);
+    ellipse(p.x, p.y, p.size, p.size);
+    
+    // Glow effect
+    fill(p.hue, 50, 100, alpha * 0.3);
+    ellipse(p.x, p.y, p.size * 3, p.size * 3);
+  }
+  
+  // Draw wave sources
+  for (let i = 0; i < WAVE_SOURCES.length; i++) {
+    const src = WAVE_SOURCES[i];
+    const pulse = sin(t * 2 + i) * 0.5 + 0.5;
+    
+    // Outer ring
+    fill(300, 80, 100, 0.2);
+    ellipse(src.x, src.y, 20 + pulse * 30, 20 + pulse * 30);
+    
+    // Core
+    fill(320, 90, 100, 0.9);
+    ellipse(src.x, src.y, 8, 8);
+  }
+  
+  t += 0.05;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
