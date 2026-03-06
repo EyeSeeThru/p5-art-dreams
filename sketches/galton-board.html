@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galton Board</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Galton Board - Bean Machine demonstrating Normal Distribution
+
+const PEGS_ROWS = 12;
+const PEG_SPACING = 50;
+const BEAD_RADIUS = 6;
+const BIN_COUNT = 13;
+
+let pegs = [];
+let beads = [];
+let bins = [];
+let dropTimer = 0;
+const DROP_INTERVAL = 80;
+const MAX_BEADS = 400;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize bins
+  const startX = width / 2 - (BIN_COUNT - 1) * PEG_SPACING / 2;
+  for (let i = 0; i < BIN_COUNT; i++) {
+    bins.push({
+      x: startX + i * PEG_SPACING,
+      y: height - 80,
+      count: 0,
+      height: 0
+    });
+  }
+  
+  // Create pegs in triangular pattern
+  const centerX = width / 2;
+  const startY = 120;
+  for (let row = 0; row < PEGS_ROWS; row++) {
+    const pegsInRow = row + 1;
+    const rowWidth = (pegsInRow - 1) * PEG_SPACING;
+    const rowStartX = centerX - rowWidth / 2;
+    
+    for (let col = 0; col < pegsInRow; col++) {
+      pegs.push({
+        x: rowStartX + col * PEG_SPACING,
+        y: startY + row * PEG_SPACING * 0.866
+      });
+    }
+  }
+}
+
+function draw() {
+  background(240, 15, 8);
+  
+  // Drop new bead
+  dropTimer++;
+  if (dropTimer > DROP_INTERVAL && beads.length < MAX_BEADS) {
+    dropBead();
+    dropTimer = 0;
+  }
+  
+  // Draw pegs
+  noStroke();
+  for (let peg of pegs) {
+    fill(180, 30, 60);
+    circle(peg.x, peg.y, 12);
+  }
+  
+  // Update and draw beads
+  for (let i = beads.length - 1; i >= 0; i--) {
+    let bead = beads[i];
+    
+    // Apply gravity
+    bead.vy += 0.3;
+    bead.y += bead.vy;
+    bead.x += bead.vx;
+    
+    // Air resistance
+    bead.vx *= 0.99;
+    
+    // Check collision with pegs
+    for (let peg of pegs) {
+      let d = dist(bead.x, bead.y, peg.x, peg.y);
+      if (d < BEAD_RADIUS + 6) {
+        // Bounce off peg
+        let angle = atan2(bead.y - peg.y, bead.x - peg.x);
+        bead.x = peg.x + cos(angle) * (BEAD_RADIUS + 7);
+        bead.y = peg.y + sin(angle) * (BEAD_RADIUS + 7);
+        
+        // Deflect based on which side of peg
+        if (bead.x < peg.x) {
+          bead.vx -= 2 + random(0.5);
+        } else {
+          bead.vx += 2 + random(0.5);
+        }
+        bead.vy *= 0.5;
+      }
+    }
+    
+    // Check if bead reached a bin
+    if (bead.y > bins[0].y - 20) {
+      // Find which bin
+      for (let j = 0; j < bins.length; j++) {
+        if (abs(bead.x - bins[j].x) < PEG_SPACING / 2) {
+          bins[j].count++;
+          beads.splice(i, 1);
+          break;
+        }
+      }
+    }
+    
+    // Draw bead
+    if (beads[i]) {
+      let hue = map(bead.vx, -5, 5, 160, 280);
+      fill(hue, 80, 90);
+      circle(bead.x, bead.y, BEAD_RADIUS * 2);
+    }
+  }
+  
+  // Draw bins and histogram
+  drawBins();
+  
+  // Draw funnel at top
+  drawFunnel();
+}
+
+function dropBead() {
+  beads.push({
+    x: width / 2 + random(-3, 3),
+    y: 40,
+    vx: random(-0.5, 0.5),
+    vy: 0
+  });
+}
+
+function drawFunnel() {
+  noFill();
+  stroke(180, 40, 50);
+  strokeWeight(2);
+  beginShape();
+  vertex(width / 2 - 30, 20);
+  vertex(width / 2 + 30, 20);
+  vertex(width / 2 + 8, 70);
+  vertex(width / 2 - 8, 70);
+  endShape(CLOSE);
+}
+
+function drawBins() {
+  const maxCount = Math.max(...bins.map(b => b.count), 1);
+  const maxHeight = 150;
+  
+  for (let i = 0; i < bins.length; i++) {
+    let bin = bins[i];
+    let barHeight = (bin.count / maxCount) * maxHeight;
+    
+    // Draw bin container
+    noFill();
+    stroke(180, 30, 50);
+    strokeWeight(1);
+    rect(bin.x - PEG_SPACING / 2 + 2, bin.y, PEG_SPACING - 4, 60);
+    
+    // Draw histogram bar
+    let hue = map(i, 0, BIN_COUNT, 200, 320);
+    noStroke();
+    fill(hue, 70, 80);
+    rect(bin.x - PEG_SPACING / 2 + 4, bin.y + 60 - barHeight, PEG_SPACING - 8, barHeight);
+    
+    // Draw count
+    fill(0, 0, 100);
+    textAlign(CENTER);
+    textSize(10);
+    text(bin.count, bin.x, bin.y + 75);
+  }
+  
+  // Draw distribution label
+  fill(0, 0, 70);
+  textAlign(CENTER);
+  textSize(14);
+  text('Normal Distribution', width / 2, height - 20);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
