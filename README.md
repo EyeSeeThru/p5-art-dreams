@@ -85,6 +85,7 @@ The project cycles through different technique categories to ensure variety:
 - **magnetic-reconnection** — Magnetic field line dynamics with reconnection events and particle flows
 - **fractal-dimensions** — Visualizes fractal dimension at the edge of order and chaos with flowing particles
 - **fermat-spiral** — Fermat's spiral with golden angle phyllotaxis, animated dots with color cycling and connecting lines
+- **ferrofluid** — Ferrofluid visualization with magnetic field response and orbiting attractors
 - **fibonacci-galaxy** — Spiral galaxy with golden ratio distribution and twinkling stars
 - **terrain-drift** — 3D Perlin noise terrain landscape with elevation-based coloring and gentle drift animation
 - **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
