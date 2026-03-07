@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polygonal Drift</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+let polygons = [];
+let numPolygons = 12;
+let particles = [];
+let numParticles = 400;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  
+  // Create drifting polygons
+  for (let i = 0; i < numPolygons; i++) {
+    polygons.push({
+      x: random(width),
+      y: random(height),
+      sides: floor(random(3, 8)),
+      radius: random(30, 120),
+      rotation: random(TWO_PI),
+      rotSpeed: random(-0.02, 0.02),
+      hue: random(360),
+      driftX: random(-0.5, 0.5),
+      driftY: random(-0.5, 0.5),
+      alpha: random(20, 60)
+    });
+  }
+  
+  // Create flowing particles
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-1, 1),
+      vy: random(-1, 1),
+      size: random(1, 4),
+      hue: random(360),
+      life: random(100)
+    });
+  }
+}
+
+function draw() {
+  // Deep space background with subtle trail
+  background(240, 30, 5, 8);
+  
+  // Draw particle field
+  for (let p of particles) {
+    // Update position with noise
+    let angle = noise(p.x * 0.002, p.y * 0.002, frameCount * 0.005) * TWO_PI * 2;
+    p.vx += cos(angle) * 0.1;
+    p.vy += sin(angle) * 0.1;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Wrap around
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Draw particle
+    let brightness = map(sin(frameCount * 0.02 + p.life), -1, 1, 40, 90);
+    fill(p.hue, 70, brightness, 60);
+    ellipse(p.x, p.y, p.size);
+  }
+  
+  // Draw drifting polygons
+  for (let poly of polygons) {
+    // Update position
+    poly.x += poly.driftX;
+    poly.y += poly.driftY;
+    poly.rotation += poly.rotSpeed;
+    
+    // Bounce off edges
+    if (poly.x < -poly.radius) poly.x = width + poly.radius;
+    if (poly.x > width + poly.radius) poly.x = -poly.radius;
+    if (poly.y < -poly.radius) poly.y = height + poly.radius;
+    if (poly.y > height + poly.radius) poly.y = -poly.radius;
+    
+    // Draw polygon with gradient effect
+    push();
+    translate(poly.x, poly.y);
+    rotate(poly.rotation);
+    
+    // Multiple layers for glow
+    for (let layer = 3; layer >= 0; layer--) {
+      let layerAlpha = poly.alpha * (1 - layer * 0.25);
+      let layerSize = poly.radius * (1 + layer * 0.3);
+      fill(poly.hue, 60, 80, layerAlpha);
+      drawPolygon(0, 0, layerSize, poly.sides);
+    }
+    
+    pop();
+  }
+  
+  // Add connecting lines between nearby polygons
+  strokeWeight(0.5);
+  for (let i = 0; i < polygons.length; i++) {
+    for (let j = i + 1; j < polygons.length; j++) {
+      let d = dist(polygons[i].x, polygons[i].y, polygons[j].x, polygons[j].y);
+      if (d < 200) {
+        let alpha = map(d, 0, 200, 30, 0);
+        let avgHue = (polygons[i].hue + polygons[j].hue) / 2;
+        stroke(avgHue, 50, 80, alpha);
+        line(polygons[i].x, polygons[i].y, polygons[j].x, polygons[j].y);
+      }
+    }
+  }
+  noStroke();
+}
+
+function drawPolygon(x, y, radius, sides) {
+  beginShape();
+  for (let i = 0; i < sides; i++) {
+    let angle = TWO_PI / sides * i - HALF_PI;
+    let px = x + cos(angle) * radius;
+    let py = y + sin(angle) * radius;
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

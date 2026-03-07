@@ -132,6 +132,7 @@ The project cycles through different technique categories to ensure variety:
 - **percolation** — Percolation threshold simulation with cluster visualization and connectivity emergence
 - **dna-helix** — Double helix visualization with rotating 3D animation and glowing base pairs
 - **cycloid-dreams** — Hypotrochoid curves with parametric variations and color cycling
+- **polygonal-drift** — Drifting polygons with Perlin noise particles and connecting lines
 
 ## Running
 
