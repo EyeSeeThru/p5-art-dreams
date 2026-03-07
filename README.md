@@ -134,6 +134,7 @@ The project cycles through different technique categories to ensure variety:
 - **cycloid-dreams** — Hypotrochoid curves with parametric variations and color cycling
 - **polygonal-drift** — Drifting polygons with Perlin noise particles and connecting lines
 - **schrodinger-field** — Quantum wave function visualization with probability density and particle representation
+- **bifurcation-diagram** — Logistic map period-doubling visualization showing route to chaos
 
 ## Running
 

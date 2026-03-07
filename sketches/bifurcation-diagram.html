@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bifurcation Diagram</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const ITERATIONS = 500;
+const SKIP = 200;
+const R_MIN = 2.9;
+const R_MAX = 4.0;
+const Y_MIN = 0.0;
+const Y_MAX = 1.0;
+
+let points = [];
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  background(10);
+  
+  computeBifurcation();
+}
+
+function computeBifurcation() {
+  const rStep = (R_MAX - R_MIN) / width;
+  
+  for (let r = R_MIN; r <= R_MAX; r += rStep) {
+    let x = 0.5;
+    
+    for (let i = 0; i < SKIP; i++) {
+      x = r * x * (1 - x);
+    }
+    
+    for (let i = 0; i < ITERATIONS; i++) {
+      x = r * x * (1 - x);
+      let px = map(r, R_MIN, R_MAX, 0, width);
+      let py = map(x, Y_MIN, Y_MAX, height, 0);
+      points.push({ x: px, y: py, r: r });
+    }
+  }
+}
+
+function draw() {
+  background(10, 10);
+  
+  // Glow effect
+  blendMode(ADD);
+  
+  // Draw points with color based on r value
+  for (let p of points) {
+    let hue = map(p.r, R_MIN, R_MAX, 0.5, 0.95);
+    let br = 0.6 + 0.4 * sin(time * 0.5 + p.r * 10);
+    
+    stroke(hue * 255, 180, 255 * br, 80);
+    strokeWeight(0.8);
+    point(p.x, p.y);
+  }
+  
+  // Axis labels
+  blendMode(BLEND);
+  fill(150);
+  noStroke();
+  textSize(10);
+  textAlign(CENTER);
+  
+  // X-axis
+  text("Growth Rate (r)", width / 2, height - 15);
+  
+  // Y-axis labels
+  textAlign(RIGHT);
+  text("0", 25, height - 40);
+  text("0.5", 25, height / 2);
+  text("1", 25, 40);
+  
+  // r labels
+  textAlign(CENTER);
+  text("3.0", 0.1 * width, height - 40);
+  text("3.5", 0.6 * width, height - 40);
+  text("4.0", width - 10, height - 40);
+  
+  // Title
+  fill(255);
+  textSize(14);
+  textAlign(LEFT);
+  text("Bifurcation Diagram — Logistic Map", 30, 30);
+  
+  // Info
+  fill(100);
+  textSize(10);
+  text("Period doubling route to chaos", 30, 50);
+  
+  time += 0.016;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  points = [];
+  background(10);
+  computeBifurcation();
+}
+</script>
+</body>
+</html>
