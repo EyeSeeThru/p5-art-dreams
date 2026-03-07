@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schrödinger Field</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Schrödinger Field - Quantum Wave Function Visualization
+// Visualizing probability density of quantum wave functions
+
+let grid = [];
+let gridSize = 120;
+let dt = 0.08;
+let time = 0;
+let particles = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize wave function grid (complex numbers)
+  for (let i = 0; i < gridSize; i++) {
+    grid[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      let x = map(i, 0, gridSize, -3, 3);
+      let y = map(j, 0, gridSize, -3, 3);
+      
+      // Initial wave packet - Gaussian envelope with oscillation
+      let r = sqrt(x*x + y*y);
+      let envelope = exp(-r*r * 0.5);
+      let phase = r * 3 - time * 2;
+      
+      // Complex wave function ψ = A * e^(i*phase)
+      grid[i][j] = {
+        re: envelope * cos(phase),
+        im: envelope * sin(phase)
+      };
+    }
+  }
+  
+  // Add some particle representations
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-1, 1),
+      vy: random(-1, 1),
+      hue: random(160, 260),
+      size: random(1, 3)
+    });
+  }
+}
+
+function draw() {
+  background(0);
+  
+  // Evolve Schrödinger equation (simplified 2D)
+  evolveSchrodinger();
+  
+  // Render probability density
+  drawWaveFunction();
+  
+  // Draw quantum particles
+  drawParticles();
+  
+  time += dt;
+}
+
+function evolveSchrodinger() {
+  let newGrid = [];
+  
+  for (let i = 0; i < gridSize; i++) {
+    newGrid[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      // Laplacian (discrete approximation)
+      let laplacian = laplacianAt(i, j);
+      
+      // Schrödinger: i * dψ/dt = -∇²ψ + V*ψ
+      // Simplified: dψ/dt = i * (laplacian - potential)*ψ
+      // Using imaginary time evolution for stability
+      
+      let psi = grid[i][j];
+      let potential = potentialAt(i, j);
+      
+      // Complex multiplication by i (rotation by 90°)
+      let dRe = (laplacian.im - potential * psi.im) * dt;
+      let dIm = (-laplacian.re + potential * psi.re) * dt;
+      
+      newGrid[i][j] = {
+        re: psi.re + dRe,
+        im: psi.im + dIm
+      };
+    }
+  }
+  
+  // Normalize
+  let norm = 0;
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      norm += grid[i][j].re * grid[i][j].re + grid[i][j].im * grid[i][j].im;
+    }
+  }
+  norm = sqrt(norm) / (gridSize * gridSize) * 50 + 0.001;
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j].re = newGrid[i][j].re / norm;
+      grid[i][j].im = newGrid[i][j].im / norm;
+    }
+  }
+}
+
+function laplacianAt(i, j) {
+  let re = 0, im = 0;
+  let count = 0;
+  
+  for (let di = -1; di <= 1; di++) {
+    for (let dj = -1; dj <= 1; dj++) {
+      if (di === 0 && dj === 0) continue;
+      let ni = (i + di + gridSize) % gridSize;
+      let nj = (j + dj + gridSize) % gridSize;
+      re += grid[ni][nj].re;
+      im += grid[ni][nj].im;
+      count++;
+    }
+  }
+  
+  let center = grid[i][j];
+  return {
+    re: (re - count * center.re),
+    im: (im - count * center.im)
+  };
+}
+
+function potentialAt(i, j) {
+  let x = map(i, 0, gridSize, -3, 3);
+  let y = map(j, 0, gridSize, -3, 3);
+  
+  // Double well potential
+  let r = sqrt(x*x + y*y);
+  let potential = 0.5 * (r*r - 2);
+  
+  // Add some perturbation
+  potential += 0.3 * sin(x * 2 + time) * cos(y * 2 + time * 0.7);
+  
+  return potential * 0.1;
+}
+
+function drawWaveFunction() {
+  let cellW = width / gridSize;
+  let cellH = height / gridSize;
+  
+  noStroke();
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let psi = grid[i][j];
+      let prob = psi.re * psi.re + psi.im * psi.im;
+      let phase = atan2(psi.im, psi.re);
+      
+      // Map probability to color
+      let brightness = map(prob, 0, 0.5, 0, 100);
+      let hue = map(phase, -PI, PI, 180, 320);
+      let saturation = map(prob, 0, 0.3, 30, 90);
+      
+      // Draw probability density
+      fill(hue % 360, saturation, brightness, 80);
+      rect(i * cellW, j * cellH, cellW + 1, cellH + 1);
+      
+      // Add interference fringes for high probability
+      if (prob > 0.1) {
+        let fringe = sin(phase * 8 + time * 3) * 0.5 + 0.5;
+        fill(hue % 360, 20, 100, fringe * brightness * 0.5);
+        rect(i * cellW, j * cellH, cellW + 1, cellH + 1);
+      }
+    }
+  }
+}
+
+function drawParticles() {
+  // Draw quantum particle representations
+  for (let p of particles) {
+    // Update position based on probability gradient
+    let gi = floor(map(p.x, 0, width, 0, gridSize));
+    let gj = floor(map(p.y, 0, height, 0, gridSize));
+    gi = constrain(gi, 0, gridSize - 1);
+    gj = constrain(gj, 0, gridSize - 1);
+    
+    let psi = grid[gi][gj];
+    let prob = psi.re * psi.re + psi.im * psi.im;
+    let phase = atan2(psi.im, psi.re);
+    
+    // Particles drift toward high probability regions
+    if (prob > 0.05) {
+      p.vx += random(-0.1, 0.1) * prob * 10;
+      p.vy += random(-0.1, 0.1) * prob * 10;
+    }
+    
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    
+    // Wrap around edges
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Draw glowing particle
+    let size = p.size * (1 + prob * 5);
+    let alpha = map(prob, 0, 0.3, 20, 100);
+    
+    // Glow
+    for (let r = size * 3; r > 0; r -= size) {
+      fill(p.hue, 60, 100, alpha * (1 - r / (size * 3)));
+      noStroke();
+      ellipse(p.x, p.y, r * 2, r * 2);
+    }
+    
+    // Core
+    fill(p.hue, 30, 100, alpha);
+    ellipse(p.x, p.y, size, size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

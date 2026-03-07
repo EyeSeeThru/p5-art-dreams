@@ -133,6 +133,7 @@ The project cycles through different technique categories to ensure variety:
 - **dna-helix** — Double helix visualization with rotating 3D animation and glowing base pairs
 - **cycloid-dreams** — Hypotrochoid curves with parametric variations and color cycling
 - **polygonal-drift** — Drifting polygons with Perlin noise particles and connecting lines
+- **schrodinger-field** — Quantum wave function visualization with probability density and particle representation
 
 ## Running
 
