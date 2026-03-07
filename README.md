@@ -136,6 +136,7 @@ The project cycles through different technique categories to ensure variety:
 - **schrodinger-field** — Quantum wave function visualization with probability density and particle representation
 - **bifurcation-diagram** — Logistic map period-doubling visualization showing route to chaos
 - **boids-flock** — Flocking simulation with emergent collective behavior (separation, alignment, cohesion)
+- **gravity-lens** — Gravitational lensing visualization with photon deflection around massive objects and Einstein ring effects
 
 ## Running
 
