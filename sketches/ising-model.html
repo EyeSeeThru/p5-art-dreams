@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ising Model — 2D Ferromagnet</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const N = 80;
+const SPIN_UP = 1;
+const SPIN_DOWN = -1;
+let spins = [];
+let tempSlider, jSlider;
+let temperature = 2.27;
+let coupling = 1;
+let running = true;
+
+function setup() {
+  createCanvas(600, 700);
+  pixelDensity(1);
+  noSmooth();
+  
+  for (let i = 0; i < N; i++) {
+    spins[i] = [];
+    for (let j = 0; j < N; j++) {
+      spins[i][j] = random() > 0.5 ? SPIN_UP : SPIN_DOWN;
+    }
+  }
+  
+  let controls = createDiv('');
+  controls.style('position', 'absolute');
+  controls.style('top', '10px');
+  controls.style('left', '10px');
+  controls.style('color', '#88a');
+  controls.style('font-size', '12px');
+  
+  let tempLabel = createDiv('Temperature: ' + temperature.toFixed(2));
+  tempLabel.parent(controls);
+  tempSlider = createSlider(0.1, 5, temperature, 0.01);
+  tempSlider.parent(controls);
+  tempSlider.style('width', '150px');
+  tempSlider.input(() => {
+    temperature = tempSlider.value();
+    tempLabel.html('Temperature: ' + temperature.toFixed(2));
+  });
+  
+  let infoLabel = createDiv('Critical Temp: ~2.27');
+  infoLabel.parent(controls);
+  infoLabel.style('margin-top', '5px');
+  infoLabel.style('color', '#667');
+  
+  let btn = createButton('Reset');
+  btn.parent(controls);
+  btn.style('margin-left', '10px');
+  btn.mousePressed(resetSpins);
+}
+
+function resetSpins() {
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      spins[i][j] = random() > 0.5 ? SPIN_UP : SPIN_DOWN;
+    }
+  }
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  for (let k = 0; k < N * N / 4; k++) {
+    metropolisStep();
+  }
+  
+  drawSpins();
+  
+  let mag = calculateMagnetization();
+  fill(150, 170, 200);
+  noStroke();
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Magnetization: ' + mag.toFixed(3), 10, 90);
+  
+  if (mag > 0.9) {
+    fill(100, 255, 150);
+    text('★ Ordered (Ferromagnetic)', 10, 110);
+  } else if (mag < -0.9) {
+    fill(255, 100, 100);
+    text('★ Ordered (Ferromagnetic)', 10, 110);
+  } else if (temperature < 2.27) {
+    fill(255, 200, 100);
+    text('⚡ Near Criticality', 10, 110);
+  } else {
+    fill(150, 150, 180);
+    text('○ Disordered (Paramagnetic)', 10, 110);
+  }
+}
+
+function metropolisStep() {
+  let i = floor(random(N));
+  let j = floor(random(N));
+  
+  let energy = 0;
+  if (i > 0) energy -= coupling * spins[i][j] * spins[i-1][j];
+  if (i < N-1) energy -= coupling * spins[i][j] * spins[i+1][j];
+  if (j > 0) energy -= coupling * spins[i][j] * spins[i][j-1];
+  if (j < N-1) energy -= coupling * spins[i][j] * spins[i][j+1];
+  
+  let deltaE = 2 * energy;
+  
+  if (deltaE <= 0 || random() < exp(-deltaE / temperature)) {
+    spins[i][j] *= -1;
+  }
+}
+
+function calculateMagnetization() {
+  let sum = 0;
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      sum += spins[i][j];
+    }
+  }
+  return sum / (N * N);
+}
+
+function drawSpins() {
+  let cellW = width / N;
+  let cellH = (height - 100) / N;
+  
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      let x = i * cellW;
+      let y = j * cellH + 130;
+      
+      if (spins[i][j] === SPIN_UP) {
+        fill(60, 180, 255);
+      } else {
+        fill(255, 80, 120);
+      }
+      noStroke();
+      rect(x, y, cellW, cellH);
+    }
+  }
+}
+</script>
+</body>
+</html>
