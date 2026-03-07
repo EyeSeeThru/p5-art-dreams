@@ -130,6 +130,7 @@ The project cycles through different technique categories to ensure variety:
 - **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
 - **wavefront** — Wavefront reconstruction visualization with holographic interference patterns and flowing particles
 - **percolation** — Percolation threshold simulation with cluster visualization and connectivity emergence
+- **dna-helix** — Double helix visualization with rotating 3D animation and glowing base pairs
 
 ## Running
 
