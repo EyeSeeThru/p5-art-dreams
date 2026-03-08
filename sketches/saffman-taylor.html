@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saffman-Taylor — Viscous Fingering</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Saffman-Taylor instability — Viscous fingering in a Hele-Shaw cell
+// The less viscous fluid pushes into the more viscous fluid, creating finger-like patterns
+
+let grid;
+let cols, rows;
+let resolution = 4;
+let time = 0;
+let fingers = [];
+let pressureField;
+
+const VISCOSITY_RATIO = 0.15;
+const INJECTION_RATE = 0.3;
+let injectionRadius = 0;
+let maxRadius;
+let patternPhase = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  maxRadius = min(width, height) * 0.45;
+  
+  // Initialize pressure field
+  pressureField = new Float32Array(cols * rows);
+  
+  // Create initial finger seeds around the injection point
+  let numFingers = floor(random(6, 12));
+  for (let i = 0; i < numFingers; i++) {
+    let angle = (TWO_PI / numFingers) * i + random(-0.2, 0.2);
+    fingers.push({
+      angle: angle,
+      length: 0,
+      width: random(0.3, 0.8),
+      growth: random(0.3, 0.7),
+      branchChance: random(0.002, 0.008),
+      branches: []
+    });
+  }
+  
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  background(10, 20, 25);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Grow fingers
+  injectionRadius = min(injectionRadius + INJECTION_RATE, maxRadius);
+  patternPhase += 0.02;
+  
+  // Update each finger
+  for (let finger of fingers) {
+    if (finger.length < injectionRadius * finger.width) {
+      finger.length += finger.growth * 1.5;
+      
+      // Branching
+      if (finger.length > injectionRadius * 0.3 && random() < finger.branchChance) {
+        let branchAngle = finger.angle + random([-1, 1]) * random(0.4, 0.8);
+        finger.branches.push({
+          angle: branchAngle,
+          length: finger.length * 0.3,
+          width: finger.width * 0.6,
+          growth: finger.growth * 0.8
+        });
+      }
+    }
+    
+    // Update branches
+    for (let branch of finger.branches) {
+      if (branch.length < injectionRadius * branch.width * 0.5) {
+        branch.length += branch.growth;
+      }
+    }
+  }
+  
+  // Draw the viscous fingering pattern
+  // Outer boundary (more viscous fluid)
+  drawBackgroundGradient(cx, cy);
+  
+  // Draw fingers (less viscous fluid pushing in)
+  for (let finger of fingers) {
+    drawFinger(cx, cy, finger, 0);
+  }
+  
+  // Add glow effects
+  drawGlow(cx, cy);
+  
+  // Center injection point
+  drawInjectionPoint(cx, cy);
+  
+  time += 0.016;
+}
+
+function drawBackgroundGradient(cx, cy) {
+  // Radial gradient from center
+  for (let r = maxRadius; r > 0; r -= resolution * 2) {
+    let alpha = map(r, 0, maxRadius, 60, 20);
+    let hue = map(r, 0, maxRadius, 280, 200);
+    fill(hue, 70, 25, alpha);
+    ellipse(cx, cy, r * 2, r * 2);
+  }
+}
+
+function drawFinger(cx, cy, finger, depth) {
+  let baseX = cx + cos(finger.angle) * finger.length;
+  let baseY = cy + sin(finger.angle) * finger.length;
+  
+  // Fingertip wobble
+  let wobble = sin(patternPhase * 3 + finger.length * 0.05) * 3;
+  let tipX = baseX + cos(finger.angle + wobble * 0.02) * 10;
+  let tipY = baseY + sin(finger.angle + wobble * 0.02) * 10;
+  
+  let fingerWidth = finger.width * 60 * (1 - finger.length / maxRadius * 0.5);
+  
+  // Main finger body
+  let hue = depth === 0 ? random([190, 200, 210]) : random([180, 195, 205]);
+  let sat = random(60, 80);
+  let bri = random(70, 90);
+  
+  // Gradient along finger
+  for (let i = 0; i < finger.length; i += resolution) {
+    let t = i / finger.length;
+    let x = cx + cos(finger.angle) * i;
+    let y = cy + sin(finger.angle) * i;
+    let w = fingerWidth * (0.3 + 0.7 * t);
+    
+    fill(hue + t * 20, sat - t * 20, bri, 70 - t * 30);
+    ellipse(x, y, w, w);
+  }
+  
+  // Fingertip
+  fill(hue + 30, sat - 20, 95, 90);
+  ellipse(tipX, tipY, fingerWidth * 0.8, fingerWidth * 0.8);
+  
+  // Draw branches recursively
+  for (let branch of finger.branches) {
+    drawFinger(cx, cy, branch, depth + 1);
+  }
+}
+
+function drawGlow(cx, cy) {
+  // Outer glow
+  noStroke();
+  for (let i = 5; i > 0; i--) {
+    let alpha = map(i, 1, 5, 15, 3);
+    let size = injectionRadius * 2 + i * 30 + sin(patternPhase) * 10;
+    fill(200, 80, 60, alpha);
+    ellipse(cx, cy, size, size);
+  }
+  
+  // Inner glow
+  for (let finger of fingers) {
+    let tipX = cx + cos(finger.angle) * finger.length;
+    let tipY = cy + sin(finger.angle) * finger.length;
+    
+    for (let i = 3; i > 0; i--) {
+      let alpha = map(i, 1, 3, 20, 5);
+      let size = finger.width * 30 + i * 8;
+      fill(180, 60, 80, alpha);
+      ellipse(tipX, tipY, size, size);
+    }
+  }
+}
+
+function drawInjectionPoint(cx, cy) {
+  // Pulsing center
+  let pulse = sin(patternPhase * 2) * 0.2 + 1;
+  
+  // Core
+  fill(0, 0, 100, 100);
+  ellipse(cx, cy, 8 * pulse, 8 * pulse);
+  
+  // Inner glow
+  fill(180, 30, 90, 60);
+  ellipse(cx, cy, 15 * pulse, 15 * pulse);
+  
+  // Outer ring
+  noFill();
+  stroke(200, 50, 70, 40);
+  strokeWeight(2);
+  ellipse(cx, cy, 25 * pulse, 25 * pulse);
+  noStroke();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  maxRadius = min(width, height) * 0.45;
+  setup();
+}
+</script>
+</body>
+</html>
