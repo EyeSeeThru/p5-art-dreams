@@ -139,6 +139,7 @@ The project cycles through different technique categories to ensure variety:
 - **boids-flock** — Flocking simulation with emergent collective behavior (separation, alignment, cohesion)
 - **gravity-lens** — Gravitational lensing visualization with photon deflection around massive objects and Einstein ring effects
 - **gravity-well** — Particle simulation with particles spiraling into a central gravity well with glowing trails
+- **network-dynamics** — Force-directed network graph with evolving topology, node connections, and dynamic force physics
 
 ## Running
 
