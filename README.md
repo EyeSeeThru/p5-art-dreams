@@ -83,6 +83,7 @@ The project cycles through different technique categories to ensure variety:
 - **crystal-growth** — Procedural crystal growth visualization with glowing edges
 - **lichtenberg-figures** — Fractal branching electrical discharge patterns with glowing trails
 - **caustic-dreams** — Underwater light caustics with animated ray patterns and floor interference
+- **capillary-action** — Surface tension driven liquid dynamics simulating water rising through narrow capillary channels with meniscus effects
 - **strange-loops** — Recursive impossible geometries with interlocking shapes and infinite zoom effect
 - **magnetic-field** — Magnetic dipole field visualization with flowing particles following field lines
 - **magnetic-reconnection** — Magnetic field line dynamics with reconnection events and particle flows

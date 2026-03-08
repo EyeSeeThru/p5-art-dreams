@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ulam Spiral — Prime Number Visualization</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Ulam Spiral — Prime number visualization in spiral pattern
+// Each number's position is determined by its value in a spiral,
+// and primes are highlighted while composites fade into the background
+
+let gridSize = 200;
+let cellSize;
+let primes = [];
+let composites = [];
+let maxNum;
+let angle = 0;
+let zoom = 1;
+let centerX, centerY;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cellSize = min(width, height) / (gridSize * 1.8);
+  centerX = width / 2;
+  centerY = height / 2;
+  maxNum = gridSize * gridSize;
+  
+  calculatePrimes();
+  noStroke();
+}
+
+function calculatePrimes() {
+  primes = [];
+  composites = [];
+  
+  // Sieve of Eratosthenes
+  let isPrime = new Array(maxNum + 1).fill(true);
+  isPrime[0] = isPrime[1] = false;
+  
+  for (let i = 2; i <= sqrt(maxNum); i++) {
+    if (isPrime[i]) {
+      for (let j = i * i; j <= maxNum; j += i) {
+        isPrime[j] = false;
+      }
+    }
+  }
+  
+  for (let i = 1; i <= maxNum; i++) {
+    if (isPrime[i]) {
+      primes.push(i);
+    }
+  }
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  translate(centerX, centerY);
+  scale(zoom);
+  translate(-centerX, -centerY);
+  
+  let time = millis() * 0.001;
+  
+  // Draw Ulam spiral
+  let x = 0, y = 0;
+  let dx = 1, dy = 0;
+  let stepsInSegment = 1;
+  let stepCount = 0;
+  let segmentCount = 1;
+  
+  for (let n = 1; n <= maxNum; n++) {
+    let pos = getSpiralPosition(n);
+    let screenX = centerX + pos.x * cellSize;
+    let screenY = centerY + pos.y * cellSize;
+    
+    // Color based on n's properties
+    if (isPrime(n)) {
+      // Primes glow with color cycling
+      let hue = (n * 0.1 + time * 20) % 360;
+      let brightness = map(sin(time * 2 + n * 0.01), -1, 1, 150, 255);
+      fill(hue, 80, brightness);
+      
+      // Add glow for primes
+      let size = cellSize * 0.6;
+      ellipse(screenX, screenY, size, size);
+      
+      // Extra glow layer
+      fill(hue, 60, brightness, 100);
+      ellipse(screenX, screenY, size * 1.5, size * 1.5);
+    } else {
+      // Composites are subtle
+      let brightness = map(n % 4, 0, 4, 20, 50);
+      fill(40, 45, 60, brightness);
+      ellipse(screenX, screenY, cellSize * 0.3, cellSize * 0.3);
+    }
+    
+    // Move in spiral
+    x += dx;
+    y += dy;
+    stepCount++;
+    
+    if (stepCount === stepsInSegment) {
+      stepCount = 0;
+      
+      // Turn right
+      let temp = dx;
+      dx = -dy;
+      dy = temp;
+      
+      if (segmentCount % 2 === 0) {
+        stepsInSegment++;
+      }
+      segmentCount++;
+    }
+  }
+  
+  // Animate zoom
+  zoom = map(sin(time * 0.3), -1, 1, 0.5, 1.2);
+  
+  // Center glow
+  let glowSize = 100 + sin(time * 2) * 30;
+  for (let i = 5; i > 0; i--) {
+    fill(280, 80, 30, 10);
+    ellipse(centerX, centerY, glowSize * i, glowSize * i);
+  }
+}
+
+function getSpiralPosition(n) {
+  // Calculate position in Ulam spiral
+  let k = Math.ceil((Math.sqrt(n) - 1) / 2);
+  let t = 2 * k;
+  let m = n - t * t;
+  
+  if (m < 0) {
+    k--;
+    t = 2 * k;
+    m = n - t * t;
+  }
+  
+  let pos = { x: k, y: -k };
+  
+  if (m <= t) {
+    pos.x = -k + m;
+    pos.y = -k;
+  } else if (m <= 2 * t) {
+    pos.x = k;
+    pos.y = -k + (m - t);
+  } else if (m <= 3 * t) {
+    pos.x = k - (m - 2 * t);
+    pos.y = k;
+  } else {
+    pos.x = -k;
+    pos.y = k - (m - 3 * t);
+  }
+  
+  return pos;
+}
+
+function isPrime(n) {
+  if (n < 2) return false;
+  if (n === 2) return true;
+  if (n % 2 === 0) return false;
+  for (let i = 3; i <= Math.sqrt(n); i += 2) {
+    if (n % i === 0) return false;
+  }
+  return true;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cellSize = min(width, height) / (gridSize * 1.8);
+  centerX = width / 2;
+  centerY = height / 2;
+}
+</script>
+</body>
+</html>

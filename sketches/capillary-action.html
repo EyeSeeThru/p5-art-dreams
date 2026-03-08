@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capillary Action</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Capillary Action - Surface tension driven liquid dynamics
+// Simulates water rising through narrow channels via capillary action
+
+let channels = [];
+let particles = [];
+let time = 0;
+const NUM_CHANNELS = 12;
+const PARTICLES_PER_CHANNEL = 80;
+
+class Channel {
+  constructor(x, width, height) {
+    this.x = x;
+    this.width = width;
+    this.height = height;
+    this.capillaryStrength = random(0.3, 0.9);
+    this.wobble = random(1000);
+  }
+
+  update(t) {
+    this.currentHeight = this.capillaryStrength * this.height * 
+      (0.3 + 0.7 * sin(t * 0.001 + this.wobble) * 0.5 + 0.5);
+  }
+
+  draw(pg) {
+    pg.push();
+    pg.noStroke();
+    
+    // Channel walls
+    pg.fill(20, 22, 30);
+    pg.rect(this.x - this.width, 0, this.width, this.height);
+    pg.rect(this.x, 0, this.width, this.height);
+    
+    // Liquid in channel
+    let gradient = pg.drawingContext.createLinearGradient(
+      this.x - this.width/2, this.height,
+      this.x - this.width/2, this.height - this.currentHeight
+    );
+    
+    let hue = (time * 0.05 + this.x * 0.1) % 360;
+    gradient.addColorStop(0, `hsla(${hue}, 70%, 50%, 0.9)`);
+    gradient.addColorStop(0.5, `hsla(${hue + 30}, 80%, 60%, 0.7)`);
+    gradient.addColorStop(1, `hsla(${hue + 60}, 90%, 70%, 0.4)`);
+    
+    pg.drawingContext.fillStyle = gradient;
+    pg.rect(
+      this.x - this.width/2 + 2,
+      this.height - this.currentHeight,
+      this.width - 4,
+      this.currentHeight
+    );
+    
+    // Meniscus curve at top
+    pg.noFill();
+    pg.stroke(hue, 60, 80, 0.6);
+    pg.strokeWeight(2);
+    pg.beginShape();
+    for (let i = 0; i <= 20; i++) {
+      let mx = this.x - this.width/2 + (this.width - 4) * (i / 20);
+      let my = this.height - this.currentHeight - 
+        sin((i / 20 - 0.5) * PI) * 15 * this.capillaryStrength;
+      pg.vertex(mx, my);
+    }
+    pg.endShape();
+    
+    pg.pop();
+  }
+}
+
+class LiquidParticle {
+  constructor(channel) {
+    this.channel = channel;
+    this.reset();
+    this.y = random(channel.height);
+  }
+
+  reset() {
+    this.x = channel.x - channel.width/2 + random(channel.width);
+    this.y = channel.height + random(20);
+    this.vy = -random(0.5, 2);
+    this.vx = random(-0.2, 0.2);
+    this.size = random(2, 5);
+    this.alpha = random(100, 200);
+    this.hue = (time * 0.03 + this.x * 0.2) % 360;
+  }
+
+  update() {
+    let targetY = this.channel.height - this.channel.currentHeight;
+    
+    if (this.y > targetY + 10) {
+      // Rising due to capillary action
+      let capillaryForce = this.channel.capillaryStrength * 0.08;
+      this.vy -= capillaryForce;
+      
+      // Add some turbulence
+      this.vx += random(-0.05, 0.05);
+      this.vx *= 0.95;
+      
+      this.y += this.vy;
+      this.x += this.vx;
+      
+      // Constrain to channel
+      this.x = constrain(this.x, 
+        this.channel.x - this.channel.width/2 + 2,
+        this.channel.x + this.channel.width/2 - 2
+      );
+    } else {
+      // At top - create surface ripples
+      this.vy *= -0.3;
+      this.y += this.vy;
+      
+      if (abs(this.vy) < 0.1 && random() < 0.02) {
+        this.reset();
+      }
+    }
+  }
+
+  draw(pg) {
+    pg.push();
+    pg.noStroke();
+    pg.fill(this.hue, 70, 80, this.alpha / 255);
+    pg.ellipse(this.x, this.y, this.size);
+    
+    // Glow
+    pg.fill(this.hue, 60, 90, this.alpha / 255 * 0.3);
+    pg.ellipse(this.x, this.y, this.size * 3);
+    pg.pop();
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  let spacing = width / (NUM_CHANNELS + 1);
+  
+  for (let i = 0; i < NUM_CHANNELS; i++) {
+    let x = spacing * (i + 1);
+    let channelWidth = random(20, 50);
+    let channel = new Channel(x, channelWidth, height);
+    channels.push(channel);
+    
+    for (let j = 0; j < PARTICLES_PER_CHANNEL; j++) {
+      particles.push(new LiquidParticle(channel));
+    }
+  }
+}
+
+function draw() {
+  background(10, 12, 18);
+  time = millis();
+  
+  // Draw background grid pattern
+  drawBackground();
+  
+  // Update and draw channels
+  for (let channel of channels) {
+    channel.update(time);
+    channel.draw(this);
+  }
+  
+  // Update and draw particles
+  for (let particle of particles) {
+    particle.update();
+    particle.draw(this);
+  }
+  
+  // Draw surface tension effects at bottom
+  drawReservoir();
+  
+  // Add vignette
+  drawVignette();
+}
+
+function drawBackground() {
+  push();
+  stroke(25, 30, 40);
+  strokeWeight(1);
+  
+  // Vertical lines
+  for (let x = 0; x < width; x += 40) {
+    line(x, 0, x, height);
+  }
+  
+  // Horizontal lines  
+  for (let y = 0; y < height; y += 40) {
+    line(0, y, width, y);
+  }
+  pop();
+}
+
+function drawReservoir() {
+  push();
+  
+  // Reservoir at bottom
+  let gradient = drawingContext.createLinearGradient(0, height - 60, 0, height);
+  gradient.addColorStop(0, 'hsla(200, 60%, 40%, 0)');
+  gradient.addColorStop(0.5, 'hsla(210, 70%, 50%, 0.6)');
+  gradient.addColorStop(1, 'hsla(220, 80%, 60%, 0.8)');
+  
+  drawingContext.fillStyle = gradient;
+  noStroke();
+  rect(0, height - 60, width, 60);
+  
+  // Animated waves at surface
+  for (let i = 0; i < 5; i++) {
+    let y = height - 50 + i * 10;
+    noFill();
+    stroke(200 + i * 10, 50, 70, 0.3 - i * 0.05);
+    strokeWeight(1);
+    beginShape();
+    for (let x = 0; x <= width; x += 20) {
+      let yOffset = sin(x * 0.02 + time * 0.002 + i) * 5;
+      vertex(x, y + yOffset);
+    }
+    endShape();
+  }
+  
+  pop();
+}
+
+function drawVignette() {
+  push();
+  let gradient = drawingContext.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, width * 0.7
+  );
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+  drawingContext.fillStyle = gradient;
+  noStroke();
+  rect(0, 0, width, height);
+  pop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  channels = [];
+  particles = [];
+  setup();
+}
+</script>
+</body>
+</html>
