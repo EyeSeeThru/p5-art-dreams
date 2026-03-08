@@ -77,6 +77,7 @@ The project cycles through different technique categories to ensure variety:
 - **huygens-waves** — Wave interference simulation following Huygens' principle with multiple wave sources
 - **recursive-polygons** — Nested geometric shapes with recursive subdivision
 - **wave-particles** — Wave interference combined with particle dynamics
+- **weber-curves** — Curves of constant visual angle with orbital dynamics and glowing particle trails
 - **turbulent-flow** — Perlin noise flow field with particle trails and spectral colors
 - **metaballs** — Organic blob dynamics using marching squares algorithm
 - **crystal-growth** — Procedural crystal growth visualization with glowing edges
