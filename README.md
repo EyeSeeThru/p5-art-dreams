@@ -150,6 +150,7 @@ The project cycles through different technique categories to ensure variety:
 - **cantor-dust** — 3D visualization of Cantor set as fractal dust with glowing cubes and rotating animation
 - **butterfly-curve** — Temple H. Fay's butterfly parametric curve with layered rotating symmetries and color cycling
 - **helicon-flutes** — Helicon wave visualization with spiral particle patterns and plasma resonance aesthetics
+- **kuramoto-sync** — Kuramoto coupled oscillator synchronization showing spontaneous pattern formation in phase-locked grids
 
 ## Running
 
