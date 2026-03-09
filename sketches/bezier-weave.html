@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bezier Weave</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Bezier Weave — parametric curves creating woven tapestry patterns
+
+let t = 0;
+let curves = [];
+const NUM_CURVES = 12;
+const CONTROL_POINTS = 4;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noFill();
+  strokeWeight(1.5);
+  
+  // Initialize Bezier curves with random control points
+  for (let i = 0; i < NUM_CURVES; i++) {
+    curves.push({
+      points: [],
+      hue: (i * 30) % 360,
+      speed: random(0.3, 0.8),
+      phase: random(TWO_PI),
+      amplitude: random(50, 150),
+      frequency: random(1, 3)
+    });
+    
+    // Create control points for each curve
+    for (let j = 0; j < CONTROL_POINTS; j++) {
+      curves[i].points.push({
+        x: random(width * 0.1, width * 0.9),
+        y: random(height * 0.1, height * 0.9),
+        z: random(-100, 100)
+      });
+    }
+  }
+}
+
+function draw() {
+  background(10, 15, 8);
+  
+  // Animate control points
+  for (let i = 0; i < curves.length; i++) {
+    let curve = curves[i];
+    let speed = curve.speed;
+    let phase = curve.phase;
+    let amp = curve.amplitude;
+    let freq = curve.frequency;
+    
+    // Oscillate control points
+    for (let j = 0; j < curve.points.length; j++) {
+      let pt = curve.points[j];
+      pt.x += sin(t * speed * freq + phase + j) * 0.5;
+      pt.y += cos(t * speed * freq * 0.7 + phase + j * 0.5) * 0.5;
+      pt.z += sin(t * speed * 0.5 + phase) * 0.3;
+      
+      // Keep within bounds
+      pt.x = constrain(pt.x, width * 0.05, width * 0.95);
+      pt.y = constrain(pt.y, height * 0.05, height * 0.95);
+    }
+    
+    // Draw Bezier curve with glow
+    let pts = curve.points;
+    
+    // Glow effect
+    for (let g = 3; g >= 1; g--) {
+      stroke(curve.hue, 80, 90, 0.15 / g);
+      strokeWeight(3 + g * 2);
+      drawBezier(pts);
+    }
+    
+    // Main curve
+    stroke(curve.hue, 70, 95, 0.9);
+    strokeWeight(1.5);
+    drawBezier(pts);
+    
+    // Control points (subtle)
+    stroke(curve.hue, 40, 60, 0.3);
+    strokeWeight(0.5);
+    for (let j = 0; j < pts.length - 1; j++) {
+      line(pts[j].x, pts[j].y, pts[j + 1].x, pts[j + 1].y);
+    }
+  }
+  
+  // Draw connecting weave lines between curves
+  stroke(0, 0, 100, 0.05);
+  strokeWeight(0.3);
+  for (let i = 0; i < curves.length; i++) {
+    for (let j = i + 1; j < curves.length; j++) {
+      let pts1 = curves[i].points;
+      let pts2 = curves[j].points;
+      
+      // Connect midpoints
+      let mx1 = (pts1[1].x + pts1[2].x) / 2;
+      let my1 = (pts1[1].y + pts1[2].y) / 2;
+      let mx2 = (pts2[1].x + pts2[2].x) / 2;
+      let my2 = (pts2[1].y + pts2[2].y) / 2;
+      
+      line(mx1, my1, mx2, my2);
+    }
+  }
+  
+  t += 0.01;
+}
+
+function drawBezier(pts) {
+  if (pts.length < 4) return;
+  
+  beginShape();
+  for (let i = 0; i <= 100; i++) {
+    let tt = i / 100;
+    let x = bezierPoint(pts[0].x, pts[1].x, pts[2].x, pts[3].x, tt);
+    let y = bezierPoint(pts[0].y, pts[1].y, pts[2].y, pts[3].y, tt);
+    vertex(x, y);
+  }
+  endShape();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
