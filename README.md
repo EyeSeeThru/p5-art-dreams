@@ -146,6 +146,7 @@ The project cycles through different technique categories to ensure variety:
 - **network-dynamics** — Force-directed network graph with evolving topology, node connections, and dynamic force physics
 - **fractal-flames** — Fractal flame algorithm visualization with iterative function system transforms and swirling particle trails
 - **cantor-dust** — 3D visualization of Cantor set as fractal dust with glowing cubes and rotating animation
+- **butterfly-curve** — Temple H. Fay's butterfly parametric curve with layered rotating symmetries and color cycling
 
 ## Running
 
