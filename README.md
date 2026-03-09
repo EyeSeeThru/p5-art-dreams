@@ -50,6 +50,7 @@ The project cycles through different technique categories to ensure variety:
 - **neural-bloom** — Neural network-inspired patterns
 - **orbital-decay** — Orbital mechanics simulation
 - **resonance-cavities** — Resonant frequency visualization
+- **resonance-lattice** — Coupled oscillator lattice creating wave interference patterns with interactive mouse input
 - **stasis-field** — Static field effects
 - **string-art** — Parametric woven curves connecting rotating geometric frames
 - **strange-attractors** — Chaotic attractor rendering

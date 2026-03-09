@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resonance Lattice</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const COLS = 40;
+const ROWS = 30;
+let grid = [];
+let prevGrid = [];
+let damping = 0.985;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  for (let i = 0; i < COLS; i++) {
+    grid[i] = [];
+    prevGrid[i] = [];
+    for (let j = 0; j < ROWS; j++) {
+      grid[i][j] = 0;
+      prevGrid[i][j] = 0;
+    }
+  }
+}
+
+function draw() {
+  background(240, 20, 5, 0.15);
+  
+  let newGrid = [];
+  for (let i = 0; i < COLS; i++) {
+    newGrid[i] = [];
+    for (let j = 0; j < ROWS; j++) {
+      let sum = 0;
+      let count = 0;
+      
+      if (i > 0) { sum += grid[i-1][j]; count++; }
+      if (i < COLS-1) { sum += grid[i+1][j]; count++; }
+      if (j > 0) { sum += grid[i][j-1]; count++; }
+      if (j < ROWS-1) { sum += grid[i][j+1]; count++; }
+      
+      let avg = sum / count;
+      newGrid[i][j] = (avg * 2 - prevGrid[i][j]) * damping;
+      
+      if (newGrid[i][j] > 0.5 || newGrid[i][j] < -0.5) {
+        newGrid[i][j] = (random() > 0.5 ? 1 : -1) * random(0.3, 0.8);
+      }
+    }
+  }
+  
+  if (frameCount % 3 === 0 && mouseIsPressed) {
+    let ci = floor(map(mouseX, 0, width, 1, COLS-2));
+    let cj = floor(map(mouseY, 0, height, 1, ROWS-2));
+    if (ci > 0 && ci < COLS-1 && cj > 0 && cj < ROWS-1) {
+      newGrid[ci][cj] = random(3, 6);
+      newGrid[ci+1][cj] = random(-2, 2);
+      newGrid[ci-1][cj] = random(-2, 2);
+      newGrid[ci][cj+1] = random(-2, 2);
+      newGrid[ci][cj-1] = random(-2, 2);
+    }
+  }
+  
+  let cellW = width / COLS;
+  let cellH = height / ROWS;
+  
+  for (let i = 0; i < COLS; i++) {
+    for (let j = 0; j < ROWS; j++) {
+      let val = newGrid[i][j];
+      let absVal = abs(val);
+      
+      if (absVal > 0.01) {
+        let hue = map(i, 0, COLS, 180, 300) + val * 30;
+        let sat = map(absVal, 0, 2, 30, 90);
+        let bri = map(absVal, 0, 3, 20, 100);
+        let alpha = map(absVal, 0, 2, 0.3, 0.9);
+        
+        fill((hue + 360) % 360, sat, bri, alpha);
+        let size = cellW * 0.9 * min(1, absVal * 0.8 + 0.2);
+        ellipse(
+          i * cellW + cellW/2,
+          j * cellH + cellH/2,
+          size,
+          size
+        );
+      }
+    }
+  }
+  
+  prevGrid = grid.map(row => [...row]);
+  grid = newGrid;
+  
+  if (frameCount % 60 === 0 && frameCount > 0) {
+    let rx = floor(random(2, COLS-2));
+    let ry = floor(random(2, ROWS-2));
+    grid[rx][ry] = random(2, 5);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cellW = width / COLS;
+  cellH = height / ROWS;
+}
+
+function mousePressed() {
+  let ci = floor(map(mouseX, 0, width, 1, COLS-2));
+  let cj = floor(map(mouseY, 0, height, 1, ROWS-2));
+  if (ci > 0 && ci < COLS-1 && cj > 0 && cj < ROWS-1) {
+    grid[ci][cj] = random(3, 6);
+  }
+}
+</script>
+</body>
+</html>
