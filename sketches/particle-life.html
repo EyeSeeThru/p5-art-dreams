@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Particle Life</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Particle Life - Emergent artificial life simulation
+const NUM_TYPES = 5;
+const NUM_PARTICLES = 800;
+const INTERACTION_RADIUS = 80;
+const MAX_SPEED = 2;
+
+let particles = [];
+let typeColors = [];
+let interactionMatrix = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  // Define colors for each particle type
+  typeColors = [
+    color(255, 60, 60),    // Red
+    color(60, 255, 120),   // Green
+    color(60, 160, 255),   // Blue
+    color(255, 200, 60),   // Gold
+    color(200, 60, 255),   // Purple
+  ];
+  
+  // Generate random interaction matrix
+  // Positive = attraction, Negative = repulsion
+  for (let i = 0; i < NUM_TYPES; i++) {
+    interactionMatrix[i] = [];
+    for (let j = 0; j < NUM_TYPES; j++) {
+      interactionMatrix[i][j] = random(-1, 1);
+    }
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-1, 1),
+      vy: random(-1, 1),
+      type: floor(random(NUM_TYPES))
+    });
+  }
+  
+  background(0);
+}
+
+function draw() {
+  // Fade effect for trails
+  noStroke();
+  fill(0, 15);
+  rect(0, 0, width, height);
+  
+  // Update and draw particles
+  for (let p of particles) {
+    let fx = 0, fy = 0;
+    
+    // Calculate forces from nearby particles
+    for (let other of particles) {
+      if (p === other) continue;
+      
+      let dx = other.x - p.x;
+      let dy = other.y - p.y;
+      let dist = sqrt(dx * dx + dy * dy);
+      
+      if (dist < INTERACTION_RADIUS && dist > 0) {
+        // Normalize force based on distance
+        let force = interactionMatrix[p.type][other.type];
+        force *= (1 - dist / INTERACTION_RADIUS);
+        
+        fx += (dx / dist) * force;
+        fy += (dy / dist) * force;
+      }
+    }
+    
+    // Apply force to velocity
+    p.vx += fx * 0.05;
+    p.vy += fy * 0.05;
+    
+    // Limit speed
+    let speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    if (speed > MAX_SPEED) {
+      p.vx = (p.vx / speed) * MAX_SPEED;
+      p.vy = (p.vy / speed) * MAX_SPEED;
+    }
+    
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Wrap around edges
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    // Draw particle
+    let col = typeColors[p.type];
+    stroke(red(col), green(col), blue(col), 180);
+    strokeWeight(3);
+    point(p.x, p.y);
+  }
+  
+  // Occasionally regenerate interaction matrix for variety
+  if (frameCount % 600 === 0) {
+    for (let i = 0; i < NUM_TYPES; i++) {
+      for (let j = 0; j < NUM_TYPES; j++) {
+        interactionMatrix[i][j] = random(-1, 1);
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>
