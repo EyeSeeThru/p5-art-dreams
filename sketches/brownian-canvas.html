@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brownian Canvas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Brownian Canvas - Random walk particle visualization
+// with trail persistence and color evolution
+
+let particles = [];
+const NUM_PARTICLES = 800;
+const TRAIL_ALPHA = 12;
+let colorOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  background(10, 10, 15);
+  
+  // Initialize particles at random positions
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: 0,
+      vy: 0,
+      hue: random(360),
+      size: random(1.5, 4),
+      friction: random(0.92, 0.98)
+    });
+  }
+  
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  // Semi-transparent overlay for trail effect
+  fill(10, 10, 15, TRAIL_ALPHA);
+  rect(0, 0, width, height);
+  
+  // Evolve colors
+  colorOffset += 0.3;
+  
+  for (let p of particles) {
+    // Brownian motion - random acceleration
+    let ax = random(-2, 2);
+    let ay = random(-2, 2);
+    
+    // Add some curl noise for organic feel
+    let noiseScale = 0.005;
+    let n = noise(p.x * noiseScale, p.y * noiseScale, frameCount * 0.002);
+    let angle = n * TWO_PI * 4;
+    ax += cos(angle) * 0.5;
+    ay += sin(angle) * 0.5;
+    
+    // Update velocity with acceleration
+    p.vx += ax;
+    p.vy += ay;
+    
+    // Apply friction
+    p.vx *= p.friction;
+    p.vy *= p.friction;
+    
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Wrap around edges with momentum
+    if (p.x < 0) { p.x = width; p.vx *= -0.5; }
+    if (p.x > width) { p.x = 0; p.vx *= -0.5; }
+    if (p.y < 0) { p.y = height; p.vy *= -0.5; }
+    if (p.y > height) { p.y = 0; p.vy *= -0.5; }
+    
+    // Calculate dynamic hue based on velocity
+    let speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    let hue = (p.hue + colorOffset + speed * 10) % 360;
+    
+    // Color based on speed - faster = brighter
+    let brightness = map(speed, 0, 8, 50, 100);
+    let saturation = map(speed, 0, 8, 80, 100);
+    
+    fill(hue, saturation, brightness, 70);
+    
+    // Draw particle with glow
+    let size = p.size + map(speed, 0, 5, 0, 2);
+    ellipse(p.x, p.y, size, size);
+    
+    // Extra glow for fast particles
+    if (speed > 3) {
+      fill(hue, saturation * 0.7, brightness, 20);
+      ellipse(p.x, p.y, size * 3, size * 3);
+    }
+  }
+  
+  // Add subtle center attraction
+  for (let p of particles) {
+    let dx = width / 2 - p.x;
+    let dy = height / 2 - p.y;
+    let dist = sqrt(dx * dx + dy * dy);
+    if (dist > 100) {
+      p.vx += dx * 0.0001;
+      p.vy += dy * 0.0001;
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(10, 10, 15);
+}
+
+function mousePressed() {
+  // Burst effect on click
+  for (let p of particles) {
+    let dx = p.x - mouseX;
+    let dy = p.y - mouseY;
+    let dist = sqrt(dx * dx + dy * dy);
+    if (dist < 200) {
+      let force = map(dist, 0, 200, 10, 0);
+      p.vx += (dx / dist) * force;
+      p.vy += (dy / dist) * force;
+    }
+  }
+}
+</script>
+</body>
+</html>
