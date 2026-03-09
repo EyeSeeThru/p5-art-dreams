@@ -21,6 +21,7 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
+- **forest-fire** — Cellular automaton simulating forest fire spread with probabilistic ignition and tree regrowth
 - **fourier-epicycles** — Fourier series epicycles tracing intricate harmonic patterns
 - **ifs-fractal** — Iterated Function System with Barnsley-inspired transforms and rotating animations
 - **mandala-flow** — Radial symmetry with flowing noise-driven patterns and center glow
