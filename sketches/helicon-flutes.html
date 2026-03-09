@@ -54,10 +54,10 @@ function draw() {
     let y = height/2 + helixY + waveY;
     
     // Distance-based color
-    let dist = dist(width/2, height/2, x, y);
-    let hue = (dist * 0.5 + t * 20 + p.phase * 10) % 360;
+    let d = dist(width/2, height/2, x, y);
+    let hue = (d * 0.5 + t * 20 + p.phase * 10) % 360;
     let sat = 70 + 30 * sin(t + p.phase);
-    let bri = 80 + 20 * sin(dist * 0.02 + t);
+    let bri = 80 + 20 * sin(d * 0.02 + t);
     
     // Flute-like resonance glow
     let alpha = map(dist, 0, 400, 0.8, 0.2);
