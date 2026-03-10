@@ -13,7 +13,7 @@
 </head>
 <body>
 <script>
-let shader;
+let myShader;
 let time = 0;
 
 const vert = `
@@ -116,14 +116,14 @@ void main() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
-  shader = createShader(vert, frag);
+  myShader = createShader(vert, frag);
   noLoop();
 }
 
 function draw() {
-  shader.setUniform('uTime', time);
-  shader.setUniform('uResolution', [width, height]);
-  shader(shader);
+  myShader.setUniform('uTime', time);
+  myShader.setUniform('uResolution', [width, height]);
+  shader(myShader);
   rect(0, 0, width, height);
   time += 0.016;
 }
@@ -133,9 +133,9 @@ function windowResized() {
 }
 
 function draw() {
-  shader.setUniform('uTime', frameCount * 0.016);
-  shader.setUniform('uResolution', [width, height]);
-  shader(shader);
+  myShader.setUniform('uTime', frameCount * 0.016);
+  myShader.setUniform('uResolution', [width, height]);
+  shader(myShader);
   rect(0, 0, width, height);
 }
 </script>
