@@ -69,6 +69,7 @@ The project cycles through different technique categories to ensure variety:
 - **lissajous-knots** — Parametric Lissajous curves forming woven knot patterns
 - **lorenz-geometry** — Lorenz attractor visualization with particle trails and color cycling
 - **levy-flight** — Heavy-tailed random walk visualization inspired by animal foraging patterns
+- **lindenmayer** — L-system plant generation with animated branching and particle effects
 - **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling
 - **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom

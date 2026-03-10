@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lindenmayer — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Lindenmayer System - L-system plant generation
+// Axiom: F
+// Rules: F -> F[+F]F[-F]F (bracket denotes branch)
+
+let axiom = "F";
+let sentence = axiom;
+let rules = {
+  "F": "F[+F]F[-F]F"
+};
+let len = 120;
+let angle;
+let generations = 4;
+let theta;
+let time = 0;
+let branchHue = 180;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  angle = radians(25);
+  
+  // Generate L-system sentence
+  for (let i = 0; i < generations; i++) {
+    let nextSentence = "";
+    for (let j = 0; j < sentence.length; j++) {
+      let current = sentence.charAt(j);
+      if (rules[current]) {
+        nextSentence += rules[current];
+      } else {
+        nextSentence += current;
+      }
+    }
+    sentence = nextSentence;
+  }
+  
+  // Calculate initial length based on generations
+  len = 180 / pow(1.8, generations);
+}
+
+function draw() {
+  background(10, 8, 6);
+  
+  // Ambient glow
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    fill(180, 60, 20, 0.02);
+    ellipse(width/2, height, width * (1 - i * 0.15), height * 0.8);
+  }
+  
+  translate(width / 2, height - 50);
+  
+  // Animate angle slightly
+  theta = angle + sin(time * 0.5) * 0.02;
+  branchHue = (180 + sin(time * 0.3) * 30) % 360;
+  
+  // Draw the L-system
+  for (let i = 0; i < sentence.length; i++) {
+    let current = sentence.charAt(i);
+    
+    if (current === "F") {
+      // Draw branch
+      let branchColor = color(
+        branchHue + noise(i * 0.1, time * 0.2) * 40,
+        60 + noise(i * 0.1 + 100, time * 0.3) * 30,
+        80 + noise(i * 0.1 + 200, time * 0.1) * 20,
+        0.7
+      );
+      stroke(branchColor);
+      strokeWeight(map(len, 8, 2, 3, 0.5));
+      line(0, 0, 0, -len);
+      translate(0, -len);
+    } else if (current === "+") {
+      rotate(theta + noise(i * 0.2, time) * 0.1);
+    } else if (current === "-") {
+      rotate(-theta + noise(i * 0.2 + 50, time) * 0.1);
+    } else if (current === "[") {
+      push();
+      // Slight color shift for branches
+      branchHue = (branchHue + 20) % 360;
+    } else if (current === "]") {
+      pop();
+    }
+  }
+  
+  // Add floating particles
+  drawParticles();
+  
+  time += 0.016;
+}
+
+function drawParticles() {
+  // Reset matrix for particles
+  push();
+  translate(-width/2, -(height - 50));
+  
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let x = (noise(i * 0.3, time * 0.5) - 0.5) * width;
+    let y = height - noise(i * 0.3 + 100, time * 0.5) * height * 0.8;
+    let size = noise(i * 0.5 + 200, time) * 4 + 1;
+    let alpha = noise(i * 0.2 + 300, time * 0.3) * 0.5 + 0.1;
+    
+    fill(180, 40, 90, alpha);
+    ellipse(x, y, size, size);
+  }
+  pop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
