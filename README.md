@@ -153,6 +153,8 @@ The project cycles through different technique categories to ensure variety:
 - **butterfly-curve** — Temple H. Fay's butterfly parametric curve with layered rotating symmetries and color cycling
 - **helicon-flutes** — Helicon wave visualization with spiral particle patterns and plasma resonance aesthetics
 - **kuramoto-sync** — Kuramoto coupled oscillator synchronization showing spontaneous pattern formation in phase-locked grids
+- **dissipative-patterns** — Far-from-equilibrium self-organization patterns inspired by reaction-diffusion dynamics
+
 - **floating-orbs** — Bioluminescent deep sea creatures with trailing tentacles and pulsing glow
 
 ## Running
