@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photon Diffraction</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+let time = 0;
+let mode = 0;
+const MODES = ['single-slit', 'double-slit', 'grating'];
+const SLIT_COUNT = 3;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noLoop();
+}
+
+function draw() {
+  background(0);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Diffraction pattern
+  let wavelength = 150 + 100 * sin(time * 0.3);
+  let slitSeparation = map(sin(time * 0.2), -1, 1, 40, 120);
+  let slitWidth = map(sin(time * 0.15), -1, 1, 20, 60);
+  
+  // Draw diffraction intensity
+  loadPixels();
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = (x - cx) / 100;
+      let intensity = 0;
+      
+      if (mode === 0) {
+        // Single slit
+        intensity = singleSlitDiffraction(dx, slitWidth);
+      } else if (mode === 1) {
+        // Double slit
+        intensity = doubleSlitDiffraction(dx, slitWidth, slitSeparation);
+      } else {
+        // Diffraction grating
+        intensity = gratingDiffraction(dx, slitWidth, slitSeparation);
+      }
+      
+      // Color based on intensity and wavelength
+      let hue = map(wavelength, 100, 400, 180, 320);
+      let sat = 80;
+      let bri = intensity * 90;
+      
+      let idx = (y * width + x) * 4;
+      let c = color(hue, sat, bri);
+      pixels[idx] = red(c);
+      pixels[idx + 1] = green(c);
+      pixels[idx + 2] = blue(c);
+      pixels[idx + 3] = 255;
+    }
+  }
+  
+  updatePixels();
+  
+  // Draw slit geometry at bottom
+  drawSlitGeometry(cx, cy + height * 0.35, slitWidth, slitSeparation);
+  
+  // Animate
+  time += 0.02;
+  if (frameCount % 180 === 0) {
+    mode = (mode + 1) % MODES.length;
+  }
+  
+  // Title
+  fill(255);
+  noStroke();
+  textSize(16);
+  textAlign(LEFT, TOP);
+  text(MODES[mode].replace('-', ' ').toUpperCase(), 20, 20);
+  
+  requestAnimationFrame(() => {
+    draw();
+  });
+}
+
+function singleSlitDiffraction(x, a) {
+  if (x === 0) return 1;
+  let pi = Math.PI;
+  let alpha = pi * a * x;
+  return Math.pow(Math.sin(alpha) / alpha, 2);
+}
+
+function doubleSlitDiffraction(x, a, d) {
+  let pi = Math.PI;
+  let beta = pi * d * x;
+  let gamma = pi * a * x;
+  
+  let single = (Math.sin(gamma) / gamma);
+  let double = Math.cos(beta);
+  
+  return Math.pow(single * double, 2);
+}
+
+function gratingDiffraction(x, a, d) {
+  let pi = Math.PI;
+  let beta = pi * d * x;
+  let N = 8;
+  
+  let sinBeta = Math.sin(beta);
+  if (sinBeta === 0) return 1;
+  
+  let numerator = Math.pow(Math.sin(N * beta), 2);
+  let denominator = N * N * Math.pow(sinBeta, 2);
+  
+  let slitFactor = Math.pow(Math.sin(pi * a * x) / (pi * a * x), 2);
+  
+  return (numerator / denominator) * slitFactor;
+}
+
+function drawSlitGeometry(cx, cy, slitWidth, slitSeparation) {
+  stroke(255, 80);
+  strokeWeight(2);
+  
+  if (mode === 0) {
+    // Single slit
+    line(cx - slitWidth * 2, cy, cx - slitWidth, cy);
+    line(cx + slitWidth, cy, cx + slitWidth * 2, cy);
+  } else if (mode === 1) {
+    // Double slit
+    let gap = slitSeparation / 2;
+    line(cx - gap - slitWidth, cy, cx - gap, cy);
+    line(cx + gap, cy, cx + gap + slitWidth, cy);
+  } else {
+    // Grating
+    let spacing = slitSeparation / 2;
+    for (let i = -4; i <= 4; i++) {
+      let sx = cx + i * spacing;
+      line(sx - slitWidth / 3, cy, sx + slitWidth / 3, cy);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

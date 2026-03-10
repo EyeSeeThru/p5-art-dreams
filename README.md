@@ -160,7 +160,7 @@ The project cycles through different technique categories to ensure variety:
 
 - **floating-orbs** — Bioluminescent deep sea creatures with trailing tentacles and pulsing glow
 
-## Running
+- **photon-diffraction** — Wave diffraction patterns (single/double slit, grating) with animated wavelength cycling
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
