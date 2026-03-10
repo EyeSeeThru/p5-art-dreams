@@ -156,6 +156,8 @@ The project cycles through different technique categories to ensure variety:
 - **kuramoto-sync** — Kuramoto coupled oscillator synchronization showing spontaneous pattern formation in phase-locked grids
 - **dissipative-patterns** — Far-from-equilibrium self-organization patterns inspired by reaction-diffusion dynamics
 
+- **fractal-wood** — Recursive branching tree with organic wood grain texture and bark patterns
+
 - **floating-orbs** — Bioluminescent deep sea creatures with trailing tentacles and pulsing glow
 
 ## Running

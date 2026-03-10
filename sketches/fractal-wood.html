@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fractal Wood</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #1a0f0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Fractal Wood - Organic wood grain pattern generation
+// Uses recursive branching with noise-driven variation
+
+let seeds = [];
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noLoop();
+  
+  // Initialize trunk seeds
+  let startX = width / 2;
+  let startY = height;
+  seeds.push({ x: startX, y: startY, angle: -PI / 2, width: 80, depth: 0 });
+}
+
+function draw() {
+  background(20, 40, 15);
+  
+  // Draw layered wood grain
+  for (let layer = 0; layer < 8; layer++) {
+    drawWoodLayer(layer);
+  }
+  
+  // Draw main trunk
+  drawRecursiveBranch(width / 2, height, -PI / 2, 80, 0);
+  
+  time += 0.01;
+}
+
+function drawWoodLayer(layer) {
+  let offset = layer * 15;
+  let alpha = map(layer, 0, 8, 0.3, 0.05);
+  
+  push();
+  for (let i = 0; i < 20; i++) {
+    let x = noise(i * 0.3 + layer) * width;
+    let y = height + offset + noise(i * 0.2) * 100;
+    let len = noise(i * 0.4 + time * 0.5 + layer) * 150 + 50;
+    
+    stroke(25 + layer * 3, 50 + noise(i) * 30, 30 + layer * 5, alpha);
+    strokeWeight(2 + noise(i + layer) * 4);
+    noFill();
+    
+    beginShape();
+    for (let t = 0; t <= 1; t += 0.05) {
+      let px = x + t * len * 0.3 + noise(t * 3 + i + layer) * 30;
+      let py = y - t * len + noise(t * 2 + i) * 20;
+      curveVertex(px, py);
+    }
+    endShape();
+  }
+  pop();
+}
+
+function drawRecursiveBranch(x, y, angle, w, depth) {
+  if (depth > 6 || w < 2) return;
+  
+  let len = w * 2.5 + noise(depth * 10) * 30;
+  
+  // Main branch
+  let x2 = x + cos(angle) * len;
+  let y2 = y + sin(angle) * len;
+  
+  // Wood color with rings
+  let ringFreq = 0.15;
+  let ringColor = sin(w * ringFreq + depth) * 20;
+  let hue = 25 + ringColor + noise(depth * 5) * 10;
+  let sat = 45 + noise(depth * 3) * 25;
+  let bri = 25 + noise(depth * 2) * 15;
+  
+  // Draw branch as tapered shape
+  fill(hue, sat, bri);
+  noStroke();
+  
+  let segments = floor(w / 3);
+  for (let i = 0; i < segments; i++) {
+    let t = i / segments;
+    let branchW = w * (1 - t * 0.8);
+    let bx = x + (x2 - x) * t;
+    let by = y + (y2 - y) * t;
+    
+    // Add wood grain texture
+    for (let g = 0; g < 3; g++) {
+      let grainOffset = noise(i * 0.5 + g + depth, time * 0.1) * branchW * 0.6;
+      let gx = bx + cos(angle + PI/2) * grainOffset;
+      let gy = by + sin(angle + PI/2) * grainOffset;
+      
+      fill(hue + g * 5, sat - 10, bri - g * 3, 0.7);
+      ellipse(gx, gy, branchW * 0.3, branchW * 0.8);
+    }
+  }
+  
+  // Bark texture
+  stroke(hue, sat + 10, bri - 10, 0.5);
+  strokeWeight(1);
+  for (let b = 0; b < w; b++) {
+    let bt = b / w;
+    let bx = x + (x2 - x) * bt;
+    let by = y + (y2 - y) * bt;
+    let barkOffset = noise(b * 2 + depth, time * 0.05) * w * 0.3;
+    
+    line(
+      bx + cos(angle + PI/2) * barkOffset,
+      by + sin(angle + PI/2) * barkOffset,
+      bx + cos(angle + PI/2) * (barkOffset + w * 0.1),
+      by + sin(angle + PI/2) * (barkOffset + w * 0.1)
+    );
+  }
+  
+  // Branches
+  if (depth < 5) {
+    let numBranches = floor(noise(depth * 7) * 3) + 1;
+    for (let i = 0; i < numBranches; i++) {
+      let branchAngle = angle + noise(depth * 11 + i * 3) * PI * 0.6 - PI * 0.3;
+      let branchW = w * (0.4 + noise(depth + i) * 0.3);
+      drawRecursiveBranch(x2, y2, branchAngle, branchW, depth + 1);
+    }
+  }
+  
+  // Knothole
+  if (noise(depth * 13) > 0.85 && depth > 1) {
+    fill(15, 30, 10);
+    noStroke();
+    ellipse(x2, y2, w * 0.4, w * 0.5);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
