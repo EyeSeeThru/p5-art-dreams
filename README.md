@@ -135,6 +135,7 @@ The project cycles through different technique categories to ensure variety:
 - **solar-flare** — Solar corona visualization with plasma arcs, magnetic field particles, and coronal mass ejection effects
 - **tesla-coils** — Electrical discharge simulation with branching lightning from multiple Tesla coil sources with glowing particles
 - **plasma-sphere** — Glowing plasma sphere with animated tendrils and particle effects
+- **plasma-turbulence** — GLSL shader-based plasma turbulence with FBM noise layers and swirling color gradients
 - **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
 - **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
 - **wavefront** — Wavefront reconstruction visualization with holographic interference patterns and flowing particles
