@@ -14,7 +14,6 @@
 <body>
 <script>
 let myShader;
-let time = 0;
 
 const vert = `
 attribute vec3 aPosition;
@@ -117,19 +116,6 @@ void main() {
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   myShader = createShader(vert, frag);
-  noLoop();
-}
-
-function draw() {
-  myShader.setUniform('uTime', time);
-  myShader.setUniform('uResolution', [width, height]);
-  shader(myShader);
-  rect(0, 0, width, height);
-  time += 0.016;
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
 }
 
 function draw() {
@@ -137,6 +123,10 @@ function draw() {
   myShader.setUniform('uResolution', [width, height]);
   shader(myShader);
   rect(0, 0, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
 </script>
 </body>
