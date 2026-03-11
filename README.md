@@ -56,6 +56,7 @@ The project cycles through different technique categories to ensure variety:
 - **strange-attractors** — Chaotic attractor rendering
 - **stochastic-resonance** — Noise-enhanced signal detection demonstrating stochastic resonance phenomenon
 - **perlin-vortex** — Perlin noise-driven vortex field with particle trails
+- **vortex-lattice** — Lattice of coupled vortices with oscillating positions and interconnecting flow lines
 - **phase-portraits** — Phase space visualization
 - **temporal-fractures** — Temporal fractal patterns
 - **void-geometry** — Abstract void geometry
