@@ -169,6 +169,8 @@ The project cycles through different technique categories to ensure variety:
 - **sine-cascade** — Cascading sine wave layers with flowing particles and interconnecting lines creating mesmerizing wave dynamics
 - **schwarzschild** — Black hole visualization with gravitational lensing, photon sphere effects, and accretion disk dynamics
 
+- **rope-dynamics** — Rope physics simulation using Verlet integration with realistic swinging, gravity, and mouse interaction
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash

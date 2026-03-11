@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rope Dynamics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #0a0a0a; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const SEGMENTS = 60;
+const GRAVITY = 0.4;
+const DAMPING = 0.98;
+const REST_LENGTH = 12;
+
+let points = [];
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  // Initialize rope points
+  for (let i = 0; i < SEGMENTS; i++) {
+    points.push({
+      x: width / 2 - (SEGMENTS / 2 - i) * REST_LENGTH * 0.3,
+      y: 80 + i * REST_LENGTH * 0.5,
+      oldX: width / 2 - (SEGMENTS / 2 - i) * REST_LENGTH * 0.3,
+      oldY: 80 + i * REST_LENGTH * 0.5
+    });
+  }
+  
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  background(10, 20, 15);
+  
+  // Update physics
+  updateRope();
+  
+  // Draw anchor point
+  fill(0, 0, 80);
+  circle(width / 2, 60, 12);
+  
+  // Draw rope with gradient
+  for (let i = 0; i < points.length - 1; i++) {
+    let p1 = points[i];
+    let p2 = points[i + 1];
+    
+    let hue = map(i, 0, points.length, 180, 320);
+    let sat = map(i, 0, points.length, 40, 70);
+    let bri = map(i, 0, points.length, 60, 100);
+    
+    // Glow effect
+    for (let g = 3; g > 0; g--) {
+      stroke(hue, sat - 10, bri, 20 * g);
+      strokeWeight(8 + g * 4);
+      line(p1.x, p1.y, p2.x, p2.y);
+    }
+    
+    // Main rope
+    stroke(hue, sat, bri);
+    strokeWeight(4);
+    line(p1.x, p1.y, p2.x, p2.y);
+    
+    // Point nodes
+    noStroke();
+    fill(hue, sat - 20, bri + 20);
+    circle(p1.x, p1.y, 8);
+  }
+  
+  // End weight
+  let last = points[points.length - 1];
+  fill(320, 70, 100);
+  circle(last.x, last.y, 20);
+  
+  // Add floating particles
+  drawParticles();
+  
+  time += 0.02;
+}
+
+function updateRope() {
+  // Apply Verlet integration
+  for (let i = 1; i < points.length; i++) {
+    let p = points[i];
+    
+    // Skip the first point (anchor)
+    if (i === 1) {
+      // First segment attached to anchor
+      p.x = width / 2;
+      p.y = 80;
+      continue;
+    }
+    
+    let vx = (p.x - p.oldX) * DAMPING;
+    let vy = (p.y - p.oldY) * DAMPING;
+    
+    p.oldX = p.x;
+    p.oldY = p.y;
+    
+    // Add gravity
+    vy += GRAVITY;
+    
+    // Add slight wind
+    vx += sin(time * 2 + i * 0.1) * 0.15;
+    
+    p.x += vx;
+    p.y += vy;
+  }
+  
+  // Constraint solving (multiple iterations for stability)
+  for (let iter = 0; iter < 10; iter++) {
+    // First point anchor
+    points[1].x = width / 2;
+    points[1].y = 80;
+    
+    // Distance constraints
+    for (let i = 1; i < points.length - 1; i++) {
+      let p1 = points[i];
+      let p2 = points[i + 1];
+      
+      let dx = p2.x - p1.x;
+      let dy = p2.y - p1.y;
+      let dist = sqrt(dx * dx + dy * dy);
+      let diff = REST_LENGTH - dist;
+      let percent = diff / dist / 2;
+      
+      let offsetX = dx * percent;
+      let offsetY = dy * percent;
+      
+      if (i > 1) {
+        p1.x -= offsetX;
+        p1.y -= offsetY;
+      }
+      p2.x += offsetX;
+      p2.y += offsetY;
+    }
+    
+    // Keep within bounds
+    for (let p of points) {
+      if (p.x < 20) p.x = 20;
+      if (p.x > width - 20) p.x = width - 20;
+      if (p.y < 60) p.y = 60;
+      if (p.y > height - 20) p.y = height - 20;
+    }
+  }
+}
+
+let particles = [];
+
+function drawParticles() {
+  // Add new particles occasionally
+  if (frameCount % 3 === 0) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-0.5, 0.5),
+      vy: random(-1, -0.2),
+      size: random(1, 3),
+      hue: random(180, 300),
+      life: 100
+    });
+  }
+  
+  // Draw and update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 1;
+    
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    
+    let alpha = map(p.life, 0, 100, 0, 50);
+    fill(p.hue, 60, 80, alpha);
+    noStroke();
+    circle(p.x, p.y, p.size);
+  }
+}
+
+function mouseDragged() {
+  // Add force to rope from mouse
+  let mx = mouseX;
+  let my = mouseY;
+  
+  for (let p of points) {
+    let dx = p.x - mx;
+    let dy = p.y - my;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    if (dist < 150 && dist > 0) {
+      let force = (150 - dist) / 150 * 2;
+      p.x += dx / dist * force;
+      p.y += dy / dist * force;
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  points[1].x = width / 2;
+  points[1].y = 80;
+}
+</script>
+</body>
+</html>
