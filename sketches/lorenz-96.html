@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lorenz 96 - p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Lorenz 96 Model - Simplified Atmospheric Dynamics
+// A chain of N oscillators with coupling to neighbors
+
+const N = 36; // Number of variables
+let x = [];
+const F = 8; // Forcing parameter
+const dt = 0.01;
+let particles = [];
+let colors;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize Lorenz 96 state
+  for (let i = 0; i < N; i++) {
+    x[i] = random(-1, 1) + sin(TWO_PI * i / N) * 2;
+  }
+  
+  // Create particles for visualization
+  for (let i = 0; i < 800; i++) {
+    particles.push({
+      idx: floor(random(N)),
+      offset: random(100),
+      speed: random(0.5, 1.5),
+      size: random(2, 6)
+    });
+  }
+  
+  colors = [
+    color(200, 80, 90, 60),
+    color(280, 70, 85, 60),
+    color(340, 75, 95, 60),
+    color(40, 80, 100, 60),
+    color(160, 60, 80, 60)
+  ];
+}
+
+function draw() {
+  background(0, 0, 0, 15);
+  
+  // Lorenz 96 dynamics
+  for (let i = 0; i < N; i++) {
+    let dx = (x[(i + 1) % N] - x[(i - 2 + N) % N]) * x[(i - 1) % N] 
+             - x[i] + F;
+    x[i] += dx * dt;
+  }
+  
+  // Visualize as flowing ring
+  let radius = min(width, height) * 0.35;
+  let centerX = width / 2;
+  let centerY = height / 2;
+  
+  // Draw connections between variables
+  strokeWeight(0.5);
+  for (let i = 0; i < N; i++) {
+    let angle1 = map(i, 0, N, 0, TWO_PI) - PI/2;
+    let angle2 = map((i + 1) % N, 0, N, 0, TWO_PI) - PI/2;
+    
+    let r1 = radius + x[i] * 15;
+    let r2 = radius + x[(i + 1) % N] * 15;
+    
+    let x1 = centerX + cos(angle1) * r1;
+    let y1 = centerY + sin(angle1) * r1;
+    let x2 = centerX + cos(angle2) * r2;
+    let y2 = centerY + sin(angle2) * r2;
+    
+    let alpha = map(sin(frameCount * 0.02 + i * 0.3), -1, 1, 20, 60);
+    stroke(200, 60, 90, alpha);
+    line(x1, y1, x2, y2);
+  }
+  
+  // Draw nodes
+  noStroke();
+  for (let i = 0; i < N; i++) {
+    let angle = map(i, 0, N, 0, TWO_PI) - PI/2;
+    let r = radius + x[i] * 15;
+    let px = centerX + cos(angle) * r;
+    let py = centerY + sin(angle) * r;
+    
+    let nodeColor = colors[i % colors.length];
+    fill(nodeColor);
+    ellipse(px, py, 8 + x[i] * 2, 8 + x[i] * 2);
+  }
+  
+  // Draw floating particles
+  for (let p of particles) {
+    let angle = map(p.idx, 0, N, 0, TWO_PI) - PI/2;
+    let r = radius + x[p.idx] * 15;
+    
+    // Add some variation
+    angle += sin(frameCount * 0.01 * p.speed + p.offset) * 0.2;
+    r += cos(frameCount * 0.015 * p.speed + p.offset) * 30;
+    
+    let px = centerX + cos(angle) * r;
+    let py = centerY + sin(angle) * r;
+    
+    let particleColor = colors[floor(p.offset) % colors.length];
+    fill(particleColor);
+    ellipse(px, py, p.size, p.size);
+  }
+  
+  // Central glow
+  for (let r = 150; r > 0; r -= 10) {
+    let alpha = map(r, 150, 0, 5, 30);
+    fill(280, 60, 80, alpha);
+    ellipse(centerX, centerY, r * 2, r * 2);
+  }
+  
+  // Outer ring
+  noFill();
+  stroke(280, 50, 70, 30);
+  strokeWeight(1);
+  ellipse(centerX, centerY, radius * 2 + 40, radius * 2 + 40);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
