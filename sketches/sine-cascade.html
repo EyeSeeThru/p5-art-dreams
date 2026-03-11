@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sine Cascade</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const numLayers = 12;
+const particlesPerLayer = 40;
+let layers = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  for (let i = 0; i < numLayers; i++) {
+    let layer = {
+      y: map(i, 0, numLayers - 1, height * 0.15, height * 0.85),
+      amplitude: random(30, 80),
+      frequency: random(0.005, 0.02),
+      speed: random(0.5, 1.5),
+      phase: random(TWO_PI),
+      hue: random(180, 300),
+      particles: []
+    };
+    
+    for (let j = 0; j < particlesPerLayer; j++) {
+      layer.particles.push({
+        x: random(width),
+        y: layer.y,
+        size: random(2, 6),
+        vx: random(-1, 1),
+        vy: random(-0.5, 0.5),
+        life: random(100, 200)
+      });
+    }
+    layers.push(layer);
+  }
+}
+
+function draw() {
+  background(0, 0, 5, 25);
+  
+  let t = frameCount * 0.02;
+  
+  // Draw cascading wave layers
+  for (let i = 0; i < layers.length; i++) {
+    let layer = layers[i];
+    let phaseShift = layer.phase + t * layer.speed;
+    
+    // Draw sine wave
+    noFill();
+    strokeWeight(2);
+    
+    beginShape();
+    for (let x = 0; x <= width; x += 5) {
+      let y = layer.y + sin(x * layer.frequency + phaseShift) * layer.amplitude;
+      let hue = (layer.hue + sin(t + i * 0.2) * 30) % 360;
+      let alpha = map(i, 0, layers.length - 1, 30, 70);
+      stroke(hue, 70, 80, alpha);
+      vertex(x, y);
+    }
+    endShape();
+    
+    // Draw glow layer
+    strokeWeight(6);
+    beginShape();
+    for (let x = 0; x <= width; x += 10) {
+      let y = layer.y + sin(x * layer.frequency + phaseShift) * layer.amplitude;
+      let hue = (layer.hue + sin(t + i * 0.2) * 30) % 360;
+      stroke(hue, 60, 90, 10);
+      vertex(x, y);
+    }
+    endShape();
+    
+    // Update and draw particles
+    for (let p of layer.particles) {
+      // Follow wave
+      let waveY = layer.y + sin(p.x * layer.frequency + phaseShift) * layer.amplitude;
+      p.y += (waveY - p.y) * 0.1;
+      p.x += p.vx;
+      p.life -= 1;
+      
+      // Wrap around
+      if (p.x > width) p.x = 0;
+      if (p.x < 0) p.x = width;
+      if (p.life <= 0) {
+        p.x = random(width);
+        p.life = random(100, 200);
+      }
+      
+      // Draw particle with glow
+      noStroke();
+      let hue = (layer.hue + frameCount * 0.5) % 360;
+      
+      // Glow
+      for (let r = p.size * 4; r > 0; r -= 1) {
+        let alpha = map(r, 0, p.size * 4, 20, 0);
+        fill(hue, 70, 90, alpha);
+        ellipse(p.x, p.y, r * 2);
+      }
+      
+      // Core
+      fill(hue, 50, 100, 90);
+      ellipse(p.x, p.y, p.size);
+    }
+  }
+  
+  // Draw connecting lines between layers
+  strokeWeight(0.5);
+  for (let x = 0; x < width; x += 30) {
+    let points = [];
+    for (let i = 0; i < layers.length; i++) {
+      let layer = layers[i];
+      let phaseShift = layer.phase + t * layer.speed;
+      let y = layer.y + sin(x * layer.frequency + phaseShift) * layer.amplitude;
+      points.push({ x, y, hue: layer.hue });
+    }
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      let alpha = map(i, 0, points.length - 1, 5, 15);
+      stroke(points[i].hue, 50, 80, alpha);
+      line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

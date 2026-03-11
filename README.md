@@ -165,6 +165,7 @@ The project cycles through different technique categories to ensure variety:
 - **photon-diffraction** — Wave diffraction patterns (single/double slit, grating) with animated wavelength cycling
 
 - **diffraction-grating** — Multi-slit diffraction grating interference with spectral color visualization and intensity graph
+- **sine-cascade** — Cascading sine wave layers with flowing particles and interconnecting lines creating mesmerizing wave dynamics
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
