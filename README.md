@@ -167,6 +167,7 @@ The project cycles through different technique categories to ensure variety:
 
 - **diffraction-grating** — Multi-slit diffraction grating interference with spectral color visualization and intensity graph
 - **sine-cascade** — Cascading sine wave layers with flowing particles and interconnecting lines creating mesmerizing wave dynamics
+- **schwarzschild** — Black hole visualization with gravitational lensing, photon sphere effects, and accretion disk dynamics
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
