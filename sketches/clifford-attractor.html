@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clifford Attractor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; margin: 0; padding: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+let points = [];
+let a, b, c, d;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  // Clifford attractor parameters - randomized for variety
+  a = random(-2, 2);
+  b = random(-2, 2);
+  c = random(-2, 2);
+  d = random(-2, 2);
+  
+  // Start from random point
+  let x = random(-2, 2);
+  let y = random(-2, 2);
+  
+  // Precompute many points for density
+  for (let i = 0; i < 80000; i++) {
+    let nextX = sin(a * y) + c * cos(a * x);
+    let nextY = sin(b * x) + d * cos(b * y);
+    
+    points.push({
+      x: map(nextX, -2.5, 2.5, 0, width),
+      y: map(nextY, -2.5, 2.5, height, 0)
+    });
+    
+    x = nextX;
+    y = nextY;
+  }
+  
+  background(10);
+}
+
+function draw() {
+  // No clearing - we build up the image
+  if (t === 0) {
+    // Draw all points at once with color cycling
+    let hueOffset = (frameCount * 0.5) % 360;
+    
+    loadPixels();
+    for (let p of points) {
+      let px = floor(p.x);
+      let py = floor(p.y);
+      
+      if (px >= 0 && px < width && py >= 0 && py < height) {
+        let idx = (px + py * width) * 4;
+        
+        // Color based on position
+        let dist = sqrt(pow(px - width/2, 2) + pow(py - height/2, 2));
+        let hue = (hueOffset + dist * 0.3) % 360;
+        let col = hslToRgb(hue / 360, 0.9, 0.6);
+        
+        // Blend with existing
+        pixels[idx] = lerp(pixels[idx], col[0], 0.7);
+        pixels[idx + 1] = lerp(pixels[idx + 1], col[1], 0.7);
+        pixels[idx + 2] = lerp(pixels[idx + 2], col[2], 0.7);
+        pixels[idx + 3] = 255;
+      }
+    }
+    updatePixels();
+    
+    // Add subtle glow overlay
+    blendMode(ADD);
+    noStroke();
+    for (let i = 0; i < 5; i++) {
+      fill(255, 50, 50, 3);
+      ellipse(width/2, height/2, width * 0.8 + i * 50, height * 0.8 + i * 50);
+    }
+    blendMode(BLEND);
+  }
+  
+  t++;
+  
+  // Subtle parameter animation
+  if (t % 120 === 0) {
+    a += random(-0.1, 0.1);
+    b += random(-0.1, 0.1);
+    c += random(-0.1, 0.1);
+    d += random(-0.1, 0.1);
+  }
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [floor(r * 255), floor(g * 255), floor(b * 255)];
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>

@@ -45,6 +45,7 @@ The project cycles through different technique categories to ensure variety:
 - **cellular-tessellation** — Hexagonal grid with pulsing cells
 - **chromatic-strata** — Abstract layered bands with emergent color blending
 - **chromatic-vortex** — Rotating vortex with chromatic aberration color separation and spiral particle trails
+- **clifford-attractor** — Clifford strange attractor with chaotic dynamics and color-cycled particle rendering
 - **quantum-foam** — Quantum foam visualization
 - **quantum-tunneling** — Quantum particle tunneling through potential barriers with wave interference
 - **neural-bloom** — Neural network-inspired patterns
