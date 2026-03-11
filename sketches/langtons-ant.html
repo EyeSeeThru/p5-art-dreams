@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Langton's Ant</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0a; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const CELL_SIZE = 3;
+const STEPS_PER_FRAME = 50;
+let grid = {};
+let antX, antY;
+let antDir = 0;
+let stepCount = 0;
+let maxSteps = 11000;
+
+const DIRS = [
+  { x: 1, y: 0 },
+  { x: 0, y: 1 },
+  { x: -1, y: 0 },
+  { x: 0, y: -1 }
+];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  antX = floor(width / CELL_SIZE / 2);
+  antY = floor(height / CELL_SIZE / 2);
+  
+  background(10);
+  noStroke();
+}
+
+function draw() {
+  if (stepCount >= maxSteps) {
+    drawStats();
+    return;
+  }
+  
+  for (let i = 0; i < STEPS_PER_FRAME && stepCount < maxSteps; i++) {
+    step();
+    stepCount++;
+  }
+  
+  drawGrid();
+  drawAnt();
+  
+  if (stepCount % 500 === 0) {
+    drawStats();
+  }
+}
+
+function step() {
+  const key = `${antX},${antY}`;
+  const currentState = grid[key] || 0;
+  
+  if (currentState === 0) {
+    grid[key] = 1;
+    antDir = (antDir + 1) % 4;
+  } else {
+    grid[key] = 0;
+    antDir = (antDir + 3) % 4;
+  }
+  
+  antX += DIRS[antDir].x;
+  antY += DIRS[antDir].y;
+  
+  // Wrap around edges
+  const maxX = floor(width / CELL_SIZE);
+  const maxY = floor(height / CELL_SIZE);
+  
+  if (antX < 0) antX = maxX - 1;
+  if (antX >= maxX) antX = 0;
+  if (antY < 0) antY = maxY - 1;
+  if (antY >= maxY) antY = 0;
+}
+
+function drawGrid() {
+  loadPixels();
+  
+  for (let key in grid) {
+    if (grid[key] === 1) {
+      const [x, y] = key.split(',').map(Number);
+      const px = x * CELL_SIZE;
+      const py = y * CELL_SIZE;
+      
+      for (let dy = 0; dy < CELL_SIZE; dy++) {
+        for (let dx = 0; dx < CELL_SIZE; dx++) {
+          const idx = 4 * ((py + dy) * width + (px + dx));
+          if (idx >= 0 && idx < pixels.length) {
+            // Create color variation based on step count
+            const hue = (stepCount * 0.01) % 360;
+            const col = hslToRgb(hue / 360, 0.8, 0.5);
+            pixels[idx] = col[0];
+            pixels[idx + 1] = col[1];
+            pixels[idx + 2] = col[2];
+            pixels[idx + 3] = 255;
+          }
+        }
+      }
+    }
+  }
+  
+  updatePixels();
+}
+
+function drawAnt() {
+  fill(255);
+  const px = antX * CELL_SIZE;
+  const py = antY * CELL_SIZE;
+  rect(px, py, CELL_SIZE, CELL_SIZE);
+}
+
+function drawStats() {
+  fill(0, 180);
+  noStroke();
+  rect(10, 10, 180, 60);
+  
+  fill(255);
+  textSize(14);
+  textFont('monospace');
+  text(`Langton's Ant`, 20, 30);
+  text(`Steps: ${stepCount}`, 20, 48);
+  text(`Cells: ${Object.keys(grid).length}`, 20, 62);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(10);
+  grid = {};
+  antX = floor(width / CELL_SIZE / 2);
+  antY = floor(height / CELL_SIZE / 2);
+  antDir = 0;
+  stepCount = 0;
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [floor(r * 255), floor(g * 255), floor(b * 255)];
+}
+</script>
+</body>
+</html>

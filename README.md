@@ -171,6 +171,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **rope-dynamics** — Rope physics simulation using Verlet integration with realistic swinging, gravity, and mouse interaction
 
+- **langtons-ant** — Langton's Ant cellular automaton with emergent highway patterns from simple turn rules
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash
