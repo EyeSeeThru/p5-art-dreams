@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galaxy Collision</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Galaxy Collision - Gravitational N-body simulation of two spiral galaxies merging
+const stars = [];
+const numStars = 1800;
+const G = 0.5; // Gravitational constant (tuned for visual effect)
+
+class Star {
+  constructor(x, y, vx, vy, mass, color) {
+    this.pos = createVector(x, y);
+    this.vel = createVector(vx, vy);
+    this.acc = createVector(0, 0);
+    this.mass = mass;
+    this.color = color;
+    this.trail = [];
+    this.maxTrail = 15;
+  }
+
+  applyForce(force) {
+    let f = p5.Vector.div(force, this.mass);
+    this.acc.add(f);
+  }
+
+  update() {
+    this.vel.add(this.acc);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+    
+    // Trail
+    this.trail.push(this.pos.copy());
+    if (this.trail.length > this.maxTrail) {
+      this.trail.shift();
+    }
+  }
+
+  draw() {
+    // Draw trail
+    for (let i = 0; i < this.trail.length - 1; i++) {
+      let alpha = map(i, 0, this.trail.length, 20, 100);
+      stroke(red(this.color), green(this.color), blue(this.color), alpha);
+      strokeWeight(1);
+      point(this.trail[i].x, this.trail[i].y);
+    }
+    
+    // Draw star
+    let size = map(this.mass, 1, 5, 1, 3);
+    fill(this.color);
+    noStroke();
+    ellipse(this.pos.x, this.pos.y, size, size);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB);
+  
+  // Create two spiral galaxies
+  createGalaxy(width * 0.35, height * 0.5, 0.3, -0.5, 600, color(255, 180, 120));
+  createGalaxy(width * 0.65, height * 0.5, -0.3, 0.4, 600, color(120, 180, 255));
+  
+  // Create some intergalactic stars
+  for (let i = 0; i < 200; i++) {
+    let x = random(width * 0.2, width * 0.8);
+    let y = random(height * 0.2, height * 0.8);
+    let vx = random(-0.2, 0.2);
+    let vy = random(-0.2, 0.2);
+    let mass = random(0.5, 1.5);
+    let c = color(200 + random(55), 200 + random(55), 255);
+    stars.push(new Star(x, y, vx, vy, mass, c));
+  }
+}
+
+function createGalaxy(cx, cy, vx, vy, count, baseColor) {
+  let arms = 3;
+  let armSpread = 0.5;
+  
+  for (let i = 0; i < count; i++) {
+    let angle = random(TWO_PI);
+    let radius = random(5, 180);
+    let armAngle = (radius / 180) * PI * 2 * arms;
+    let spiralAngle = angle + armAngle;
+    
+    // Add some randomness
+    let r = radius + random(-15, 15);
+    let a = spiralAngle + random(-0.3, 0.3);
+    
+    let x = cx + cos(a) * r;
+    let y = cy + sin(a) * r;
+    
+    // Orbital velocity (approximate circular orbit)
+    let orbitalSpeed = sqrt(G * 1000 / (r + 20)) * 0.4;
+    let vAngle = a + HALF_PI;
+    let starVx = vx + cos(vAngle) * orbitalSpeed;
+    let starVy = vy + sin(vAngle) * orbitalSpeed;
+    
+    // Color variation based on distance from center
+    let distRatio = r / 180;
+    let c;
+    if (baseColor === color(255, 180, 120)) {
+      c = lerpColor(color(255, 255, 200), color(255, 100, 50), distRatio);
+    } else {
+      c = lerpColor(color(200, 200, 255), color(50, 100, 255), distRatio);
+    }
+    
+    let mass = random(0.8, 2.5);
+    stars.push(new Star(x, y, starVx, starVy, mass, c));
+  }
+  
+  // Add central black hole
+  stars.push(new Star(cx, cy, vx, vy, 50, color(255, 255, 255)));
+}
+
+function draw() {
+  // Fade effect for trails
+  background(5, 5, 15, 40);
+  
+  // Apply gravitational forces between all stars
+  for (let i = 0; i < stars.length; i++) {
+    for (let j = i + 1; j < stars.length; j++) {
+      let diff = p5.Vector.sub(stars[j].pos, stars[i].pos);
+      let distSq = diff.magSq();
+      distSq = constrain(distSq, 25, 25000);
+      
+      let forceMag = (G * stars[i].mass * stars[j].mass) / distSq;
+      let force = diff.normalize().mult(forceMag);
+      
+      stars[i].applyForce(force);
+      force.mult(-1);
+      stars[j].applyForce(force);
+    }
+  }
+  
+  // Update and draw stars
+  for (let star of stars) {
+    star.update();
+    star.draw();
+  }
+  
+  // Add subtle glow overlay
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    fill(0, 0, 20, 15);
+    rect(0, 0, width, height);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

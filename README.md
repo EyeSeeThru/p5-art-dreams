@@ -164,6 +164,7 @@ The project cycles through different technique categories to ensure variety:
 - **fractal-wood** — Recursive branching tree with organic wood grain texture and bark patterns
 
 - **floating-orbs** — Bioluminescent deep sea creatures with trailing tentacles and pulsing glow
+- **galaxy-collision** — Gravitational N-body simulation of two spiral galaxies merging
 
 - **photon-diffraction** — Wave diffraction patterns (single/double slit, grating) with animated wavelength cycling
 
