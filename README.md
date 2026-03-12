@@ -41,6 +41,7 @@ The project cycles through different technique categories to ensure variety:
 - **turing-textures** — Gray-Scott reaction-diffusion with evolving patterns and creative color mapping
 - **coriolis-field** — Particle simulation with Coriolis force
 - **reaction-diffusion** — Gray-Scott reaction-diffusion model
+- **pythagorean-tree** — Recursive branching fractal tree with animated golden hour color palette
 - **akashic-brush** — Brush strokes on textured canvas
 - **iso-density** — Perlin noise flow field
 - **cellular-tessellation** — Hexagonal grid with pulsing cells
