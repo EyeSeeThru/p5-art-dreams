@@ -125,6 +125,7 @@ The project cycles through different technique categories to ensure variety:
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
 - **tesla-discharge** — Electrical discharge simulation with branching lightning from Tesla coils
 - **capillary-waves** — Surface tension wave simulation with oscillating sources and curvature-driven dynamics
+- **carpet-turbulence** — Fractal carpet patterns combined with turbulent Perlin noise flow fields creating chaotic geometric art
 - **islands-of-chaos** — Self-organized criticality via sandpile model with cluster visualization
 - **ising-model** — 2D Ising model Monte Carlo simulation showing ferromagnetic phase transition
 - **kelvin-helmholtz** — Fluid dynamics simulation of Kelvin-Helmholtz instability with curling vortex patterns

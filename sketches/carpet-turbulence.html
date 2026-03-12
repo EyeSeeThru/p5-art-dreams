@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carpet Turbulence</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Carpet Turbulence - Fractal carpet patterns with turbulent flow fields
+// Explores the intersection of deterministic fractals and chaotic dynamics
+
+let gridSize = 80;
+let cols, rows;
+let flowField = [];
+let particles = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  cols = floor(width / gridSize) + 1;
+  rows = floor(height / gridSize) + 1;
+  
+  // Initialize flow field with Perlin noise
+  for (let i = 0; i < cols; i++) {
+    flowField[i] = [];
+    for (let j = 0; j < rows; j++) {
+      flowField[i][j] = createVector(0, 0);
+    }
+  }
+  
+  // Create particles
+  for (let i = 0; i < 2500; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  background(240, 8, 5, 15);
+  
+  // Update flow field
+  let noiseScale = 0.003;
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let x = i * gridSize;
+      let y = j * gridSize;
+      
+      // Create fractal carpet-like pattern in the noise
+      let n1 = noise(x * noiseScale, y * noiseScale, t * 0.2);
+      let n2 = noise(x * noiseScale * 2 + 100, y * noiseScale * 2, t * 0.15);
+      let n3 = noise(x * noiseScale * 4 + 200, y * noiseScale * 4, t * 0.1);
+      
+      // Sierpinski carpet-inspired modulation
+      let carpetVal = floor(n1 * 3) / 3;
+      let angle = (carpetVal + n2 * 0.5 + n3 * 0.25) * TWO_PI * 2;
+      
+      flowField[i][j] = p5.Vector.fromAngle(angle);
+      flowField[i][j].mult(2);
+      
+      // Draw carpet grid points
+      if (frameCount % 3 === 0) {
+        let hue = (n1 * 60 + t * 10) % 360;
+        stroke(hue, 60, 80, 20);
+        strokeWeight(1);
+        point(x + (i % 3) * 3, y + (j % 3) * 3);
+      }
+    }
+  }
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.follow(flowField);
+    p.update();
+    p.edges();
+    p.show();
+  }
+  
+  // Add carpet-like overlay pattern
+  drawCarpetOverlay();
+  
+  t += 0.01;
+}
+
+function drawCarpetOverlay() {
+  let carpetScale = 150;
+  for (let x = 0; x < width; x += carpetScale) {
+    for (let y = 0; y < height; y += carpetScale) {
+      let n = noise(x * 0.01, y * 0.01, t);
+      let holes = floor(n * 4);
+      
+      // Draw Sierpinski-inspired holes
+      for (let h = 0; h < holes; h++) {
+        let holeSize = carpetScale / (h + 2);
+        let offsetX = (h % 3) * carpetScale / 3;
+        let offsetY = floor(h / 3) * carpetScale / 3;
+        
+        noFill();
+        stroke(280, 40, 60, 5);
+        strokeWeight(0.5);
+        rect(x + offsetX + 10, y + offsetY + 10, 
+             carpetScale/3 - 20, carpetScale/3 - 20, 2);
+      }
+    }
+  }
+}
+
+class Particle {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(2, 4);
+    this.prevPos = this.pos.copy();
+    this.hue = random(360);
+    this.size = random(1, 3);
+  }
+  
+  follow(field) {
+    let col = floor(this.pos.x / gridSize);
+    let row = floor(this.pos.y / gridSize);
+    col = constrain(col, 0, cols - 1);
+    row = constrain(row, 0, rows - 1);
+    
+    let force = field[col][row].copy();
+    force.mult(0.5);
+    this.applyForce(force);
+  }
+  
+  applyForce(force) {
+    this.acc.add(force);
+  }
+  
+  update() {
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+  }
+  
+  edges() {
+    if (this.pos.x > width) {
+      this.pos.x = 0;
+      this.prevPos = this.pos.copy();
+    }
+    if (this.pos.x < 0) {
+      this.pos.x = width;
+      this.prevPos = this.pos.copy();
+    }
+    if (this.pos.y > height) {
+      this.pos.y = 0;
+      this.prevPos = this.pos.copy();
+    }
+    if (this.pos.y < 0) {
+      this.pos.y = height;
+      this.prevPos = this.pos.copy();
+    }
+  }
+  
+  show() {
+    // Trail effect
+    let hue = (this.hue + t * 20) % 360;
+    stroke(hue, 70, 90, 40);
+    strokeWeight(this.size);
+    line(this.prevPos.x, this.prevPos.y, this.pos.x, this.pos.y);
+    
+    // Glow
+    stroke(hue, 50, 100, 20);
+    strokeWeight(this.size * 2);
+    point(this.pos.x, this.pos.y);
+    
+    this.prevPos = this.pos.copy();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / gridSize) + 1;
+  rows = floor(height / gridSize) + 1;
+  flowField = [];
+  for (let i = 0; i < cols; i++) {
+    flowField[i] = [];
+    for (let j = 0; j < rows; j++) {
+      flowField[i][j] = createVector(0, 0);
+    }
+  }
+}
+</script>
+</body>
+</html>
