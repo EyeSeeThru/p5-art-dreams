@@ -136,7 +136,7 @@ function draw() {
     p.vy *= 0.98;
     
     // Limit speed
-    let speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    let spd = sqrt(p.vx * p.vx + p.vy * p.vy);
     if (speed > walkSpeed) {
       p.vx = (p.vx / speed) * walkSpeed;
       p.vy = (p.vy / speed) * walkSpeed;
