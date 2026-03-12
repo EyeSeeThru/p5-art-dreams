@@ -113,14 +113,14 @@ function draw() {
   for (let i = 0; i < tree.length; i++) {
     let p = tree[i];
     let col = colors[i % colors.length];
-    let hue = (hue(col) + hueOffset) % 360;
+    let h = (hue(col) + hueOffset) % 360;
     
     noStroke();
-    fill(hue, saturation(col), brightness(col), 80);
+    fill(h, saturation(col), brightness(col), 80);
     
-    let size = map(p.gen, 0, 50, 4, 1);
-    size = max(size, 1);
-    ellipse(p.x, p.y, size, size);
+    let sz = map(p.gen, 0, 50, 4, 1);
+    sz = max(sz, 1);
+    ellipse(p.x, p.y, sz, sz);
   }
   
   // Update walkers
