@@ -88,8 +88,8 @@ class LiquidParticle {
   }
 
   reset() {
-    this.x = channel.x - channel.width/2 + random(channel.width);
-    this.y = channel.height + random(20);
+    this.x = this.channel.x - this.channel.width/2 + random(this.channel.width);
+    this.y = this.channel.height + random(20);
     this.vy = -random(0.5, 2);
     this.vx = random(-0.2, 0.2);
     this.size = random(2, 5);
