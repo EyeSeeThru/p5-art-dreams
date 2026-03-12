@@ -181,6 +181,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **plasma-arc** — Electrical discharge simulation with branching lightning and spark particles
 
+- **synaptic-burst** — Neural network visualization with propagating signals and bursting synapses
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synaptic Burst</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const neurons = [];
+const synapses = [];
+const bursts = [];
+const NUM_NEURONS = 80;
+const CONNECTION_DENSITY = 0.15;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  for (let i = 0; i < NUM_NEURONS; i++) {
+    neurons.push({
+      x: random(width * 0.1, width * 0.9),
+      y: random(height * 0.1, height * 0.9),
+      z: random(-500, 500),
+      baseHue: random(180, 280),
+      firing: 0,
+      threshold: random(0.3, 0.7),
+      connections: []
+    });
+  }
+  
+  for (let i = 0; i < neurons.length; i++) {
+    for (let j = 0; j < neurons.length; j++) {
+      if (i !== j && random() < CONNECTION_DENSITY) {
+        const d = dist(neurons[i].x, neurons[i].y, neurons[j].x, neurons[j].y);
+        if (d < min(width, height) * 0.4) {
+          neurons[i].connections.push(j);
+          synapses.push({
+            from: i,
+            to: j,
+            strength: random(0.3, 1),
+            signal: 0
+          });
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  background(10, 8, 6, 15);
+  
+  // Neural activity propagation
+  for (let n of neurons) {
+    if (n.firing > 0) {
+      n.firing -= 2;
+      if (n.firing <= 0) n.firing = 0;
+    }
+    
+    // Random spontaneous firing
+    if (random() < 0.002 && n.firing === 0) {
+      n.firing = 100;
+      bursts.push({
+        x: n.x,
+        y: n.y,
+        z: n.z,
+        hue: n.baseHue,
+        size: 0,
+        life: 100
+      });
+      
+      // Signal propagation to connected neurons
+      for (let connIdx of n.connections) {
+        const target = neurons[connIdx];
+        if (target.firing === 0 && random() < 0.4) {
+          target.firing = random(60, 90);
+          
+          const syn = synapses.find(s => s.from === neurons.indexOf(n) && s.to === connIdx);
+          if (syn) {
+            syn.signal = 100;
+          }
+        }
+      }
+    }
+  }
+  
+  // Update bursts
+  for (let i = bursts.length - 1; i >= 0; i--) {
+    bursts[i].life -= 2;
+    bursts[i].size += 3;
+    if (bursts[i].life <= 0) {
+      bursts.splice(i, 1);
+    }
+  }
+  
+  // Update synapse signals
+  for (let syn of synapses) {
+    if (syn.signal > 0) syn.signal -= 4;
+  }
+  
+  // Sort neurons by z for depth
+  const sortedNeurons = neurons.map((n, i) => ({ ...n, idx: i }))
+    .sort((a, b) => a.z - b.z);
+  
+  // Draw synapses
+  for (let syn of synapses) {
+    const from = neurons[syn.from];
+    const to = neurons[syn.to];
+    const alpha = syn.signal * 0.8 * map(from.z, -500, 500, 0.3, 1);
+    
+    if (alpha > 1) {
+      stroke(from.baseHue, 80, 100, alpha);
+      strokeWeight(map(syn.signal, 0, 100, 0.5, 3));
+      line(from.x, from.y, to.x, to.y);
+    }
+  }
+  
+  // Draw neurons
+  for (let n of sortedNeurons) {
+    const depth = map(n.z, -500, 500, 1.5, 0.5);
+    const size = 8 * depth;
+    
+    if (n.firing > 0) {
+      // Firing state - bright glow
+      noStroke();
+      for (let r = size * 4; r > 0; r -= size) {
+        fill(n.baseHue, 70, 100, map(r, 0, size * 4, 30, 0));
+        ellipse(n.x, n.y, r, r);
+      }
+      fill(n.baseHue, 20, 100);
+      ellipse(n.x, n.y, size, size);
+      
+      // Outer ring
+      noFill();
+      stroke(n.baseHue, 60, 100, n.firing * 0.5);
+      strokeWeight(2);
+      ellipse(n.x, n.y, size + n.firing * 0.3, size + n.firing * 0.3);
+    } else {
+      // Resting state
+      noStroke();
+      fill(n.baseHue, 50, 60, 60);
+      ellipse(n.x, n.y, size, size);
+    }
+  }
+  
+  // Draw bursts
+  for (let b of bursts) {
+    noFill();
+    const alpha = b.life * 0.8;
+    stroke(b.hue, 70, 100, alpha);
+    strokeWeight(2);
+    ellipse(b.x, b.y, b.size, b.size);
+    
+    stroke(b.hue, 50, 100, alpha * 0.5);
+    strokeWeight(1);
+    ellipse(b.x, b.y, b.size * 1.5, b.size * 1.5);
+  }
+  
+  // Title
+  fill(200, 10, 80, 60);
+  noStroke();
+  textSize(12);
+  textAlign(RIGHT, BOTTOM);
+  text('SYNAPTIC BURST', width - 20, height - 20);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Click to trigger burst near cursor
+  let closest = null;
+  let closestDist = 100;
+  
+  for (let n of neurons) {
+    const d = dist(mouseX, mouseY, n.x, n.y);
+    if (d < closestDist) {
+      closestDist = d;
+      closest = n;
+    }
+  }
+  
+  if (closest && closestDist < 150) {
+    closest.firing = 100;
+    bursts.push({
+      x: closest.x,
+      y: closest.y,
+      z: closest.z,
+      hue: closest.baseHue,
+      size: 0,
+      life: 100
+    });
+  }
+}
+</script>
+</body>
+</html>
