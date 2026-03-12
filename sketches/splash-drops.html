@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Splash Drops</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a12; }
+  </style>
+</head>
+<body>
+<script>
+// Splash Drops - Droplet impact simulation with crown splash and ripples
+let drops = [];
+let ripples = [];
+let particles = [];
+let splashDroplets = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+}
+
+function draw() {
+  // Deep blue-black gradient background
+  background(230, 30, 5);
+  
+  // Ambient glow from below
+  for (let i = 0; i < 5; i++) {
+    fill(200 + i * 10, 60, 8, 0.1);
+    ellipse(width/2, height + i * 50, width, 200 + i * 100);
+  }
+  
+  // Randomly spawn drops
+  if (frameCount % 40 === 0) {
+    let x = random(width * 0.2, width * 0.8);
+    drops.push(new Drop(x, -20));
+  }
+  
+  // Update and draw ripples
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    ripples[i].update();
+    ripples[i].draw();
+    if (ripples[i].isDone()) {
+      ripples.splice(i, 1);
+    }
+  }
+  
+  // Update and draw splash particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    particles[i].draw();
+    if (particles[i].isDone()) {
+      particles.splice(i, 1);
+    }
+  }
+  
+  // Update and draw falling droplets
+  for (let i = drops.length - 1; i >= 0; i--) {
+    drops[i].update();
+    drops[i].draw();
+    if (drops[i].hitSurface()) {
+      createSplash(drops[i].x, height * 0.7);
+      ripples.push(new Ripple(drops[i].x, height * 0.7));
+      drops.splice(i, 1);
+    }
+  }
+  
+  // Floating ambient particles
+  if (frameCount % 5 === 0) {
+    particles.push(new AmbientParticle(random(width), random(height)));
+  }
+  for (let i = splashDroplets.length - 1; i >= 0; i--) {
+    splashDroplets[i].update();
+    splashDroplets[i].draw();
+    if (splashDroplets[i].isDone()) {
+      splashDroplets.splice(i, 1);
+    }
+  }
+}
+
+function createSplash(x, y) {
+  // Crown splash particles
+  for (let i = 0; i < 20; i++) {
+    let angle = PI + random(-PI/3, PI/3);
+    let speed = random(3, 8);
+    particles.push(new SplashParticle(x, y, angle, speed));
+  }
+  // Secondary droplets
+  for (let i = 0; i < 12; i++) {
+    let angle = -PI/2 + random(-PI/4, PI/4);
+    let speed = random(6, 14);
+    splashDroplets.push(new SplashDroplet(x, y, angle, speed));
+  }
+}
+
+class Drop {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.size = random(8, 16);
+    this.speed = random(10, 15);
+    this.hue = random(180, 220);
+  }
+  
+  update() {
+    this.y += this.speed;
+    this.speed += 0.5;
+  }
+  
+  draw() {
+    // Glow
+    fill(this.hue, 70, 80, 0.3);
+    ellipse(this.x, this.y, this.size * 2, this.size * 3);
+    // Core
+    fill(this.hue, 50, 100, 0.9);
+    ellipse(this.x, this.y, this.size, this.size * 1.5);
+  }
+  
+  hitSurface() {
+    return this.y > height * 0.7;
+  }
+}
+
+class Ripple {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 0;
+    this.maxRadius = random(150, 250);
+    this.hue = random(190, 240);
+    this.alpha = 0.8;
+  }
+  
+  update() {
+    this.radius += 3;
+    this.alpha = map(this.radius, 0, this.maxRadius, 0.8, 0);
+  }
+  
+  draw() {
+    noFill();
+    strokeWeight(2);
+    stroke(this.hue, 60, 90, this.alpha);
+    ellipse(this.x, this.y, this.radius * 2);
+    
+    // Secondary ring
+    strokeWeight(1);
+    stroke(this.hue, 40, 80, this.alpha * 0.5);
+    ellipse(this.x, this.y, this.radius * 1.4);
+    noStroke();
+  }
+  
+  isDone() {
+    return this.alpha <= 0;
+  }
+}
+
+class SplashParticle {
+  constructor(x, y, angle, speed) {
+    this.x = x;
+    this.y = y;
+    this.vx = cos(angle) * speed;
+    this.vy = sin(angle) * speed;
+    this.size = random(2, 5);
+    this.hue = random(180, 220);
+    this.alpha = 1;
+    this.gravity = 0.3;
+  }
+  
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    this.alpha = map(this.y, height * 0.7, height, 1, 0);
+  }
+  
+  draw() {
+    fill(this.hue, 50, 100, this.alpha);
+    ellipse(this.x, this.y, this.size);
+  }
+  
+  isDone() {
+    return this.alpha <= 0 || this.y > height;
+  }
+}
+
+class SplashDroplet {
+  constructor(x, y, angle, speed) {
+    this.x = x;
+    this.y = y;
+    this.startX = x;
+    this.startY = y;
+    this.vx = cos(angle) * speed;
+    this.vy = sin(angle) * speed;
+    this.size = random(3, 7);
+    this.hue = random(190, 230);
+    this.alpha = 1;
+    this.gravity = 0.4;
+  }
+  
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    
+    // Reset when hitting surface again
+    if (this.y > height * 0.7 && this.vy > 0) {
+      ripples.push(new Ripple(this.x, this.y));
+      return true;
+    }
+    this.alpha = map(abs(this.vy), 0, 20, 1, 0.3);
+    return false;
+  }
+  
+  draw() {
+    // Trail
+    fill(this.hue, 40, 80, this.alpha * 0.3);
+    ellipse(this.x - this.vx * 2, this.y - this.vy * 2, this.size * 1.5);
+    // Droplet
+    fill(this.hue, 50, 100, this.alpha);
+    ellipse(this.x, this.y, this.size, this.size * 1.3);
+  }
+  
+  isDone() {
+    return this.y > height || this.alpha < 0.1;
+  }
+}
+
+class AmbientParticle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = random(-0.5, 0.5);
+    this.vy = random(-1, -0.2);
+    this.size = random(1, 3);
+    this.hue = random(200, 260);
+    this.alpha = random(0.2, 0.5);
+  }
+  
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.alpha -= 0.005;
+  }
+  
+  draw() {
+    fill(this.hue, 30, 80, this.alpha);
+    ellipse(this.x, this.y, this.size);
+  }
+  
+  isDone() {
+    return this.alpha <= 0 || this.y < 0;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

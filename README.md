@@ -31,6 +31,7 @@ The project cycles through different technique categories to ensure variety:
 - **duffing-oscillator** — Chaotic Duffing oscillator in double-well potential with phase space trajectory visualization
 - **dust-devil** — Spiraling particle vortex simulation with rising dust and turbulence dynamics
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
+- **splash-drops** — Droplet impact simulation with crown splash, secondary droplets, and radial ripples
 - **soap-film-interference** — Thin film interference patterns with iridescent colors simulating soap bubbles
 - **wave-interference** — Wave interference patterns with multiple sources
 - **wave-particle-duality** — Particles exhibiting wave-particle duality with interference patterns
