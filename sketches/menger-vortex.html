@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menger Vortex</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+let t = 0;
+let cubes = [];
+let numCubes;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  numCubes = 2000;
+  
+  // Initialize Menger sponge cubes
+  for (let i = 0; i < numCubes; i++) {
+    cubes.push({
+      x: random(-1, 1),
+      y: random(-1, 1),
+      z: random(-1, 1),
+      size: random(0.02, 0.06),
+      rotX: random(TWO_PI),
+      rotY: random(TWO_PI),
+      rotZ: random(TWO_PI),
+      rotSpeed: random(0.005, 0.02),
+      color: color(random(100, 180), random(150, 220), random(200, 255), random(150, 220))
+    });
+  }
+}
+
+function draw() {
+  background(5, 8, 18);
+  
+  // Subtle vignette
+  push();
+  translate(0, 0, -500);
+  noStroke();
+  for (let i = 0; i < 10; i++) {
+    fill(0, 0, 0, 30 - i * 3);
+    rectMode(CENTER);
+    rect(0, 0, width + i * 100, height + i * 100);
+  }
+  pop();
+  
+  // Rotate entire scene
+  rotateX(t * 0.15);
+  rotateY(t * 0.2);
+  
+  // Camera orbit
+  let camDist = 3.5 + sin(t * 0.3) * 0.8;
+  camera(cos(t * 0.1) * camDist, sin(t * 0.15) * camDist * 0.5, sin(t * 0.1) * camDist, 0, 0, 0, 0, 1, 0);
+  
+  // Draw cubes with vortex motion
+  noStroke();
+  for (let cube of cubes) {
+    // Apply vortex rotation
+    let angle = t * cube.rotSpeed + cube.x * 2;
+    let radius = sqrt(cube.x * cube.x + cube.y * cube.y);
+    let vortexAngle = atan2(cube.y, cube.x) + t * 0.3 * (1 / (radius + 0.5));
+    
+    // Perlin noise displacement
+    let noiseScale = 0.8;
+    let nx = noise(cube.x * noiseScale + t * 0.2, cube.z * noiseScale) - 0.5;
+    let ny = noise(cube.y * noiseScale + t * 0.2, cube.x * noiseScale) - 0.5;
+    let nz = noise(cube.z * noiseScale + t * 0.2, cube.y * noiseScale) - 0.5;
+    
+    let px = cos(vortexAngle) * radius * 0.7 + nx * 0.4;
+    let py = sin(vortexAngle) * radius * 0.7 + ny * 0.4;
+    let pz = cube.z + sin(t * 0.5 + cube.x * 5) * 0.3 + nz * 0.3;
+    
+    // Pulsing size
+    let pulse = 1 + sin(t * 2 + cube.y * 10) * 0.3;
+    let s = cube.size * pulse;
+    
+    // Color with time-based shift
+    let hueShift = (sin(t * 0.5 + cube.x * 3) + 1) * 0.5;
+    let r = red(cube.color) + hueShift * 40;
+    let g = green(cube.color) - hueShift * 20;
+    let b = blue(cube.color);
+    
+    fill(r, g, b, 180);
+    
+    push();
+    translate(px * 300, py * 300, pz * 300);
+    rotateX(cube.rotX + t * cube.rotSpeed);
+    rotateY(cube.rotY + t * cube.rotSpeed * 0.7);
+    rotateZ(cube.rotZ + t * cube.rotSpeed * 0.5);
+    box(s * 300);
+    pop();
+  }
+  
+  // Central glowing core
+  push();
+  noStroke();
+  let coreSize = 30 + sin(t * 3) * 10;
+  for (let i = 5; i > 0; i--) {
+    fill(100 + i * 20, 150 + i * 15, 255, 20);
+    sphere(coreSize + i * 15);
+  }
+  fill(150, 200, 255, 200);
+  sphere(coreSize);
+  pop();
+  
+  t += 0.016;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

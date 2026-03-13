@@ -77,6 +77,7 @@ The project cycles through different technique categories to ensure variety:
 - **levy-flight** — Heavy-tailed random walk visualization inspired by animal foraging patterns
 - **lindenmayer** — L-system plant generation with animated branching and particle effects
 - **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling
+- **menger-vortex** — Menger sponge cubes with vortex dynamics, Perlin noise displacement, and animated 3D rotation
 - **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
 - **moire-weave** — Overlapping oscillating grids creating interference moire patterns
