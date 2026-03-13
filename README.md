@@ -187,6 +187,8 @@ The project cycles through different technique categories to ensure variety:
 - **synaptic-burst** — Neural network visualization with propagating signals and bursting synapses
 - **brownian-tree** — Diffusion-limited aggregation with Brownian motion forming organic fractal tree structures
 
+- **waveform-bloom** — Oscillating flower pattern with gradient harmonics and pulsing center glow
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash
