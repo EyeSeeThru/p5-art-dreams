@@ -196,6 +196,8 @@ The project cycles through different technique categories to ensure variety:
 - **waveform-bloom** — Oscillating flower pattern with gradient harmonics and pulsing center glow
 - **noise-tessellation** — Perlin noise-driven tessellated mesh with animated hexagonal cells and flowing color gradients
 
+- **gyroscope** — Rotating gyroscope simulation with precession, nutation physics, and orbital particle trails
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash
