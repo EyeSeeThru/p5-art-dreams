@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warp Field - p5.js Art</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Warp Field - Gravitational Spacetime Distortion
+// Visualizes spacetime grid warped by a central mass
+
+let t = 0;
+let gridPoints = [];
+let gridSize = 30;
+let spacing = 25;
+let particles = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Initialize grid points
+  let cols = ceil(width / spacing) + 2;
+  let rows = ceil(height / spacing) + 2;
+  
+  for (let i = -2; i < cols; i++) {
+    for (let j = -2; j < rows; j++) {
+      gridPoints.push({
+        baseX: i * spacing,
+        baseY: j * spacing,
+        x: 0,
+        y: 0,
+        distortion: 0
+      });
+    }
+  }
+  
+  // Initialize particles
+  for (let i = 0; i < 200; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  let angle = random(TWO_PI);
+  let dist = random(50, 400);
+  return {
+    x: width/2 + cos(angle) * dist,
+    y: height/2 + sin(angle) * dist,
+    vx: 0,
+    vy: 0,
+    hue: random(180, 300),
+    size: random(2, 5),
+    trail: []
+  };
+}
+
+function draw() {
+  background(0, 0, 0, 0.15);
+  
+  let centerX = width / 2;
+  let centerY = height / 2;
+  let mass = 150 + sin(t * 0.5) * 50;
+  
+  // Draw warped grid
+  strokeWeight(1);
+  
+  for (let pt of gridPoints) {
+    // Calculate gravitational distortion
+    let dx = pt.baseX - centerX;
+    let dy = pt.baseY - centerY;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    // Schwarzschild-like metric distortion
+    let schwarzschildRadius = mass * 2;
+    let distortion = 0;
+    
+    if (dist > schwarzschildRadius) {
+      distortion = (schwarzschildRadius * schwarzschildRadius) / (dist * dist);
+      distortion *= 1 + 0.3 * sin(t + dist * 0.02);
+    } else {
+      // Inside event horizon - extreme warping
+      distortion = 2;
+    }
+    
+    // Apply distortion toward center
+    let pullStrength = distortion * 80;
+    pt.x = pt.baseX - (dx / dist) * pullStrength;
+    pt.y = pt.baseY - (dy / dist) * pullStrength;
+    pt.distortion = distortion;
+  }
+  
+  // Draw horizontal lines
+  let rows = ceil(height / spacing) + 2;
+  for (let j = -2; j < rows; j++) {
+    beginShape();
+    for (let i = -2; i < ceil(width / spacing) + 2; i++) {
+      let idx = (j + 2) * (ceil(width / spacing) + 4) + (i + 2);
+      if (idx >= 0 && idx < gridPoints.length) {
+        let pt = gridPoints[idx];
+        let hue = map(pt.distortion, 0, 1, 220, 320);
+        let sat = map(pt.distortion, 0, 1, 30, 80);
+        let bri = map(pt.distortion, 0, 1, 40, 90);
+        stroke(hue, sat, bri, 0.6);
+        curveVertex(pt.x, pt.y);
+      }
+    }
+    endShape();
+  }
+  
+  // Draw vertical lines
+  let cols = ceil(width / spacing) + 2;
+  for (let i = -2; i < cols; i++) {
+    beginShape();
+    for (let j = -2; j < rows; j++) {
+      let idx = (j + 2) * (ceil(width / spacing) + 4) + (i + 2);
+      if (idx >= 0 && idx < gridPoints.length) {
+        let pt = gridPoints[idx];
+        let hue = map(pt.distortion, 0, 1, 220, 320);
+        let sat = map(pt.distortion, 0, 1, 30, 80);
+        let bri = map(pt.distortion, 0, 1, 40, 90);
+        stroke(hue, sat, bri, 0.6);
+        curveVertex(pt.x, pt.y);
+      }
+    }
+    endShape();
+  }
+  
+  // Draw and update particles
+  for (let p of particles) {
+    // Gravitational attraction
+    let dx = centerX - p.x;
+    let dy = centerY - p.y;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    if (dist > 10) {
+      let force = mass * 500 / (dist * dist);
+      force = min(force, 5);
+      p.vx += (dx / dist) * force * 0.1;
+      p.vy += (dy / dist) * force * 0.1;
+    }
+    
+    // Add orbital velocity
+    let orbitalSpeed = sqrt(mass / dist) * 2;
+    p.vx += (-dy / dist) * orbitalSpeed * 0.05;
+    p.vy += (dx / dist) * orbitalSpeed * 0.05;
+    
+    // Damping
+    p.vx *= 0.99;
+    p.vy *= 0.99;
+    
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Store trail
+    p.trail.push({x: p.x, y: p.y});
+    if (p.trail.length > 20) p.trail.shift();
+    
+    // Draw trail
+    noFill();
+    for (let i = 0; i < p.trail.length - 1; i++) {
+      let alpha = map(i, 0, p.trail.length, 0, 0.8);
+      stroke(p.hue, 70, 90, alpha);
+      strokeWeight(map(i, 0, p.trail.length, 0.5, p.size));
+      line(p.trail[i].x, p.trail[i].y, p.trail[i+1].x, p.trail[i+1].y);
+    }
+    
+    // Draw particle
+    noStroke();
+    fill(p.hue, 60, 100, 0.9);
+    ellipse(p.x, p.y, p.size * 2);
+    
+    // Reset particle if too far or absorbed
+    if (dist < 15 || dist > 800) {
+      let idx = particles.indexOf(p);
+      particles[idx] = createParticle();
+    }
+  }
+  
+  // Draw central mass (event horizon glow)
+  noStroke();
+  for (let r = mass * 3; r > 0; r -= 5) {
+    let hue = map(r, 0, mass * 3, 280, 200);
+    let alpha = map(r, 0, mass * 3, 0.8, 0);
+    fill(hue, 80, 100, alpha);
+    ellipse(centerX, centerY, r * 2);
+  }
+  
+  // Accretion disk
+  for (let a = 0; a < TWO_PI; a += 0.1) {
+    let diskRadius = mass * 1.5 + sin(t * 3 + a * 5) * 20;
+    let x = centerX + cos(a) * diskRadius;
+    let y = centerY + sin(a) * diskRadius * 0.3;
+    let hue = map(a, 0, TWO_PI, 0, 60);
+    fill(hue, 80, 100, 0.7);
+    ellipse(x, y, 8, 4);
+  }
+  
+  t += 0.02;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  gridPoints = [];
+  setup();
+}
+</script>
+</body>
+</html>
