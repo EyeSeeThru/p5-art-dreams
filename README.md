@@ -65,6 +65,7 @@ The project cycles through different technique categories to ensure variety:
 - **void-geometry** — Abstract void geometry
 - **recursive-ember** — Recursive fractal embers rising with glowing particles
 - **plasma-field** — Animated plasma effect with color cycling
+- **plasma-fern** — Fractal fern with plasma energy aesthetic and flowing particle trails
 - **chladni-patterns** — Standing wave interference patterns creating geometric sand art
 - **voronoi-dreams** — Voronoi cells influenced by moving attractors with pulsing glow
 - **dielectric-lattices** — Electric discharge patterns forming crystalline lattice structures with glowing nodes

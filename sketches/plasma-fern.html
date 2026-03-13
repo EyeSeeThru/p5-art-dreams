@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>plasma-fern</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// plasma-fern - Fractal fern with plasma energy aesthetic
+let seed;
+let particles = [];
+const NUM_PARTICLES = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  seed = random(10000);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new FernParticle());
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 0.08);
+  
+  randomSeed(seed);
+  
+  // Draw fractal fern structure
+  translate(width / 2, height);
+  scale(min(width, height) / 12);
+  
+  let hueBase = (frameCount * 0.3) % 360;
+  
+  for (let i = 0; i < 6; i++) {
+    push();
+    rotate(sin(frameCount * 0.01 + i) * 0.1);
+    drawFern(0, 0, 1.0, hueBase + i * 30);
+    pop();
+  }
+  
+  // Animate particles
+  for (let p of particles) {
+    p.update();
+    p.display(hueBase);
+  }
+}
+
+function drawFern(x, y, len, hue) {
+  if (len < 0.1) return;
+  
+  let hueVal = (hue + len * 20) % 360;
+  let bri = map(len, 0, 5, 40, 100);
+  let alpha = map(len, 0, 5, 0.3, 0.9);
+  
+  fill(hueVal, 80, bri, alpha);
+  
+  // Stem
+  let angle = sin(frameCount * 0.02 + len) * 0.1;
+  
+  push();
+  rotate(angle);
+  rect(-len * 0.02, -len, len * 0.04, len);
+  
+  // Branches
+  if (len > 0.5) {
+    push();
+    rotate(-0.5 + sin(frameCount * 0.03) * 0.1);
+    scale(0.7);
+    drawFern(0, -len, len * 0.8, hue + 20);
+    pop();
+    
+    push();
+    rotate(0.5 + cos(frameCount * 0.03) * 0.1);
+    scale(0.7);
+    drawFern(0, -len, len * 0.8, hue - 20);
+    pop();
+  }
+  
+  // Leaf tips
+  if (len < 1) {
+    fill((hueVal + 60) % 360, 30, 100, 0.8);
+    ellipse(0, -len, len * 0.5, len * 0.3);
+  }
+  
+  pop();
+}
+
+class FernParticle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height * 0.8, height);
+    this.vx = random(-0.5, 0.5);
+    this.vy = random(-2, -0.5);
+    this.size = random(1, 4);
+    this.hue = random(360);
+    this.life = random(100, 255);
+  }
+  
+  update() {
+    // Flow field influence
+    let angle = noise(this.x * 0.005, this.y * 0.005, frameCount * 0.005) * TWO_PI * 2;
+    this.vx += cos(angle) * 0.05;
+    this.vy += sin(angle) * 0.05;
+    
+    // Drag
+    this.vx *= 0.99;
+    this.vy *= 0.99;
+    
+    // Slight upward drift
+    this.vy -= 0.02;
+    
+    this.x += this.vx;
+    this.y += this.vy;
+    
+    this.life -= 2;
+    
+    if (this.life <= 0 || this.y < 0 || this.x < 0 || this.x > width) {
+      this.reset();
+    }
+  }
+  
+  display(baseHue) {
+    let h = (baseHue + this.hue) % 360;
+    fill(h, 70, 90, this.life / 255);
+    ellipse(this.x, this.y, this.size, this.size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  seed = random(10000);
+}
+</script>
+</body>
+</html>
