@@ -194,6 +194,7 @@ The project cycles through different technique categories to ensure variety:
 - **brownian-tree** — Diffusion-limited aggregation with Brownian motion forming organic fractal tree structures
 
 - **waveform-bloom** — Oscillating flower pattern with gradient harmonics and pulsing center glow
+- **noise-tessellation** — Perlin noise-driven tessellated mesh with animated hexagonal cells and flowing color gradients
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
