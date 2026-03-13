@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photon Sphere</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Photon Sphere - Photons orbiting at black hole photon sphere radius
+let photons = [];
+const numPhotons = 400;
+let blackHoleMass = 100;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize photons in orbit
+  for (let i = 0; i < numPhotons; i++) {
+    photons.push(new Photon());
+  }
+}
+
+function draw() {
+  // Dark space background with subtle nebula
+  background(230, 30, 5);
+  drawNebula();
+  
+  // Draw accretion disk glow
+  drawAccretionDisk();
+  
+  // Update and draw photons
+  for (let p of photons) {
+    p.update();
+    p.display();
+  }
+  
+  // Draw central black hole
+  drawBlackHole();
+  
+  // Draw photon sphere ring
+  drawPhotonRing();
+  
+  time += 0.016;
+}
+
+function drawNebula() {
+  let ctx = drawingContext;
+  let gradient = ctx.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, max(width, height)
+  );
+  gradient.addColorStop(0, 'rgba(20, 0, 40, 0.3)');
+  gradient.addColorStop(0.5, 'rgba(10, 0, 30, 0.2)');
+  gradient.addColorStop(1, 'rgba(0, 0, 10, 0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawAccretionDisk() {
+  push();
+  translate(width/2, height/2);
+  rotate(time * 0.1);
+  
+  noFill();
+  for (let r = 80; r < 200; r += 8) {
+    let hue = map(r, 80, 200, 20, 50);
+    let alpha = map(r, 80, 200, 60, 20);
+    stroke(hue, 80, 80, alpha);
+    strokeWeight(2);
+    
+    beginShape();
+    for (let a = 0; a < TWO_PI; a += 0.1) {
+      let wobble = noise(r * 0.1 + time, a * 2) * 20;
+      let x = (r + wobble) * cos(a);
+      let y = (r + wobble) * sin(a) * 0.3; // Flatten for perspective
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+  }
+  pop();
+}
+
+function drawBlackHole() {
+  push();
+  translate(width/2, height/2);
+  
+  // Event horizon - pure black
+  noStroke();
+  fill(0);
+  ellipse(0, 0, 60, 60);
+  
+  // Photon ring glow
+  noFill();
+  for (let i = 5; i > 0; i--) {
+    let alpha = map(i, 5, 0, 5, 30);
+    fill(50, 100, 100, alpha);
+    ellipse(0, 0, 60 + i * 8, 60 + i * 8);
+  }
+  pop();
+}
+
+function drawPhotonRing() {
+  push();
+  translate(width/2, height/2);
+  
+  noFill();
+  stroke(40, 60, 100, 30);
+  strokeWeight(1);
+  ellipse(0, 0, 120, 120);
+  
+  // Dashed photon sphere indicator
+  stroke(60, 80, 100, 20);
+  strokeWeight(2);
+  drawingContext.setLineDash([5, 10]);
+  ellipse(0, 0, 130, 130);
+  drawingContext.setLineDash([]);
+  
+  pop();
+}
+
+class Photon {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    // Photons start near the photon sphere radius (1.5x Schwarzschild radius)
+    let r = random(50, 80);
+    let theta = random(TWO_PI);
+    let phi = random(-PI/4, PI/4); // Slight inclination
+    
+    this.x = r * cos(theta);
+    this.y = r * sin(theta) * 0.4; // Perspective flatten
+    this.z = r * sin(phi);
+    
+    this.orbitRadius = r;
+    this.angle = theta;
+    this.inclination = phi;
+    this.angularVelocity = sqrt(blackHoleMass / pow(r, 3)) * 50; // Keplerian
+    
+    this.hue = random(40, 60);
+    this.size = random(2, 5);
+    this.trail = [];
+    this.maxTrail = 20;
+  }
+  
+  update() {
+    // Update orbit - photons at photon sphere have unstable circular orbits
+    this.angle += this.angularVelocity;
+    
+    // Slight orbital precession
+    this.angle += 0.01 * sin(this.angle * 3);
+    
+    // Calculate position
+    this.x = this.orbitRadius * cos(this.angle);
+    this.y = this.orbitRadius * sin(this.angle) * 0.4;
+    this.z = this.orbitRadius * sin(this.inclination + time * 0.2) * 0.3;
+    
+    // Store trail
+    this.trail.push({x: this.x, y: this.y, z: this.z});
+    if (this.trail.length > this.maxTrail) {
+      this.trail.shift();
+    }
+    
+    // Random photon emission/absorption
+    if (random() < 0.001) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    push();
+    translate(width/2, height/2);
+    
+    // Draw trail
+    noFill();
+    for (let i = 0; i < this.trail.length - 1; i++) {
+      let alpha = map(i, 0, this.trail.length, 0, 60);
+      let weight = map(i, 0, this.trail.length, 0.5, 2);
+      stroke(this.hue, 60, 100, alpha);
+      strokeWeight(weight);
+      line(this.trail[i].x, this.trail[i].y, this.trail[i+1].x, this.trail[i+1].y);
+    }
+    
+    // Draw photon
+    noStroke();
+    let brightness = 100;
+    let alpha = 90;
+    
+    // Glow
+    fill(this.hue, 40, 100, alpha * 0.2);
+    ellipse(this.x, this.y, this.size * 4, this.size * 4);
+    
+    // Core
+    fill(this.hue, 20, 100, alpha);
+    ellipse(this.x, this.y, this.size, this.size);
+    
+    pop();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

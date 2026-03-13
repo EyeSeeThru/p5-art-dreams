@@ -170,6 +170,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **fractal-wood** — Recursive branching tree with organic wood grain texture and bark patterns
 
+- **photon-sphere** — Black hole photon sphere visualization with orbiting photons and accretion disk dynamics
+
 - **floating-orbs** — Bioluminescent deep sea creatures with trailing tentacles and pulsing glow
 - **galaxy-collision** — Gravitational N-body simulation of two spiral galaxies merging
 
