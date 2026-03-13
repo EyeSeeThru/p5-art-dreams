@@ -155,6 +155,7 @@ The project cycles through different technique categories to ensure variety:
 - **schrodinger-field** — Quantum wave function visualization with probability density and particle representation
 - **bifurcation-diagram** — Logistic map period-doubling visualization showing route to chaos
 - **boids-flock** — Flocking simulation with emergent collective behavior (separation, alignment, cohesion)
+- **bokeh-dreams** — Bokeh light effect with depth of field, multi-layered particle glow with drifting motion
 - **brownian-canvas** — Brownian motion particle visualization with trail persistence and evolving color gradients
 - **gravity-lens** — Gravitational lensing visualization with photon deflection around massive objects and Einstein ring effects
 - **gravity-well** — Particle simulation with particles spiraling into a central gravity well with glowing trails

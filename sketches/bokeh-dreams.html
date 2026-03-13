@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bokeh Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Bokeh Dreams - Light bokeh effect with depth of field
+let particles = [];
+const numParticles = 180;
+const layers = 5;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  
+  for (let l = 0; l < layers; l++) {
+    let layerCount = floor(numParticles / layers);
+    for (let i = 0; i < layerCount; i++) {
+      particles.push(new BokehParticle(l));
+    }
+  }
+}
+
+function draw() {
+  background(10, 8, 6);
+  
+  // Sort by layer for depth
+  particles.sort((a, b) => a.layer - b.layer);
+  
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Add subtle vignette
+  drawVignette();
+}
+
+function drawVignette() {
+  let ctx = drawingContext;
+  let gradient = ctx.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, max(width, height) * 0.7
+  );
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+class BokehParticle {
+  constructor(layer) {
+    this.layer = layer;
+    this.z = map(layer, 0, layers - 1, 0.5, 3);
+    this.reset();
+    this.x = random(width);
+    this.y = random(height);
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(20, 80) / this.z;
+    this.baseHue = random(180, 320);
+    this.hue = this.baseHue + random(-20, 20);
+    this.sat = random(40, 80);
+    this.bri = random(60, 100);
+    this.alpha = map(this.z, 0.5, 3, 90, 30);
+    this.driftX = random(-0.3, 0.3);
+    this.driftY = random(-0.3, 0.3);
+    this.oscillate = random(0.02, 0.08);
+    this.phase = random(TWO_PI);
+  }
+  
+  update() {
+    this.phase += this.oscillate;
+    this.x += this.driftX + sin(this.phase) * 0.2;
+    this.y += this.driftY + cos(this.phase) * 0.2;
+    
+    if (this.x < -50 || this.x > width + 50 || 
+        this.y < -50 || this.y > height + 50) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    // Outer glow
+    let glowSize = this.size * 1.8;
+    let glowAlpha = this.alpha * 0.15;
+    fill(this.hue, this.sat * 0.5, this.bri, glowAlpha);
+    ellipse(this.x, this.y, glowSize, glowSize);
+    
+    // Inner bright core
+    fill(this.hue, this.sat * 0.3, 100, this.alpha * 0.6);
+    ellipse(this.x, this.y, this.size * 0.7, this.size * 0.7);
+    
+    // Hot center
+    fill(this.hue, 10, 100, this.alpha * 0.9);
+    ellipse(this.x, this.y, this.size * 0.25, this.size * 0.25);
+    
+    // Hexagonal highlight
+    push();
+    translate(this.x, this.y);
+    rotate(this.phase * 0.5);
+    fill(this.hue, 20, 100, this.alpha * 0.3);
+    beginShape();
+    for (let i = 0; i < 6; i++) {
+      let angle = TWO_PI / 6 * i;
+      let r = this.size * 0.15;
+      vertex(cos(angle) * r, sin(angle) * r);
+    }
+    endShape(CLOSE);
+    pop();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
