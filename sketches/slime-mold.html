@@ -25,18 +25,15 @@
 
 let agents = [];
 let trailBuffer;
-let sensorAngle = PI / 4;
+let sensorAngle = 3.14159265 / 4;
 let sensorDist = 15;
 let turnSpeed = 0.2;
 let moveSpeed = 1.5;
 let decayRate = 0.96;
 let agentCount = 3000;
-let width, height;
 
 function setup() {
-  width = windowWidth;
-  height = windowHeight;
-  createCanvas(width, height);
+  createCanvas(windowWidth, windowHeight);
   
   trailBuffer = createGraphics(width, height);
   trailBuffer.pixelDensity(1);
@@ -49,7 +46,7 @@ function setup() {
     agents.push({
       x: width / 2 + cos(angle) * radius,
       y: height / 2 + sin(angle) * radius,
-      angle: angle + PI / 2,
+      angle: angle + 3.14159265 / 2,
       species: floor(random(3))
     });
   }
@@ -63,13 +60,13 @@ function draw() {
   for (let agent of agents) {
     // Sense environment
     let left = sense(agent, sensorAngle);
-    let center = sense(agent, 0);
+    let cntr = sense(agent, 0);
     let right = sense(agent, -sensorAngle);
     
     // Steer based on sensor readings
-    if (center > left && center > right) {
+    if (cntr > left && cntr > right) {
       // Continue straight
-    } else if (center < left && center < right) {
+    } else if (cntr < left && cntr < right) {
       agent.angle += (random() > 0.5 ? 1 : -1) * turnSpeed * random();
     } else if (left > right) {
       agent.angle += turnSpeed;
