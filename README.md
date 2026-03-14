@@ -199,6 +199,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **gyroscope** — Rotating gyroscope simulation with precession, nutation physics, and orbital particle trails
 
+- **wobble-sphere** — 3D sphere with Perlin noise displacement creating organic wobbling effects with flowing color gradients
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash
