@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vortex Shedding</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Vortex Shedding - Von Kármán vortex street simulation
+// Fluid flows past an obstacle, creating alternating swirling vortices
+
+let particles = [];
+let flowField = [];
+let cols, rows;
+let resolution = 8;
+let time = 0;
+let obstacleX, obstacleY;
+let obstacleRadius = 25;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  obstacleX = width * 0.2;
+  obstacleY = height / 2;
+  
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  
+  // Initialize particles
+  for (let i = 0; i < 2500; i++) {
+    particles.push(new Particle());
+  }
+  
+  background(0);
+}
+
+function draw() {
+  // Semi-transparent background for trail effect
+  background(0, 0, 0, 8);
+  
+  // Update flow field
+  updateFlowField();
+  
+  // Draw obstacle
+  drawObstacle();
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.follow(flowField);
+    p.update();
+    p.edges();
+    p.show();
+  }
+  
+  time += 0.015;
+}
+
+function updateFlowField() {
+  let baseFlowSpeed = 3;
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let index = x + y * cols;
+      let px = x * resolution;
+      let py = y * resolution;
+      
+      // Base flow direction (left to right)
+      let angle = 0;
+      let magnitude = baseFlowSpeed;
+      
+      // Distance from obstacle
+      let dx = px - obstacleX;
+      let dy = py - obstacleY;
+      let dist = sqrt(dx * dx + dy * dy);
+      
+      // Flow around obstacle
+      if (dist < obstacleRadius * 4) {
+        let influence = map(dist, 0, obstacleRadius * 4, 1, 0);
+        influence = constrain(influence, 0, 1);
+        
+        // Deflection around obstacle
+        if (dist > obstacleRadius) {
+          let deflectAngle = atan2(dy, dx);
+          
+          // Create vortex shedding effect
+          let vortexPhase = time * 2 - px * 0.01;
+          let vortexStrength = sin(vortexPhase) * influence * 2;
+          
+          // Alternate vortices based on y position relative to obstacle
+          let yOffset = (py - obstacleY) / (height / 2);
+          let alternatingPhase = sin(time * 1.5 + yOffset * PI);
+          
+          if (px > obstacleX + obstacleRadius) {
+            // After obstacle - create vortex street
+            let vortexDist = abs(py - obstacleY);
+            if (vortexDist < obstacleRadius * 3) {
+              let phase = (px - obstacleX) * 0.02 - time * 3;
+              let strength = cos(phase) * alternatingPhase * influence * 1.5;
+              angle += strength;
+            }
+          }
+          
+          // Deflection perpendicular to flow
+          let perpAngle = deflectAngle + HALF_PI;
+          angle = angle * (1 - influence) + perpAngle * influence * 0.5;
+          
+          // Increase velocity around obstacle
+          magnitude *= 1 + influence * 0.5;
+        } else {
+          // Inside avoidance zone - push outward
+          angle = atan2(dy, dx);
+          magnitude *= 0.3;
+        }
+        
+        // Add some turbulence
+        let noiseVal = noise(px * 0.005, py * 0.005, time * 0.5);
+        angle += map(noiseVal, 0, 1, -0.3, 0.3) * influence;
+      }
+      
+      // Create p5.Vector for this cell
+      flowField[index] = p5.Vector.fromAngle(angle).mult(magnitude);
+    }
+  }
+}
+
+function drawObstacle() {
+  noStroke();
+  
+  // Outer glow
+  for (let r = obstacleRadius * 2; r > obstacleRadius; r -= 2) {
+    let alpha = map(r, obstacleRadius, obstacleRadius * 2, 30, 5);
+    fill(200, 60, 80, alpha);
+    ellipse(obstacleX, obstacleY, r * 2);
+  }
+  
+  // Main obstacle
+  fill(220, 40, 60);
+  ellipse(obstacleX, obstacleY, obstacleRadius * 2);
+  
+  // Highlight
+  fill(220, 20, 90, 50);
+  ellipse(obstacleX - obstacleRadius * 0.3, obstacleY - obstacleRadius * 0.3, obstacleRadius * 0.5);
+}
+
+class Particle {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = 4;
+    this.prevPos = this.pos.copy();
+    this.hue = random(160, 220); // Cyan to blue range
+    this.sat = random(50, 80);
+  }
+  
+  follow(vectors) {
+    let x = floor(this.pos.x / resolution);
+    let y = floor(this.pos.y / resolution);
+    let index = x + y * cols;
+    
+    if (index >= 0 && index < vectors.length && vectors[index]) {
+      let force = vectors[index];
+      this.applyForce(force);
+    }
+  }
+  
+  applyForce(force) {
+    this.acc.add(force);
+  }
+  
+  update() {
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+  }
+  
+  edges() {
+    // Reset when exiting right side
+    if (this.pos.x > width) {
+      this.pos.x = 0;
+      this.pos.y = random(height);
+      this.prevPos = this.pos.copy();
+    }
+    
+    // Wrap vertically
+    if (this.pos.y > height) this.pos.y = 0;
+    if (this.pos.y < 0) this.pos.y = height;
+    
+    // Bounce off obstacle
+    let dx = this.pos.x - obstacleX;
+    let dy = this.pos.y - obstacleY;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    if (dist < obstacleRadius + 5) {
+      let angle = atan2(dy, dx);
+      this.pos.x = obstacleX + cos(angle) * (obstacleRadius + 6);
+      this.pos.y = obstacleY + sin(angle) * (obstacleRadius + 6);
+    }
+  }
+  
+  show() {
+    // Color based on velocity
+    let speed = this.vel.mag();
+    let hueShift = map(speed, 0, this.maxSpeed, 0, 30);
+    let h = (this.hue + hueShift) % 360;
+    let b = map(speed, 0, this.maxSpeed, 60, 100);
+    
+    // Trail effect
+    stroke(h, this.sat, b, 40);
+    strokeWeight(1.5);
+    line(this.prevPos.x, this.prevPos.y, this.pos.x, this.pos.y);
+    
+    this.prevPos = this.pos.copy();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+  obstacleX = width * 0.2;
+  obstacleY = height / 2;
+  background(0);
+}
+</script>
+</body>
+</html>
