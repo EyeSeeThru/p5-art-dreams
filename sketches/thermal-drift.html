@@ -157,7 +157,7 @@ function setup() {
 function draw() {
   myShader.setUniform('uTime', time);
   myShader.setUniform('uResolution', [width, height]);
-  shader(shader);
+  shader(myShader);
   rect(0, 0, width, height);
   time += deltaTime * 0.001;
 }
