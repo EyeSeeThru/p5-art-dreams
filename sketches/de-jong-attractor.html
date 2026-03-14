@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>De Jong Attractor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// De Jong Attractor - Strange Attractor Family
+// x(n+1) = sin(a * y) - cos(b * x)
+// y(n+1) = sin(c * x) - cos(d * y)
+
+let particles = [];
+let numParticles = 8000;
+let a, b, c, d;
+let colorOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  // De Jong attractor parameters - these create beautiful strange attractors
+  a = 1.4;
+  b = -2.3;
+  c = 2.4;
+  d = -2.1;
+  
+  // Initialize particles
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(-2, 2),
+      y: random(-2, 2),
+      age: 0,
+      maxAge: random(100, 400)
+    });
+  }
+  
+  background(10, 10, 15);
+}
+
+function draw() {
+  // Semi-transparent overlay for trail effect
+  noStroke();
+  fill(10, 10, 15, 15);
+  rect(0, 0, width, height);
+  
+  // Slowly vary parameters for animation
+  let time = frameCount * 0.001;
+  a = 1.4 + sin(time * 0.3) * 0.3;
+  b = -2.3 + cos(time * 0.2) * 0.4;
+  c = 2.4 + sin(time * 0.25) * 0.3;
+  d = -2.1 + cos(time * 0.35) * 0.4;
+  
+  // Calculate bounds
+  let scaleFactor = min(width, height) * 0.35;
+  let centerX = width / 2;
+  let centerY = height / 2;
+  
+  // Update and draw particles
+  colorMode(HSB, 360, 100, 100);
+  
+  for (let p of particles) {
+    // Apply De Jong equations
+    let newX = sin(a * p.y) - cos(b * p.x);
+    let newY = sin(c * p.x) - cos(d * p.y);
+    
+    p.x = newX;
+    p.y = newY;
+    p.age++;
+    
+    // Map to screen coordinates
+    let sx = centerX + p.x * scaleFactor;
+    let sy = centerY + p.y * scaleFactor;
+    
+    // Color based on position and age
+    let hue = map(sin(atan2(p.y, p.x) + time), -1, 1, 0, 360);
+    let sat = map(p.age, 0, p.maxAge, 100, 40);
+    let bri = map(p.age, 0, p.maxAge, 100, 60);
+    
+    // Reset old particles
+    if (p.age > p.maxAge) {
+      p.x = random(-2, 2);
+      p.y = random(-2, 2);
+      p.age = 0;
+      p.maxAge = random(100, 400);
+      continue;
+    }
+    
+    // Draw particle with glow effect
+    let alpha = map(p.age, 0, p.maxAge, 255, 50);
+    stroke(hue, sat, bri, alpha * 0.7);
+    strokeWeight(1.5);
+    point(sx, sy);
+    
+    // Add glow for newer particles
+    if (p.age < 50) {
+      stroke(hue, sat * 0.7, 100, alpha * 0.3);
+      strokeWeight(4);
+      point(sx, sy);
+    }
+  }
+  
+  colorOffset += 0.5;
+  
+  // Add title
+  colorMode(RGB);
+  fill(255, 255, 255, 200);
+  noStroke();
+  textFont('Georgia');
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('De Jong Attractor', 20, 20);
+  
+  textSize(10);
+  fill(255, 255, 255, 120);
+  text(`a=${a.toFixed(2)} b=${b.toFixed(2)} c=${c.toFixed(2)} d=${d.toFixed(2)}`, 20, 42);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(10, 10, 15);
+}
+</script>
+</body>
+</html>

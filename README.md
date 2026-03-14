@@ -114,6 +114,7 @@ The project cycles through different technique categories to ensure variety:
 - **apollonian-gasket** — Fractal generated through recursive circle inversion using Descartes' Circle Theorem
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
+- **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
 - **electrostatic-breakdown** — Dielectric discharge visualization with branching electrical patterns
