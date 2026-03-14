@@ -16,7 +16,7 @@
 // Thermal Drift - GLSL shader exploration
 // Technique: Raymarched noise field with temperature-based coloring
 
-let shader;
+let myShader;
 let time = 0;
 
 const vert = `
@@ -150,13 +150,13 @@ const frag = `
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
-  shader = createShader(vert, frag);
+  myShader = createShader(vert, frag);
   noStroke();
 }
 
 function draw() {
-  shader.setUniform('uTime', time);
-  shader.setUniform('uResolution', [width, height]);
+  myShader.setUniform('uTime', time);
+  myShader.setUniform('uResolution', [width, height]);
   shader(shader);
   rect(0, 0, width, height);
   time += deltaTime * 0.001;
