@@ -116,6 +116,7 @@ The project cycles through different technique categories to ensure variety:
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
 - **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
+- **dendritic-flow** — Perlin noise-driven flow field with branching particle trails and warm amber palette
 - **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
 - **electrostatic-breakdown** — Dielectric discharge visualization with branching electrical patterns
 - **electrohydrodynamics** — Electric field driven fluid patterns with charged particles and Coulomb forces

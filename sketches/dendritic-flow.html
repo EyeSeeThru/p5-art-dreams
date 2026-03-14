@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dendritic Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const particles = [];
+const NUM_PARTICLES = 800;
+const TRAIL_ALPHA = 8;
+const BRANCH_PROBABILITY = 0.02;
+const FLOW_SCALE = 0.003;
+
+let palette;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(0);
+  
+  // Warm amber/copper palette
+  palette = [
+    color(35, 90, 100),
+    color(25, 85, 95),
+    color(15, 80, 90),
+    color(45, 75, 100),
+    color(55, 70, 95),
+    color(5, 90, 100),
+  ];
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle(x, y, generation = 0) {
+  const p = {
+    x: x !== undefined ? x : random(width),
+    y: y !== undefined ? y : random(height),
+    vx: 0,
+    vy: 0,
+    life: random(100, 300),
+    maxLife: 300,
+    hue: random(10, 50),
+    sat: random(60, 90),
+    generation: generation,
+    size: generation === 0 ? random(2, 4) : max(1, 4 - generation * 0.5)
+  };
+  return p;
+}
+
+function draw() {
+  // Semi-transparent background for trails
+  background(0, 0, 0, TRAIL_ALPHA);
+  
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    
+    // Get flow field direction from Perlin noise
+    const angle = noise(p.x * FLOW_SCALE, p.y * FLOW_SCALE, t * 0.5) * TWO_PI * 2;
+    
+    // Apply flow force
+    p.vx += cos(angle) * 0.3;
+    p.vy += sin(angle) * 0.3;
+    
+    // Add some curl
+    const curl = noise(p.x * 0.005 + 100, p.y * 0.005 + 100, t * 0.3) * TWO_PI;
+    p.vx += cos(curl) * 0.15;
+    p.vy += sin(curl) * 0.15;
+    
+    // Damping
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+    
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    // Life decay
+    p.life--;
+    
+    // Branching - create child particles
+    if (p.generation < 3 && random() < BRANCH_PROBABILITY && p.life > 50) {
+      const child = createParticle(p.x, p.y, p.generation + 1);
+      child.vx = -p.vx * 0.5 + random(-1, 1);
+      child.vy = -p.vy * 0.5 + random(-1, 1);
+      child.hue = (p.hue + random(-10, 10)) % 360;
+      particles.push(child);
+    }
+    
+    // Draw particle
+    if (p.x > 0 && p.x < width && p.y > 0 && p.y < height) {
+      const alpha = map(p.life, 0, p.maxLife, 0, 80);
+      const brightness = map(p.life, 0, p.maxLife, 30, 100);
+      const size = p.size * map(p.life, 0, p.maxLife, 0.3, 1);
+      
+      noStroke();
+      fill((p.hue + t * 10) % 360, p.sat, brightness, alpha);
+      ellipse(p.x, p.y, size, size);
+      
+      // Glow effect
+      fill((p.hue + t * 10) % 360, p.sat * 0.5, brightness, alpha * 0.3);
+      ellipse(p.x, p.y, size * 2.5, size * 2.5);
+    }
+    
+    // Remove dead particles or off-screen
+    if (p.life <= 0 || p.x < -50 || p.x > width + 50 || p.y < -50 || p.y > height + 50) {
+      particles.splice(i, 1);
+      
+      // Respawn at edge or random position
+      if (particles.length < NUM_PARTICLES) {
+        particles.push(createParticle());
+      }
+    }
+  }
+  
+  t += 0.01;
+  
+  // Slowly add new particles
+  while (particles.length < NUM_PARTICLES) {
+    const edge = floor(random(4));
+    let x, y;
+    switch(edge) {
+      case 0: x = random(width); y = 0; break;
+      case 1: x = width; y = random(height); break;
+      case 2: x = random(width); y = height; break;
+      case 3: x = 0; y = random(height); break;
+    }
+    particles.push(createParticle(x, y));
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+</script>
+</body>
+</html>
