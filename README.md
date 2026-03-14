@@ -52,6 +52,7 @@ The project cycles through different technique categories to ensure variety:
 - **quantum-tunneling** — Quantum particle tunneling through potential barriers with wave interference
 - **neural-bloom** — Neural network-inspired patterns
 - **orbital-decay** — Orbital mechanics simulation
+- **orbital-resonance** — Gravitational N-body resonance visualization with orbiting bodies and trail effects
 - **resonance-cavities** — Resonant frequency visualization
 - **resonance-lattice** — Coupled oscillator lattice creating wave interference patterns with interactive mouse input
 - **stasis-field** — Static field effects
