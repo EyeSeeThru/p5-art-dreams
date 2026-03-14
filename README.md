@@ -203,6 +203,8 @@ The project cycles through different technique categories to ensure variety:
 - **wobble-sphere** — 3D sphere with Perlin noise displacement creating organic wobbling effects with flowing color gradients
 - **lattice-oscillators** — Coupled wave equation simulation on a grid with periodic disturbances and glowing wave interference patterns
 
+- **superformula** — Gielis superformula organic shapes with rotating animation and color cycling
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Superformula — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Superformula - Generalization of superellipse
+// Creates organic natural shapes using the Gielis formula
+
+let shapes = [];
+let numShapes = 12;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  for (let i = 0; i < numShapes; i++) {
+    shapes.push({
+      a: random(50, 150),
+      b: random(50, 150),
+      m: floor(random(3, 12)),
+      n1: random(0.3, 1.5),
+      n2: random(0.3, 1.5),
+      n3: random(0.3, 1.5),
+      hue: random(360),
+      x: 0,
+      y: 0,
+      rotation: random(TWO_PI),
+      rotationSpeed: random(-0.005, 0.005),
+      scaleSpeed: random(0.002, 0.008),
+      scalePhase: random(TWO_PI),
+      pulseSpeed: random(0.01, 0.03)
+    });
+  }
+}
+
+function superformula(theta, a, b, m, n1, n2, n3) {
+  // Gielis formula
+  let term1 = pow(abs(cos(m * theta / 4) / a), n2);
+  let term2 = pow(abs(sin(m * theta / 4) / b), n3);
+  let r = pow(term1 + term2, -1 / n1);
+  return r;
+}
+
+function draw() {
+  background(10, 15, 8);
+  
+  translate(width / 2, height / 2);
+  
+  // Add subtle background glow
+  for (let i = 0; i < 3; i++) {
+    let glowSize = 300 + sin(t * 0.5 + i) * 100;
+    let alpha = 0.03 - i * 0.008;
+    fill(200 + i * 30, 60, 40, alpha);
+    ellipse(0, 0, glowSize, glowSize);
+  }
+  
+  // Draw each superformula shape
+  for (let i = 0; i < shapes.length; i++) {
+    let s = shapes[i];
+    
+    push();
+    rotate(s.rotation);
+    
+    let scaleVal = 1 + sin(t * s.scaleSpeed * 100 + s.scalePhase) * 0.3;
+    scale(scaleVal);
+    
+    // Draw the superformula shape
+    beginShape();
+    for (let angle = 0; angle < TWO_PI; angle += 0.02) {
+      let r = superformula(angle, s.a, s.b, s.m, s.n1, s.n2, s.n3);
+      let x = r * cos(angle);
+      let y = r * sin(angle);
+      
+      let hueShift = (r / max(s.a, s.b)) * 30;
+      fill((s.hue + hueShift + t * 5) % 360, 70, 80, 0.6);
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+    
+    // Inner glow layer
+    beginShape();
+    for (let angle = 0; angle < TWO_PI; angle += 0.04) {
+      let r = superformula(angle, s.a * 0.7, s.b * 0.7, s.m, s.n1, s.n2, s.n3);
+      let x = r * cos(angle);
+      let y = r * sin(angle);
+      
+      fill((s.hue + 180) % 360, 50, 90, 0.3);
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+    
+    pop();
+    
+    // Update rotation
+    s.rotation += s.rotationSpeed;
+  }
+  
+  // Floating particles
+  for (let i = 0; i < 50; i++) {
+    let angle = i * 0.618 * TWO_PI + t * 0.1;
+    let dist = 150 + sin(t * 0.3 + i) * 50;
+    let x = cos(angle) * dist;
+    let y = sin(angle) * dist;
+    
+    let size = 2 + sin(t + i) * 1.5;
+    fill(0, 0, 100, 0.5);
+    ellipse(x, y, size, size);
+  }
+  
+  // Center point
+  fill(0, 0, 100, 0.8);
+  ellipse(0, 0, 4, 4);
+  
+  t += 0.01;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
