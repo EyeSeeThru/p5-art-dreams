@@ -205,6 +205,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **superformula** — Gielis superformula organic shapes with rotating animation and color cycling
 
+- **fluid-mesh** — Soft body cloth simulation with spring physics, wind forces, and interactive mouse interaction
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash

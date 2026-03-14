@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Mesh — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Fluid Mesh — Soft body cloth simulation with flowing particles
+let particles = [];
+let springs = [];
+let rows = 20;
+let cols = 30;
+let restLength = 25;
+let damping = 0.97;
+let stiffness = 0.4;
+let gravity = 0.15;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create particle grid
+  let startX = (width - (cols - 1) * restLength) / 2;
+  let startY = height * 0.15;
+  
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      let x = startX + j * restLength;
+      let y = startY + i * restLength;
+      let pinned = (i === 0 && j % 4 === 0);
+      particles.push({
+        pos: createVector(x, y),
+        vel: createVector(0, 0),
+        acc: createVector(0, 0),
+        pinned: pinned,
+        hue: (j / cols * 60 + 180) % 360
+      });
+    }
+  }
+  
+  // Create springs (structural + shear)
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      let idx = i * cols + j;
+      
+      // Structural horizontal
+      if (j < cols - 1) {
+        springs.push({ a: idx, b: idx + 1, len: restLength });
+      }
+      // Structural vertical
+      if (i < rows - 1) {
+        springs.push({ a: idx, b: idx + cols, len: restLength });
+      }
+      // Shear diagonal
+      if (i < rows - 1 && j < cols - 1) {
+        springs.push({ a: idx, b: idx + cols + 1, len: restLength * Math.SQRT2 });
+        springs.push({ a: idx + 1, b: idx + cols, len: restLength * Math.SQRT2 });
+      }
+      // Bend springs (skip one)
+      if (j < cols - 2) {
+        springs.push({ a: idx, b: idx + 2, len: restLength * 2 });
+      }
+      if (i < rows - 2) {
+        springs.push({ a: idx, b: idx + cols * 2, len: restLength * 2 });
+      }
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 0.15);
+  
+  // Apply forces
+  let windX = sin(time * 0.5) * 0.08;
+  let windY = cos(time * 0.3) * 0.03;
+  
+  for (let p of particles) {
+    if (p.pinned) continue;
+    
+    // Gravity
+    p.acc.y += gravity;
+    
+    // Wind with noise
+    let noiseVal = noise(p.pos.x * 0.01 + time, p.pos.y * 0.01);
+    p.acc.x += (windX + (noiseVal - 0.5) * 0.2);
+    p.acc.y += windY;
+    
+    // Mouse interaction
+    let d = dist(mouseX, mouseY, p.pos.x, p.pos.y);
+    if (d < 150) {
+      let force = (150 - d) / 150;
+      let dir = p5.Vector.sub(p.pos, createVector(mouseX, mouseY));
+      dir.normalize();
+      dir.mult(force * 2);
+      p.acc.add(dir);
+    }
+  }
+  
+  // Spring forces
+  for (let s of springs) {
+    let pa = particles[s.a];
+    let pb = particles[s.b];
+    
+    let diff = p5.Vector.sub(pb.pos, pa.pos);
+    let d = diff.mag();
+    let stretch = d - s.len;
+    
+    diff.normalize();
+    let force = diff.mult(stiffness * stretch);
+    
+    if (!pa.pinned) pa.acc.add(force);
+    if (!pb.pinned) pb.acc.sub(force);
+  }
+  
+  // Update particles
+  for (let p of particles) {
+    if (p.pinned) continue;
+    
+    p.vel.add(p.acc);
+    p.vel.mult(damping);
+    p.pos.add(p.vel);
+    p.acc.mult(0);
+    
+    // Boundary constraints
+    if (p.pos.x < 20) { p.pos.x = 20; p.vel.x *= -0.5; }
+    if (p.pos.x > width - 20) { p.pos.x = width - 20; p.vel.x *= -0.5; }
+    if (p.pos.y > height - 20) { p.pos.y = height - 20; p.vel.y *= -0.5; }
+  }
+  
+  // Draw mesh
+  noFill();
+  strokeWeight(1.5);
+  
+  // Draw springs
+  for (let s of springs) {
+    let pa = particles[s.a];
+    let pb = particles[s.b];
+    
+    let stretch = p5.Vector.dist(pa.pos, pb.pos) - s.len;
+    let hue = map(stretch, -20, 40, 200, 320);
+    let sat = map(abs(stretch), 0, 30, 40, 90);
+    let bri = map(abs(stretch), 0, 30, 80, 100);
+    
+    stroke(hue % 360, sat, bri, 0.6);
+    line(pa.pos.x, pa.pos.y, pb.pos.x, pb.pos.y);
+  }
+  
+  // Draw particles with glow
+  for (let p of particles) {
+    noStroke();
+    let velMag = p.vel.mag();
+    let size = map(velMag, 0, 5, 3, 8);
+    
+    // Outer glow
+    fill(p.hue, 60, 80, 0.2);
+    ellipse(p.pos.x, p.pos.y, size * 3, size * 3);
+    
+    // Core
+    fill(p.hue, 70, 100, 0.9);
+    ellipse(p.pos.x, p.pos.y, size, size);
+  }
+  
+  // Draw flowing particles in background
+  for (let i = 0; i < 50; i++) {
+    let x = (i * 137.5 + time * 20) % width;
+    let y = (i * 97.3 + sin(time + i) * 30) % height;
+    let size = (sin(time * 2 + i) + 1) * 2 + 1;
+    
+    fill(180 + sin(i) * 30, 50, 80, 0.3);
+    ellipse(x, y, size, size);
+  }
+  
+  time += 0.016;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add impulse on click
+  for (let p of particles) {
+    let d = dist(mouseX, mouseY, p.pos.x, p.pos.y);
+    if (d < 100) {
+      let force = p5.Vector.sub(p.pos, createVector(mouseX, mouseY));
+      force.normalize();
+      force.mult((100 - d) * 0.3);
+      p.vel.add(force);
+    }
+  }
+}
+</script>
+</body>
+</html>
