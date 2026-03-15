@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Einstein Ring</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Einstein Ring - Gravitational lensing visualization
+// Light bending around massive objects creating ring patterns
+
+let stars = [];
+let photonRings = [];
+let time = 0;
+
+const STAR_COUNT = 800;
+const PHOTON_COUNT = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  // Create background stars
+  for (let i = 0; i < STAR_COUNT; i++) {
+    stars.push({
+      x: random(width),
+      y: random(height),
+      size: random(0.5, 2.5),
+      brightness: random(100, 255),
+      twinkleSpeed: random(0.02, 0.08),
+      twinkleOffset: random(TWO_PI)
+    });
+  }
+  
+  // Create photon ring systems
+  for (let i = 0; i < PHOTON_COUNT; i++) {
+    photonRings.push({
+      angle: random(TWO_PI),
+      radius: random(100, 300),
+      speed: random(0.003, 0.012) * (random() > 0.5 ? 1 : -1),
+      thickness: random(1, 4),
+      hue: random(180, 280),
+      particles: createPhotonParticles(random(20, 50))
+    });
+  }
+}
+
+function createPhotonParticles(count) {
+  let particles = [];
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      offset: random(TWO_PI),
+      speed: random(0.5, 2),
+      radiusOffset: random(-20, 20),
+      size: random(1, 4)
+    });
+  }
+  return particles;
+}
+
+function draw() {
+  // Deep space background
+  background(230, 40, 5);
+  
+  // Draw stars
+  drawStars();
+  
+  // Central massive object (black hole / massive star)
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Gravitational lensing glow around central mass
+  drawLensingGlow(cx, cy);
+  
+  // Draw Einstein rings (light bent around massive object)
+  drawEinsteinRings(cx, cy);
+  
+  // Draw photon spheres (orbiting light)
+  drawPhotonSpheres(cx, cy);
+  
+  // Draw warped background stars (lensing effect)
+  drawWarpedStars(cx, cy);
+  
+  time += 0.01;
+}
+
+function drawStars() {
+  for (let star of stars) {
+    let twinkle = sin(time * star.twinkleSpeed * 100 + star.twinkleOffset);
+    let alpha = map(twinkle, -1, 1, 0.3, 1);
+    fill(255, alpha);
+    ellipse(star.x, star.y, star.size);
+  }
+}
+
+function drawLensingGlow(cx, cy) {
+  // Accretion disk glow
+  for (let r = 80; r > 0; r -= 4) {
+    let alpha = map(r, 0, 80, 0.8, 0.05);
+    let hue = map(r, 0, 80, 20, 50);
+    fill(hue, 80, 100, alpha);
+    ellipse(cx, cy, r * 2);
+  }
+  
+  // Event horizon
+  fill(0);
+  ellipse(cx, cy, 60);
+  
+  // Photon ring (brightest ring at Schwarzschild radius)
+  noFill();
+  strokeWeight(3);
+  stroke(50, 90, 100, 0.9);
+  ellipse(cx, cy, 65);
+  strokeWeight(1);
+  noStroke();
+}
+
+function drawEinsteinRings(cx, cy) {
+  for (let ring of photonRings) {
+    ring.angle += ring.speed;
+    
+    let baseRadius = ring.radius + sin(time * 2 + ring.angle) * 15;
+    
+    // Draw ring arc
+    for (let a = 0; a < TWO_PI; a += 0.1) {
+      // Add wave distortion
+      let distortion = sin(a * 8 + time * 3) * 8;
+      let r = baseRadius + distortion;
+      
+      let x = cx + cos(a + ring.angle) * r;
+      let y = cy + sin(a + ring.angle) * r * 0.3; // Elliptical for perspective
+      
+      let hue = (ring.hue + sin(time + a) * 20) % 360;
+      fill(hue, 70, 100, 0.6);
+      ellipse(x, y, ring.thickness);
+    }
+    
+    // Draw photons along ring
+    for (let p of ring.particles) {
+      let pAngle = p.offset + time * p.speed;
+      let pRadius = baseRadius + p.radiusOffset + sin(time * 3 + p.offset) * 10;
+      
+      let px = cx + cos(pAngle) * pRadius;
+      let py = cy + sin(pAngle) * pRadius * 0.3;
+      
+      // Glowing photon
+      let glowSize = p.size * 4;
+      for (let g = glowSize; g > 0; g -= 1) {
+        let alpha = map(g, 0, glowSize, 0.5, 0);
+        fill(ring.hue, 60, 100, alpha);
+        ellipse(px, py, g);
+      }
+      fill(ring.hue, 30, 100, 1);
+      ellipse(px, py, p.size);
+    }
+  }
+}
+
+function drawPhotonSpheres(cx, cy) {
+  // Multiple orbiting photon shells
+  for (let i = 0; i < 5; i++) {
+    let shellRadius = 100 + i * 45;
+    let shellSpeed = 0.02 - i * 0.003;
+    let particles = 30 + i * 15;
+    let hue = 200 + i * 20;
+    
+    for (let j = 0; j < particles; j++) {
+      let angle = (TWO_PI / particles) * j + time * shellSpeed * (i + 1) * 3;
+      let wobble = sin(time * 2 + j) * 10;
+      let r = shellRadius + wobble;
+      
+      let x = cx + cos(angle) * r;
+      let y = cy + sin(angle) * r * 0.4;
+      
+      let alpha = map(i, 0, 4, 0.8, 0.2);
+      fill(hue % 360, 50, 100, alpha);
+      ellipse(x, y, 1.5 + i * 0.3);
+    }
+  }
+}
+
+function drawWarpedStars(cx, cy) {
+  // Stars that appear warped by gravitational lensing
+  for (let star of stars) {
+    let dx = star.x - cx;
+    let dy = star.y - cy;
+    let dist = sqrt(dx * dx + dy * dy);
+    
+    // Stronger warp closer to center
+    if (dist < 250 && dist > 40) {
+      let warpFactor = map(dist, 40, 250, 3, 1);
+      let angle = atan2(dy, dx);
+      
+      // Displace position (lensing effect)
+      let warpedX = cx + cos(angle) * dist * warpFactor;
+      let warpedY = cy + sin(angle) * dist * warpFactor * 0.35;
+      
+      // Stretch effect
+      let stretch = map(dist, 40, 250, 3, 1);
+      
+      let twinkle = sin(time * star.twinkleSpeed * 100 + star.twinkleOffset);
+      let alpha = map(twinkle, -1, 1, 0.2, 0.7);
+      
+      // Draw stretched star
+      fill(255, alpha);
+      ellipse(warpedX, warpedY, star.size * stretch, star.size);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  stars = [];
+  setup();
+}
+</script>
+</body>
+</html>
