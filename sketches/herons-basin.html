@@ -113,7 +113,7 @@ function draw() {
         // Different hue per root
         let hue = (rootIndex * 0.333 + timeOffset) % 1;
         let sat = 0.7;
-        let bri = Math.min(1, 0.3 + smooth * 0.04);
+        let bri = Math.min(1, 0.3 + sm * 0.04);
         
         // HSV to RGB
         let [r, g, b] = hsv2rgb(hue, sat, bri);
