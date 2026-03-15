@@ -215,6 +215,7 @@ The project cycles through different technique categories to ensure variety:
 - **photon-bloom** — Glowing particle emission from multiple centers with orbital motion, additive blending, and pulsing bloom effects
 - **lattice-fields** — Coupled oscillator lattice with multiple wave sources creating interference patterns and glowing connections
 - **fractal-droplets** — Organic metaball-like droplets with fractal edges, glowing tendrils, and breathing animation
+- **kaleidoscope-flow** — Perlin noise-driven flow field with 12-fold rotating symmetry, particle trails, and interactive mouse burst
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 

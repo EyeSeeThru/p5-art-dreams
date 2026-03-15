@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaleidoscope Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const SYMMETRY = 12;
+const PALETTE = [
+  '#ff3b3b', '#ff6b6b', '#ffa07a', '#ffd93d', '#6bcb77',
+  '#4d96ff', '#9b59b6', '#e91e63', '#00d9ff', '#ff9f43'
+];
+
+let t = 0;
+let particles = [];
+let numParticles = 800;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(0);
+  
+  for (let i = 0; i < numParticles; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  let angle = random(TWO_PI);
+  let radius = random(50, min(width, height) * 0.35);
+  return {
+    x: cos(angle) * radius,
+    y: sin(angle) * radius,
+    vx: 0,
+    vy: 0,
+    hue: random(360),
+    size: random(2, 6),
+    life: random(100, 300),
+    maxLife: 0
+  };
+}
+
+function draw() {
+  // Semi-transparent background for trails
+  background(0, 0, 0, 3);
+  
+  translate(width / 2, height / 2);
+  
+  let scale = min(width, height) / 800;
+  
+  for (let p of particles) {
+    p.maxLife = max(p.maxLife, p.life);
+    
+    // Perlin noise flow field
+    let noiseScale = 0.008;
+    let n1 = noise(p.x * noiseScale + t * 0.3, p.y * noiseScale);
+    let n2 = noise(p.x * noiseScale + 100, p.y * noiseScale + t * 0.2);
+    
+    let angle = n1 * TWO_PI * 2;
+    let force = map(n2, 0, 1, 0.5, 2);
+    
+    p.vx += cos(angle) * force * 0.15;
+    p.vy += sin(angle) * force * 0.15;
+    
+    // Damping
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+    
+    // Radial boundary - wrap around
+    let dist = sqrt(p.x * p.x + p.y * p.y);
+    let maxR = min(width, height) * 0.42;
+    
+    if (dist > maxR) {
+      let angle = atan2(p.y, p.x) + random(-0.3, 0.3);
+      let newR = random(20, 100);
+      p.x = cos(angle) * newR;
+      p.y = sin(angle) * newR;
+      p.vx = 0;
+      p.vy = 0;
+      p.life = p.maxLife;
+      p.hue = (p.hue + random(30, 60)) % 360;
+    }
+    
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    
+    if (p.life <= 0) {
+      Object.assign(p, createParticle());
+    }
+    
+    // Draw with symmetry
+    for (let i = 0; i < SYMMETRY; i++) {
+      push();
+      rotate((TWO_PI / SYMMETRY) * i);
+      
+      // Mirror
+      let px = p.x;
+      let py = p.y;
+      
+      // Primary
+      let alpha = map(p.life, 0, p.maxLife, 0, 80);
+      let brt = map(dist, 0, maxR, 100, 40);
+      fill(p.hue % 360, 70, brt, alpha);
+      noStroke();
+      ellipse(px, py, p.size * scale);
+      
+      // Reflection
+      fill((p.hue + 180) % 360, 60, brt * 0.8, alpha * 0.5);
+      ellipse(px, -py, p.size * scale * 0.7);
+      
+      pop();
+    }
+  }
+  
+  // Center glow
+  let glowSize = 80 + sin(t * 2) * 20;
+  for (let i = 5; i > 0; i--) {
+    fill(20, 80, 100, 2);
+    noStroke();
+    ellipse(0, 0, glowSize * i * scale);
+  }
+  
+  t += 0.01;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+
+function mousePressed() {
+  // Add burst of particles at mouse position
+  let mx = mouseX - width / 2;
+  let my = mouseY - height / 2;
+  
+  for (let i = 0; i < 30; i++) {
+    let p = createParticle();
+    p.x = mx + random(-20, 20);
+    p.y = my + random(-20, 20);
+    p.vx = random(-3, 3);
+    p.vy = random(-3, 3);
+    p.hue = random(360);
+    particles.push(p);
+  }
+  
+  // Remove oldest particles to maintain count
+  while (particles.length > numParticles) {
+    particles.shift();
+  }
+}
+</script>
+</body>
+</html>
