@@ -56,7 +56,11 @@ function draw() {
         pixels[idx + 1] = 0;
         pixels[idx + 2] = 0;
       } else {
-        let smooth = iteration + 1 - Math.log(Math.log(Math.sqrt(x*x + y*y))) / Math.log(2);
+        let mag = Math.sqrt(x*x + y*y);
+        let smooth = iteration;
+        if (mag > 1) {
+          smooth = iteration + 1 - Math.log(Math.log(mag)) / Math.log(2);
+        }
         let hue = map(smooth, 0, maxIter, 180, 340);
         let sat = 0.8;
         let bri = map(iteration, 0, maxIter, 0.2, 1);
