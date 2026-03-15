@@ -15,7 +15,7 @@
 // Heron's Basin - Newton's Fractal visualization
 // Shows basins of attraction for Newton's method solving z^3 - 1 = 0
 
-let maxIterations = 60;
+let maxIterations = 30;
 let zoom = 1;
 let centerX = 0;
 let centerY = 0;
@@ -24,10 +24,10 @@ let t = 0;
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
-  noLoop();
 }
 
 function draw() {
+  t += 0.005;
   loadPixels();
   
   let w = width;
