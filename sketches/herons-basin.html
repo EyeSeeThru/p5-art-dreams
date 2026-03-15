@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Heron's Basin</title>
+  <title>Julia Set</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
@@ -12,7 +12,7 @@
 </head>
 <body>
 <script>
-// Newton's Fractal - z^3 - 1 = 0
+// Animated Julia Set Fractal
 
 let t = 0;
 
@@ -23,76 +23,68 @@ function setup() {
 
 function draw() {
   background(0);
-  
   loadPixels();
   
   let w = width;
   let h = height;
-  let maxIter = 25;
   
-  // Three roots of z^3 - 1 = 0
-  let r1 = { x: 1, y: 0 };
-  let r2 = { x: -0.5, y: 0.866 };
-  let r3 = { x: -0.5, y: -0.866 };
+  // Animated Julia constant
+  let ca = map(sin(t * 0.3), -1, 1, -0.8, 0.4);
+  let cb = map(cos(t * 0.2), -1, 1, -0.6, 0.6);
   
   for (let px = 0; px < w; px++) {
     for (let py = 0; py < h; py++) {
-      // Map to complex plane
-      let zx = (px - w/2) / (w * 0.35);
-      let zy = (py - h/2) / (h * 0.35);
+      let x0 = map(px, 0, w, -1.5, 1.5);
+      let y0 = map(py, 0, h, -1.2, 1.2);
       
-      let root = 0;
+      let x = 0;
+      let y = 0;
+      let iteration = 0;
+      const maxIter = 60;
       
-      for (let i = 0; i < maxIter; i++) {
-        // z = z - (z^3 - 1) / (3z^2)
-        let zx2 = zx * zx;
-        let zy2 = zy * zy;
-        let zx3 = zx * zx2 - zy * zy2;
-        let zy3 = zy * zx2 + zx * zy2;
-        
-        let denom = 3 * (zx2 + zy2);
-        if (denom < 0.0001) break;
-        
-        zx = zx - (zx3 - 1) / denom;
-        zy = zy - zy3 / denom;
-        
-        // Check which root
-        let d1 = (zx - r1.x)**2 + (zy - r1.y)**2;
-        let d2 = (zx - r2.x)**2 + (zy - r2.y)**2;
-        let d3 = (zx - r3.x)**2 + (zy - r3.y)**2;
-        
-        if (d1 < 0.01) { root = 1; break; }
-        if (d2 < 0.01) { root = 2; break; }
-        if (d3 < 0.01) { root = 3; break; }
+      while (x*x + y*y < 4 && iteration < maxIter) {
+        let xtemp = x*x - y*y + ca;
+        y = 2*x*y + cb;
+        x = xtemp;
+        iteration++;
       }
       
       let idx = 4 * (py * w + px);
       
-      // Colors for each root
-      if (root === 1) {
-        pixels[idx] = 255;
-        pixels[idx + 1] = 100;
-        pixels[idx + 2] = 100;
-      } else if (root === 2) {
-        pixels[idx] = 100;
-        pixels[idx + 1] = 255;
-        pixels[idx + 2] = 150;
-      } else if (root === 3) {
-        pixels[idx] = 100;
-        pixels[idx + 1] = 150;
-        pixels[idx + 2] = 255;
-      } else {
+      if (iteration === maxIter) {
         pixels[idx] = 0;
         pixels[idx + 1] = 0;
         pixels[idx + 2] = 0;
+      } else {
+        let smooth = iteration + 1 - Math.log(Math.log(Math.sqrt(x*x + y*y))) / Math.log(2);
+        let hue = map(smooth, 0, maxIter, 180, 340);
+        let sat = 0.8;
+        let bri = map(iteration, 0, maxIter, 0.2, 1);
+        
+        // HSV to RGB
+        let c = bri * sat;
+        let m = bri - c;
+        let h2 = hue / 60;
+        let x2 = c * (1 - Math.abs(h2 % 2 - 1));
+        
+        let r, g, b;
+        if (h2 < 1) { r = c; g = x2; b = 0; }
+        else if (h2 < 2) { r = x2; g = c; b = 0; }
+        else if (h2 < 3) { r = 0; g = c; b = x2; }
+        else if (h2 < 4) { r = 0; g = x2; b = c; }
+        else if (h2 < 5) { r = x2; g = 0; b = c; }
+        else { r = c; g = 0; b = x2; }
+        
+        pixels[idx] = (r + m) * 255;
+        pixels[idx + 1] = (g + m) * 255;
+        pixels[idx + 2] = (b + m) * 255;
       }
       pixels[idx + 3] = 255;
     }
   }
   
   updatePixels();
-  
-  t++;
+  t += 0.01;
 }
 </script>
 </body>
