@@ -12,13 +12,8 @@
 </head>
 <body>
 <script>
-// Heron's Basin - Newton's Fractal visualization
-// Shows basins of attraction for Newton's method solving z^3 - 1 = 0
+// Newton's Fractal - z^3 - 1 = 0
 
-let maxIterations = 30;
-let zoom = 1;
-let centerX = 0;
-let centerY = 0;
 let t = 0;
 
 function setup() {
@@ -27,157 +22,77 @@ function setup() {
 }
 
 function draw() {
-  t += 0.005;
+  background(0);
+  
   loadPixels();
   
   let w = width;
   let h = height;
-  let maxIter = maxIterations;
+  let maxIter = 25;
   
-  // Roots of z^3 - 1 = 0
-  let roots = [
-    { re: 1, im: 0 },
-    { re: -0.5, im: Math.sqrt(3) / 2 },
-    { re: -0.5, im: -Math.sqrt(3) / 2 }
-  ];
+  // Three roots of z^3 - 1 = 0
+  let r1 = { x: 1, y: 0 };
+  let r2 = { x: -0.5, y: 0.866 };
+  let r3 = { x: -0.5, y: -0.866 };
   
-  // Animated color cycling
-  let timeOffset = t * 0.01;
-  
-  for (let x = 0; x < w; x++) {
-    for (let y = 0; y < h; y++) {
-      // Map pixel to complex plane
-      let zx = (x - w / 2) / (w * 0.4 * zoom) + centerX;
-      let zy = (y - h / 2) / (h * 0.4 * zoom) + centerY;
+  for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) {
+      // Map to complex plane
+      let zx = (px - w/2) / (w * 0.35);
+      let zy = (py - h/2) / (h * 0.35);
       
-      let iter = 0;
-      let rootIndex = -1;
+      let root = 0;
       
-      // Newton's method: z = z - f(z)/f'(z)
-      // f(z) = z^3 - 1, f'(z) = 3z^2
-      while (iter < maxIter) {
-        // z^2
-        let z2re = zx * zx - zy * zy;
-        let z2im = 2 * zx * zy;
+      for (let i = 0; i < maxIter; i++) {
+        // z = z - (z^3 - 1) / (3z^2)
+        let zx2 = zx * zx;
+        let zy2 = zy * zy;
+        let zx3 = zx * zx2 - zy * zy2;
+        let zy3 = zy * zx2 + zx * zy2;
         
-        // z^3 = z * z^2
-        let z3re = zx * z2re - zy * z2im;
-        let z3im = zx * z2im + zy * z2re;
-        
-        // f(z) = z^3 - 1
-        let fre = z3re - 1;
-        let fim = z3im;
-        
-        // f'(z) = 3z^2
-        let fpre = 3 * z2re;
-        let fpim = 3 * z2im;
-        
-        // f/f' = (fre + i fim) / (fpre + i fpim)
-        let denom = fpre * fpre + fpim * fpim;
+        let denom = 3 * (zx2 + zy2);
         if (denom < 0.0001) break;
         
-        let newre = fre * fpre + fim * fpim;
-        let newim = fim * fpre - fre * fpim;
-        newre /= denom;
-        newim /= denom;
+        zx = zx - (zx3 - 1) / denom;
+        zy = zy - zy3 / denom;
         
-        zx -= newre;
-        zy -= newim;
+        // Check which root
+        let d1 = (zx - r1.x)**2 + (zy - r1.y)**2;
+        let d2 = (zx - r2.x)**2 + (zy - r2.y)**2;
+        let d3 = (zx - r3.x)**2 + (zy - r3.y)**2;
         
-        // Check convergence to roots
-        for (let i = 0; i < 3; i++) {
-          let dr = zx - roots[i].re;
-          let di = zy - roots[i].im;
-          if (dr * dr + di * di < 0.001) {
-            rootIndex = i;
-            break;
-          }
-        }
-        
-        if (rootIndex >= 0) break;
-        iter++;
+        if (d1 < 0.01) { root = 1; break; }
+        if (d2 < 0.01) { root = 2; break; }
+        if (d3 < 0.01) { root = 3; break; }
       }
       
-      // Color based on which root and iterations
-      let idx = 4 * (y * w + x);
+      let idx = 4 * (py * w + px);
       
-      if (rootIndex < 0) {
-        // Didn't converge - black
+      // Colors for each root
+      if (root === 1) {
+        pixels[idx] = 255;
+        pixels[idx + 1] = 100;
+        pixels[idx + 2] = 100;
+      } else if (root === 2) {
+        pixels[idx] = 100;
+        pixels[idx + 1] = 255;
+        pixels[idx + 2] = 150;
+      } else if (root === 3) {
+        pixels[idx] = 100;
+        pixels[idx + 1] = 150;
+        pixels[idx + 2] = 255;
+      } else {
         pixels[idx] = 0;
         pixels[idx + 1] = 0;
         pixels[idx + 2] = 0;
-      } else {
-        // Smooth coloring
-        let sm = iter + 1 - Math.log2(Math.log2(Math.sqrt(zx * zx + zy * zy) + 1));
-        
-        // Different hue per root
-        let hue = (rootIndex * 0.333 + timeOffset) % 1;
-        let sat = 0.7;
-        let bri = Math.min(1, 0.3 + sm * 0.04);
-        
-        // HSV to RGB
-        let [r, g, b] = hsv2rgb(hue, sat, bri);
-        
-        pixels[idx] = r * 255;
-        pixels[idx + 1] = g * 255;
-        pixels[idx + 2] = b * 255;
       }
+      pixels[idx + 3] = 255;
     }
   }
   
   updatePixels();
   
-  // Draw title
-  fill(255);
-  noStroke();
-  textSize(14);
-  textAlign(LEFT, TOP);
-  text("Newton's Fractal: z³ - 1 = 0", 20, 20);
-  
   t++;
-  if (t % 3 === 0) {
-    redraw();
-  }
-}
-
-function hsv2rgb(h, s, v) {
-  let c = v * s;
-  let x = c * (1 - Math.abs((h * 6) % 2 - 1));
-  let m = v - c;
-  
-  let r, g, b;
-  let h6 = h * 6;
-  if (h6 < 1) { r = c; g = x; b = 0; }
-  else if (h6 < 2) { r = x; g = c; b = 0; }
-  else if (h6 < 3) { r = 0; g = c; b = x; }
-  else if (h6 < 4) { r = 0; g = x; b = c; }
-  else if (h6 < 5) { r = x; g = 0; b = c; }
-  else { r = c; g = 0; b = x; }
-  
-  return [r + m, g + m, b + m];
-}
-
-function mouseWheel(event) {
-  zoom *= event.delta > 0 ? 0.9 : 1.1;
-  zoom = constrain(zoom, 0.5, 10);
-  redraw();
-  return false;
-}
-
-function mouseDragged() {
-  centerX -= (mouseX - pmouseX) / (width * 0.4 * zoom);
-  centerY -= (mouseY - pmouseY) / (height * 0.4 * zoom);
-  redraw();
-  return false;
-}
-
-function mousePressed() {
-  redraw();
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  redraw();
 }
 </script>
 </body>
