@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scent Trails</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Scent Trails - Pheromone-based particle navigation
+// Particles leave scented trails that attract others, creating emergent path networks
+
+const SCALE = 4;
+const PHEROMONE_DECAY = 0.985;
+const PHEROMONE_DIFFUSE = 0.9;
+const NUM_AGENTS = 400;
+
+let grid;
+let agents = [];
+let cols, rows;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  cols = floor(width / SCALE);
+  rows = floor(height / SCALE);
+  
+  grid = new Array(cols * rows).fill(0);
+  
+  // Initialize agents with random positions and directions
+  for (let i = 0; i < NUM_AGENTS; i++) {
+    agents.push({
+      x: random(width),
+      y: random(height),
+      angle: random(TWO_PI),
+      speed: 1.5 + random(1),
+      sensorAngle: PI / 4,
+      sensorDist: 15
+    });
+  }
+  
+  // Create some attractors (food sources)
+  for (let i = 0; i < 5; i++) {
+    let cx = random(width * 0.2, width * 0.8);
+    let cy = random(height * 0.2, height * 0.8);
+    // Add strong pheromone at attractor
+    let gx = floor(cx / SCALE);
+    let gy = floor(cy / SCALE);
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dy = -3; dy <= 3; dy++) {
+        let idx = (gx + dx + (gy + dy) * cols);
+        if (idx >= 0 && idx < grid.length) {
+          grid[idx] = 1;
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  background(10, 10, 15);
+  
+  // Diffuse and decay pheromones
+  diffusePheromones();
+  
+  // Update and draw agents
+  for (let agent of agents) {
+    updateAgent(agent);
+    drawAgent(agent);
+  }
+  
+  // Draw pheromone trails
+  drawPheromones();
+}
+
+function diffusePheromones() {
+  let newGrid = new Array(cols * rows).fill(0);
+  
+  for (let y = 1; y < rows - 1; y++) {
+    for (let x = 1; x < cols - 1; x++) {
+      let idx = x + y * cols;
+      
+      // Diffusion: average of neighbors
+      let sum = 0;
+      sum += grid[(x-1) + (y-1) * cols];
+      sum += grid[x     + (y-1) * cols];
+      sum += grid[(x+1) + (y-1) * cols];
+      sum += grid[(x-1) + y     * cols];
+      sum += grid[x     + y     * cols];
+      sum += grid[(x+1) + y     * cols];
+      sum += grid[(x-1) + (y+1) * cols];
+      sum += grid[x     + (y+1) * cols];
+      sum += grid[(x+1) + (y+1) * cols];
+      
+      let diffused = sum / 9 * PHEROMONE_DIFFUSE;
+      newGrid[idx] = diffused * PHEROMONE_DECAY;
+    }
+  }
+  
+  grid = newGrid;
+}
+
+function updateAgent(agent) {
+  // Sense pheromones in three directions
+  let leftAngle = agent.angle - agent.sensorAngle;
+  let rightAngle = agent.angle + agent.sensorAngle;
+  
+  let left = sensePheromone(agent.x, agent.y, leftAngle, agent.sensorDist);
+  let center = sensePheromone(agent.x, agent.y, agent.angle, agent.sensorDist);
+  let right = sensePheromone(agent.x, agent.y, rightAngle, agent.sensorDist);
+  
+  // Steer based on sensed pheromones
+  if (center > left && center > right) {
+    // Continue straight
+  } else if (center < left && center < right) {
+    // Random turn when both sides equal
+    agent.angle += random(-0.5, 0.5);
+  } else if (left > right) {
+    agent.angle -= 0.2;
+  } else if (right > left) {
+    agent.angle += 0.2;
+  }
+  
+  // Random wandering
+  agent.angle += random(-0.1, 0.1);
+  
+  // Move agent
+  agent.x += cos(agent.angle) * agent.speed;
+  agent.y += sin(agent.angle) * agent.speed;
+  
+  // Wrap around edges
+  if (agent.x < 0) agent.x = width;
+  if (agent.x > width) agent.x = 0;
+  if (agent.y < 0) agent.y = height;
+  if (agent.y > height) agent.y = 0;
+  
+  // Deposit pheromone
+  let gx = floor(agent.x / SCALE);
+  let gy = floor(agent.y / SCALE);
+  let idx = gx + gy * cols;
+  if (idx >= 0 && idx < grid.length) {
+    grid[idx] = min(grid[idx] + 0.5, 1);
+  }
+}
+
+function sensePheromone(x, y, angle, dist) {
+  let sx = x + cos(angle) * dist;
+  let sy = y + sin(angle) * dist;
+  
+  // Wrap coordinates
+  sx = (sx + width) % width;
+  sy = (sy + height) % height;
+  
+  let gx = floor(sx / SCALE);
+  let gy = floor(sy / SCALE);
+  let idx = gx + gy * cols;
+  
+  if (idx >= 0 && idx < grid.length) {
+    return grid[idx];
+  }
+  return 0;
+}
+
+function drawAgent(agent) {
+  let hue = (degrees(agent.angle) % 360 + 360) % 360;
+  let sat = 80;
+  let bri = 90;
+  
+  noStroke();
+  fill(hue, sat, bri);
+  ellipse(agent.x, agent.y, 3, 3);
+}
+
+function drawPheromones() {
+  loadPixels();
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let gx = floor(x / SCALE);
+      let gy = floor(y / SCALE);
+      let gIdx = gx + gy * cols;
+      let pIdx = (x + y * width) * 4;
+      
+      let strength = 0;
+      if (gIdx >= 0 && gIdx < grid.length) {
+        strength = grid[gIdx];
+      }
+      
+      if (strength > 0.01) {
+        // Color based on pheromone strength
+        let hue = 180 + strength * 60; // Cyan to green
+        let sat = 100;
+        let bri = min(255, strength * 400);
+        
+        // Simple HSV to RGB conversion
+        let c = color(`hsb(${floor(hue % 360)}, ${sat}%, ${bri}%)`);
+        let r = red(c);
+        let g = green(c);
+        let b = blue(c);
+        
+        // Blend with existing
+        pixels[pIdx] = mix(pixels[pIdx], r, strength * 0.6);
+        pixels[pIdx + 1] = mix(pixels[pIdx + 1], g, strength * 0.7);
+        pixels[pIdx + 2] = mix(pixels[pIdx + 2], b, strength * 0.8);
+      }
+    }
+  }
+  
+  updatePixels();
+}
+
+function mix(a, b, t) {
+  return a * (1 - t) + b * t;
+}
+
+function color(str) {
+  // Simple color parser for hsb
+  let m = str.match(/hsb\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+  if (m) {
+    let h = parseInt(m[1]) / 360;
+    let s = parseInt(m[2]) / 100;
+    let v = parseInt(m[3]) / 100;
+    return hsbToRgb(h, s, v);
+  }
+  return { r: 0, g: 0, b: 0 };
+}
+
+function hsbToRgb(h, s, v) {
+  let r, g, b;
+  let i = floor(h * 6);
+  let f = h * 6 - i;
+  let p = v * (1 - s);
+  let q = v * (1 - f * s);
+  let t = v * (1 - (1 - f) * s);
+  
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+  
+  return {
+    r: floor(r * 255),
+    g: floor(g * 255),
+    b: floor(b * 255)
+  };
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / SCALE);
+  rows = floor(height / SCALE);
+  grid = new Array(cols * rows).fill(0);
+}
+</script>
+</body>
+</html>

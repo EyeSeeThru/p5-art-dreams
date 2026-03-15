@@ -140,6 +140,7 @@ The project cycles through different technique categories to ensure variety:
 - **sand-oscillation** — Granular wave patterns with oscillating particles creating hypnotic flow effects
 - **saffman-taylor** — Viscous fingering instability in Hele-Shaw cell with branching finger patterns
 - **sand-oscillation** — Granular wave patterns with oscillating particles creating hypnotic flow effects
+- **scent-trails** — Pheromone-based particle navigation with emergent trail networks and attractor dynamics
 - **fractal-brush** — Recursive brush strokes creating organic fractal patterns with golden/amber palette
 - **galton-board** — Galton board (bean machine) demonstrating normal distribution with falling beads and histogram visualization
 - **gyroid-surface** — Mathematical minimal surface visualization with animated gyroid equation and flowing color gradients
