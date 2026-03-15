@@ -108,7 +108,7 @@ function draw() {
         pixels[idx + 2] = 0;
       } else {
         // Smooth coloring
-        let smooth = iter + 1 - Math.log2(Math.log2(Math.sqrt(zx * zx + zy * zy) + 1));
+        let sm = iter + 1 - Math.log2(Math.log2(Math.sqrt(zx * zx + zy * zy) + 1));
         
         // Different hue per root
         let hue = (rootIndex * 0.333 + timeOffset) % 1;
