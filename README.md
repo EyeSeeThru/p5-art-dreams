@@ -213,6 +213,7 @@ The project cycles through different technique categories to ensure variety:
 - **fluid-mesh** — Soft body cloth simulation with spring physics, wind forces, and interactive mouse interaction
 
 - **photon-bloom** — Glowing particle emission from multiple centers with orbital motion, additive blending, and pulsing bloom effects
+- **lattice-fields** — Coupled oscillator lattice with multiple wave sources creating interference patterns and glowing connections
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
