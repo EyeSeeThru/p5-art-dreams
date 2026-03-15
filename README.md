@@ -168,6 +168,7 @@ The project cycles through different technique categories to ensure variety:
 - **cantor-dust** — 3D visualization of Cantor set as fractal dust with glowing cubes and rotating animation
 - **butterfly-curve** — Temple H. Fay's butterfly parametric curve with layered rotating symmetries and color cycling
 - **helicon-flutes** — Helicon wave visualization with spiral particle patterns and plasma resonance aesthetics
+- **herons-basin** — Newton's fractal visualization showing basins of attraction for z³ - 1 = 0 with animated color cycling
 - **hilbert-curve** — Hilbert space-filling curve with animated traversal, glowing trails, and background pattern grid
 - **kuramoto-sync** — Kuramoto coupled oscillator synchronization showing spontaneous pattern formation in phase-locked grids
 - **dissipative-patterns** — Far-from-equilibrium self-organization patterns inspired by reaction-diffusion dynamics
