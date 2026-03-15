@@ -21,6 +21,7 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
+- **riccati-flow** — Riccati differential equation creating spiraling flow curves with particle trails
 - **forest-fire** — Cellular automaton simulating forest fire spread with probabilistic ignition and tree regrowth
 - **fourier-epicycles** — Fourier series epicycles tracing intricate harmonic patterns
 - **ifs-fractal** — Iterated Function System with Barnsley-inspired transforms and rotating animations
