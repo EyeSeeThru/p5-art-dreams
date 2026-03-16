@@ -127,6 +127,7 @@ The project cycles through different technique categories to ensure variety:
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
 - **bezier-weave** — Parametric Bezier curves with animated control points creating woven tapestry patterns with glow effects
 - **benard-convection** — Thermal convection patterns with rising warm plumes and sinking cool fluid creating Rayleigh-Bénard cells
+- **bloch-sphere** — Bloch sphere visualization for quantum qubit state representation with rotating 3D projection and animated state vectors
 - **prism-dispersion** — Light dispersion through a prism with spectral rainbow refraction and animated particles
 - **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines

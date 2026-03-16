@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bloch Sphere — Quantum State Visualization</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Bloch Sphere Visualization
+// Visualizes quantum qubit states on a Bloch sphere representation
+
+let angleX = 0;
+let angleY = 0;
+let angleZ = 0;
+let qubits = [];
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create multiple qubits with different states
+  qubits.push({ theta: PI/4, phi: 0, targetTheta: PI/4, targetPhi: 0 });
+  qubits.push({ theta: PI/2, phi: PI/2, targetTheta: PI/2, targetPhi: PI/2 });
+  qubits.push({ theta: PI/3, phi: PI, targetTheta: PI/3, targetPhi: PI });
+  qubits.push({ theta: 2*PI/3, phi: 3*PI/2, targetTheta: 2*PI/3, targetPhi: 3*PI/2 });
+}
+
+function draw() {
+  background(10, 5, 15);
+  
+  // Auto-rotate
+  angleY += 0.003;
+  angleZ += 0.001;
+  
+  rotateX(angleX);
+  rotateY(angleY);
+  rotateZ(angleZ);
+  
+  // Draw coordinate axes
+  drawAxes();
+  
+  // Draw the sphere wireframe
+  drawSphereWireframe(200);
+  
+  // Draw equator and meridian lines
+  drawMeridians();
+  
+  // Animate qubits toward their targets
+  time += 0.01;
+  for (let i = 0; i < qubits.length; i++) {
+    qubits[i].theta = lerp(qubits[i].theta, qubits[i].targetTheta + sin(time * 0.5 + i) * 0.3, 0.02);
+    qubits[i].phi = lerp(qubits[i].phi, qubits[i].targetPhi + time * 0.2, 0.02);
+  }
+  
+  // Draw each qubit state vector
+  for (let i = 0; i < qubits.length; i++) {
+    drawQubitState(qubits[i], i);
+  }
+  
+  // Draw center point (|0⟩ state marker)
+  push();
+  noStroke();
+  fill(180, 80, 100);
+  sphere(5);
+  pop();
+}
+
+function drawAxes() {
+  let len = 250;
+  strokeWeight(2);
+  
+  // X axis - Red
+  stroke(0, 80, 100, 0.5);
+  line(-len, 0, 0, len, 0, 0);
+  
+  // Y axis - Green
+  stroke(120, 80, 100, 0.5);
+  line(0, -len, 0, 0, len, 0);
+  
+  // Z axis - Blue
+  stroke(240, 80, 100, 0.5);
+  line(0, 0, -len, 0, 0, len);
+}
+
+function drawSphereWireframe(r) {
+  noFill();
+  stroke(280, 40, 60, 0.15);
+  strokeWeight(1);
+  
+  // Draw latitude circles
+  for (let lat = -80; lat <= 80; lat += 20) {
+    let latRad = radians(lat);
+    let radius = r * cos(latRad);
+    let y = r * sin(latRad);
+    
+    beginShape();
+    for (let lon = 0; lon <= 360; lon += 10) {
+      let lonRad = radians(lon);
+      let x = radius * cos(lonRad);
+      let z = radius * sin(lonRad);
+      vertex(x, y, z);
+    }
+    endShape(CLOSE);
+  }
+  
+  // Draw longitude circles
+  for (let lon = 0; lon < 360; lon += 30) {
+    let lonRad = radians(lon);
+    
+    beginShape();
+    for (let lat = -90; lat <= 90; lat += 5) {
+      let latRad = radians(lat);
+      let x = r * cos(latRad) * cos(lonRad);
+      let y = r * sin(latRad);
+      let z = r * cos(latRad) * sin(lonRad);
+      vertex(x, y, z);
+    }
+    endShape();
+  }
+}
+
+function drawMeridians() {
+  noFill();
+  strokeWeight(2);
+  
+  // Equator - bright cyan
+  stroke(180, 60, 100, 0.4);
+  beginShape();
+  for (let lon = 0; lon <= 360; lon += 5) {
+    let rad = radians(lon);
+    vertex(200 * cos(rad), 0, 200 * sin(rad));
+  }
+  endShape(CLOSE);
+  
+  // Prime meridian - bright magenta
+  stroke(300, 60, 100, 0.4);
+  beginShape();
+  for (let lat = -90; lat <= 90; lat += 5) {
+    let rad = radians(lat);
+    vertex(0, 200 * sin(rad), 200 * cos(rad));
+  }
+  endShape();
+}
+
+function drawQubitState(q, index) {
+  let r = 200;
+  let theta = q.theta;
+  let phi = q.phi;
+  
+  // Convert spherical to Cartesian (Bloch sphere convention)
+  // |ψ⟩ = cos(θ/2)|0⟩ + e^(iφ)sin(θ/2)|1⟩
+  let x = r * sin(theta) * cos(phi);
+  let y = r * sin(theta) * sin(phi);
+  let z = r * cos(theta);
+  
+  // Draw the state vector line
+  let hue = (index * 90 + time * 30) % 360;
+  stroke(hue, 80, 100, 0.8);
+  strokeWeight(2);
+  line(0, 0, 0, x, y, z);
+  
+  // Draw arrow head
+  push();
+  translate(x, y, z);
+  noStroke();
+  
+  // Glowing sphere at the tip
+  fill(hue, 70, 100, 0.9);
+  emissiveMaterial(hue, 60, 80);
+  sphere(12);
+  
+  // Outer glow
+  fill(hue, 80, 100, 0.3);
+  sphere(20);
+  pop();
+  
+  // Draw projection circles on axes
+  drawProjectionCircle(x, y, z, r, hue);
+}
+
+function drawProjectionCircle(x, y, z, r, hue) {
+  // XY projection (onto equator plane)
+  noFill();
+  stroke(hue, 50, 100, 0.3);
+  strokeWeight(1);
+  ellipse(0, 0, abs(x) * 2, abs(y) * 2);
+  
+  // Dashed projection lines to axes
+  stroke(hue, 40, 100, 0.2);
+  strokeWeight(1);
+  drawingContext.setLineDash([5, 5]);
+  line(x, y, z, x, y, 0);
+  line(x, y, z, x, 0, z);
+  line(x, y, z, 0, y, z);
+  drawingContext.setLineDash([]);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mouseDragged() {
+  angleX += (mouseY - pmouseY) * 0.01;
+  angleY += (mouseX - pmouseX) * 0.01;
+}
+
+function mousePressed() {
+  // Add new qubit on click
+  if (qubits.length < 8) {
+    qubits.push({
+      theta: random(PI * 0.2, PI * 0.8),
+      phi: random(TWO_PI),
+      targetTheta: random(PI * 0.2, PI * 0.8),
+      targetPhi: random(TWO_PI)
+    });
+  }
+}
+</script>
+</body>
+</html>
