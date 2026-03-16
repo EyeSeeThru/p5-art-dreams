@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pendulum Wave</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Pendulum Wave - Multiple pendulums with different frequencies creating wave patterns
+const NUM_PENDULUMS = 50;
+const STRING_LENGTH = 280;
+const GRAVITY = 0.4;
+const DAMPING = 0.9995;
+let pendulums = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  
+  // Create pendulums with varying lengths (affects frequency)
+  for (let i = 0; i < NUM_PENDULUMS; i++) {
+    let t = i / (NUM_PENDULUMS - 1);
+    // Length varies to create wave effect
+    let len = map(t, 0, 1, 80, STRING_LENGTH);
+    // Slight variation in initial angle
+    let angle = PI / 4 + sin(i * 0.3) * 0.1;
+    pendulums.push({
+      len: len,
+      angle: angle,
+      aVelocity: 0,
+      aAcceleration: 0,
+      x: 0,
+      y: 0,
+      baseX: 0,
+      hue: map(i, 0, NUM_PENDULUMS, 180, 320)
+    });
+  }
+  
+  // Position pendulums horizontally
+  let spacing = width / (NUM_PENDULUMS + 1);
+  for (let i = 0; i < pendulums.length; i++) {
+    pendulums[i].baseX = spacing * (i + 1);
+  }
+}
+
+function draw() {
+  // Dark background with slight trails
+  background(10, 8, 12, 0.15);
+  
+  // Center vertically
+  let centerY = height * 0.35;
+  
+  // Draw mounting bar
+  stroke(40, 30, 80);
+  strokeWeight(3);
+  line(pendulums[0].baseX - 20, centerY, pendulums[pendulums.length - 1].baseX + 20, centerY);
+  
+  // Update and draw each pendulum
+  for (let i = 0; i < pendulums.length; i++) {
+    let p = pendulums[i];
+    
+    // Physics: angular acceleration = -g/L * sin(theta)
+    p.aAcceleration = (-GRAVITY / p.len) * sin(p.angle);
+    p.aVelocity += p.aAcceleration;
+    p.aVelocity *= DAMPING;
+    p.angle += p.aVelocity;
+    
+    // Calculate bob position
+    p.x = p.baseX + sin(p.angle) * p.len;
+    p.y = centerY + cos(p.angle) * p.len;
+    
+    // Draw string
+    stroke(p.hue, 60, 50, 0.4);
+    strokeWeight(1);
+    line(p.baseX, centerY, p.x, p.y);
+    
+    // Draw bob with glow
+    noStroke();
+    
+    // Outer glow
+    for (let r = 20; r > 0; r -= 4) {
+      fill(p.hue, 70, 80, 0.03);
+      ellipse(p.x, p.y, r * 2, r * 2);
+    }
+    
+    // Core
+    fill(p.hue, 80, 100, 0.9);
+    ellipse(p.x, p.y, 10, 10);
+    
+    // Highlight
+    fill(p.hue, 20, 100, 0.8);
+    ellipse(p.x - 2, p.y - 2, 4, 4);
+  }
+  
+  // Draw connecting wave line through bobs
+  noFill();
+  stroke(280, 50, 80, 0.3);
+  strokeWeight(1.5);
+  beginShape();
+  for (let p of pendulums) {
+    vertex(p.x, p.y);
+  }
+  endShape();
+  
+  // Ambient particles
+  drawParticles();
+}
+
+let particles = [];
+
+function drawParticles() {
+  // Add new particles occasionally
+  if (frameCount % 3 === 0) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-0.5, 0.5),
+      vy: random(-0.5, 0.5),
+      size: random(1, 3),
+      life: 1,
+      hue: random(200, 320)
+    });
+  }
+  
+  // Update and draw particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.005;
+    
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    
+    noStroke();
+    fill(p.hue, 60, 80, p.life * 0.5);
+    ellipse(p.x, p.y, p.size, p.size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  let spacing = width / (NUM_PENDULUMS + 1);
+  for (let i = 0; i < pendulums.length; i++) {
+    pendulums[i].baseX = spacing * (i + 1);
+  }
+}
+
+function mousePressed() {
+  // Add energy to all pendulums
+  for (let p of pendulums) {
+    p.aVelocity += random(-0.05, 0.05);
+  }
+}
+</script>
+</body>
+</html>
