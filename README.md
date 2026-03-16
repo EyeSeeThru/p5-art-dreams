@@ -216,6 +216,7 @@ The project cycles through different technique categories to ensure variety:
 - **lattice-fields** — Coupled oscillator lattice with multiple wave sources creating interference patterns and glowing connections
 - **fractal-droplets** — Organic metaball-like droplets with fractal edges, glowing tendrils, and breathing animation
 - **kaleidoscope-flow** — Perlin noise-driven flow field with 12-fold rotating symmetry, particle trails, and interactive mouse burst
+- **lattice-resonance** — Coupled wave equation lattice with oscillating resonators creating interference patterns and glowing effects
 - **einstein-ring** — Gravitational lensing visualization showing light bending around massive objects creating Einstein ring effects
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
