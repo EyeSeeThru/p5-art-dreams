@@ -221,6 +221,7 @@ The project cycles through different technique categories to ensure variety:
 - **einstein-ring** — Gravitational lensing visualization showing light bending around massive objects creating Einstein ring effects
 - **pendulum-wave** — Multiple pendulums with varying lengths creating mesmerizing wave patterns through phase differences
 - **coherent-flow** — Lagrangian coherent structures visualization with particle advection following double gyre flow dynamics
+- **dyson-swarm** — Dyson sphere swarm visualization with orbiting collectors, central star glow, and energy particles
 
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
