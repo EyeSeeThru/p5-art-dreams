@@ -226,6 +226,8 @@ The project cycles through different technique categories to ensure variety:
 - **coherent-flow** — Lagrangian coherent structures visualization with particle advection following double gyre flow dynamics
 - **dyson-swarm** — Dyson sphere swarm visualization with orbiting collectors, central star glow, and energy particles
 
+- **crystal-lattice** — Crystal lattice vibration simulation with resonant wave modes and glowing atom dynamics
+
 Open any `.html` file in a browser. All sketches are self-contained single HTML files.
 
 ```bash
