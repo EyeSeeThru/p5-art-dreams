@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neuron Sparks</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const neurons = [];
+const connections = [];
+const sparks = [];
+let t = 0;
+
+class Neuron {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.baseSize = random(3, 8);
+    this.size = this.baseSize;
+    this.charge = 0;
+    this.decay = random(0.95, 0.98);
+    this.phase = random(TWO_PI);
+    this.color = color(random(100, 180), random(150, 220), random(200, 255));
+  }
+
+  update() {
+    this.charge *= this.decay;
+    this.size = this.baseSize + this.charge * 15;
+    
+    // Spontaneous firing
+    if (random(1) < 0.002) {
+      this.fire();
+    }
+  }
+
+  fire() {
+    this.charge = 1;
+    // Create spark
+    for (let i = 0; i < 3; i++) {
+      sparks.push(new Spark(this.x, this.y));
+    }
+    // Signal connected neurons
+    for (let conn of connections) {
+      if (conn.from === this && random(1) < 0.3) {
+        conn.to.receiveSignal(random(0.3, 0.8));
+      }
+    }
+  }
+
+  receiveSignal(strength) {
+    this.charge = max(this.charge, strength);
+    this.fire();
+  }
+
+  display() {
+    let alpha = map(this.charge, 0, 1, 50, 255);
+    let size = this.size;
+    
+    // Glow
+    for (let i = 3; i > 0; i--) {
+      let c = color(red(this.color), green(this.color), blue(this.color), alpha / i);
+      fill(c);
+      noStroke();
+      ellipse(this.x, this.y, size * (1 + i * 0.5));
+    }
+    
+    // Core
+    fill(255, 255, 255, alpha);
+    ellipse(this.x, this.y, size * 0.5);
+  }
+}
+
+class Connection {
+  constructor(from, to) {
+    this.from = from;
+    this.to = to;
+    this.signalStrength = 0;
+  }
+
+  update() {
+    this.signalStrength *= 0.9;
+  }
+
+  display() {
+    if (this.signalStrength > 0.1) {
+      let alpha = map(this.signalStrength, 0, 1, 10, 150);
+      stroke(100, 150, 255, alpha);
+      strokeWeight(map(this.signalStrength, 0, 1, 0.5, 2));
+      line(this.from.x, this.from.y, this.to.x, this.to.y);
+    }
+  }
+}
+
+class Spark {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = random(-3, 3);
+    this.vy = random(-3, 3);
+    this.life = 1;
+    this.decay = random(0.02, 0.05);
+    this.size = random(1, 3);
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.98;
+    this.vy *= 0.98;
+    this.life -= this.decay;
+  }
+
+  display() {
+    if (this.life > 0) {
+      let alpha = this.life * 255;
+      fill(200, 220, 255, alpha);
+      noStroke();
+      ellipse(this.x, this.y, this.size * this.life);
+    }
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  // Create neurons in a network pattern
+  let cols = 8;
+  let rows = 6;
+  let spacingX = width / (cols + 1);
+  let spacingY = height / (rows + 1);
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let x = spacingX * (i + 1) + random(-20, 20);
+      let y = spacingY * (j + 1) + random(-20, 20);
+      neurons.push(new Neuron(x, y));
+    }
+  }
+  
+  // Create connections
+  for (let i = 0; i < neurons.length; i++) {
+    let nearby = neurons
+      .map((n, idx) => ({ neuron: n, idx, dist: dist(neurons[i].x, neurons[i].y, n.x, n.y) }))
+      .filter(n => n.idx !== i && n.dist < 150)
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+    
+    for (let n of nearby) {
+      connections.push(new Connection(neurons[i], n.neuron));
+    }
+  }
+  
+  // Initial sparks
+  for (let i = 0; i < 5; i++) {
+    let n = random(neurons);
+    n.fire();
+  }
+}
+
+function draw() {
+  background(5, 5, 15, 30);
+  
+  // Update and draw connections
+  for (let conn of connections) {
+    conn.update();
+    conn.display();
+  }
+  
+  // Update and draw neurons
+  for (let n of neurons) {
+    n.update();
+    n.display();
+  }
+  
+  // Update and draw sparks
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    sparks[i].update();
+    sparks[i].display();
+    if (sparks[i].life <= 0) {
+      sparks.splice(i, 1);
+    }
+  }
+  
+  // Mouse interaction - spark nearby neurons
+  if (mouseIsPressed) {
+    for (let n of neurons) {
+      let d = dist(mouseX, mouseY, n.x, n.y);
+      if (d < 100) {
+        n.receiveSignal(map(d, 0, 100, 1, 0.1));
+      }
+    }
+  }
+  
+  t += 0.01;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

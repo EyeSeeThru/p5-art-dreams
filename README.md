@@ -21,6 +21,8 @@ The project cycles through different technique categories to ensure variety:
 
 ## Sketches
 
+- **neuron-sparks** — Neural network visualization with propagating signals and sparking neurons
+
 - **riccati-flow** — Riccati differential equation creating spiraling flow curves with particle trails
 - **forest-fire** — Cellular automaton simulating forest fire spread with probabilistic ignition and tree regrowth
 - **fourier-epicycles** — Fourier series epicycles tracing intricate harmonic patterns
