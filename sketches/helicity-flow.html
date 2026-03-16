@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helicity Flow — p5.js</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Helicity Flow — Fluid helicity visualization
+// Particles follow helical paths with color representing vorticity alignment
+
+let particles = [];
+const NUM_PARTICLES = 800;
+const LIFESPAN = 300;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  let x = random(width);
+  let y = random(height);
+  let z = random(100);
+  
+  return {
+    pos: createVector(x, y, z),
+    vel: createVector(0, 0, 0),
+    acc: createVector(0, 0, 0),
+    life: random(LIFESPAN),
+    maxLife: LIFESPAN,
+    hue: random(160, 280),
+    helixPhase: random(TWO_PI),
+    helixRadius: random(3, 15)
+  };
+}
+
+function updateParticle(p) {
+  // 3D position projection
+  let x = p.pos.x;
+  let y = p.pos.y;
+  let z = p.pos.z;
+  
+  // Create helical flow field
+  let angle = atan2(y - height/2, x - width/2);
+  let dist = sqrt(pow(x - width/2, 2) + pow(y - height/2, 2));
+  
+  // Helical motion parameters
+  let helixSpeed = 0.02;
+  let flowSpeed = 0.5;
+  
+  // Tangential flow (creates vorticity)
+  let tangentX = -(y - height/2);
+  let tangentY = (x - width/2);
+  
+  // Radial inward flow
+  let radialX = -(x - width/2);
+  let radialY = -(y - height/2);
+  
+  // Vertical oscillation (helical twist)
+  let verticalOsc = sin(p.helixPhase + p.life * helixSpeed) * p.helixRadius;
+  
+  // Combine forces
+  let tangentMag = 0.3;
+  let radialMag = 0.1 * sin(p.life * 0.01);
+  
+  p.acc.x = tangentX * tangentMag + radialX * radialMag;
+  p.acc.y = tangentY * tangentMag + radialY * radialMag;
+  p.acc.z = verticalOsc * 0.1;
+  
+  // Add perlin noise for turbulence
+  let noiseScale = 0.003;
+  let noiseX = (noise(x * noiseScale, y * noiseScale, frameCount * 0.005) - 0.5) * 0.8;
+  let noiseY = (noise(x * noiseScale + 100, y * noiseScale, frameCount * 0.005) - 0.5) * 0.8;
+  
+  p.acc.x += noiseX;
+  p.acc.y += noiseY;
+  
+  // Update velocity and position
+  p.vel.add(p.acc);
+  p.vel.limit(3);
+  p.pos.add(p.vel);
+  
+  // Decay velocity
+  p.vel.mult(0.98);
+  
+  // Update life
+  p.life++;
+  
+  // Reset if dead or out of bounds
+  if (p.life > p.maxLife || 
+      p.pos.x < -50 || p.pos.x > width + 50 ||
+      p.pos.y < -50 || p.pos.y > height + 50) {
+    let newP = createParticle();
+    p.pos = newP.pos;
+    p.vel = createVector(0, 0, 0);
+    p.acc = createVector(0, 0, 0);
+    p.life = 0;
+    p.helixPhase = newP.helixPhase;
+    p.helixRadius = newP.helixRadius;
+  }
+}
+
+function draw() {
+  // Dark background with slight trail
+  background(0, 0, 0, 15);
+  
+  // Update and draw particles
+  for (let p of particles) {
+    updateParticle(p);
+    drawParticle(p);
+  }
+  
+  // Draw central attractor glow
+  drawCore();
+}
+
+function drawParticle(p) {
+  let alpha = map(p.life, 0, p.maxLife, 0, 80);
+  alpha *= sin(PI * p.life / p.maxLife); // Fade in and out
+  
+  // Hue based on helicity (vorticity alignment)
+  // Blue-cyan for counterclockwise, magenta-pink for clockwise
+  let helicity = p.vel.x * (-(p.pos.y - height/2)) + p.vel.y * (p.pos.x - width/2);
+  let hue = map(helicity, -500, 500, 200, 320);
+  hue = constrain(hue, 180, 340);
+  
+  // Size based on depth
+  let depth = map(p.pos.z, 0, 100, 8, 2);
+  
+  // Draw glow
+  noStroke();
+  for (let r = depth * 3; r > 0; r -= depth) {
+    let a = alpha * (1 - r / (depth * 3)) * 0.3;
+    fill(hue, 80, 100, a);
+    ellipse(p.pos.x, p.pos.y, r * 2);
+  }
+  
+  // Draw core
+  fill(hue, 60, 100, alpha);
+  ellipse(p.pos.x, p.pos.y, depth * 2);
+}
+
+function drawCore() {
+  // Central glowing core
+  let pulse = sin(frameCount * 0.03) * 0.3 + 0.7;
+  
+  for (let r = 60; r > 0; r -= 10) {
+    let a = (1 - r / 60) * 15 * pulse;
+    fill(200, 60, 100, a);
+    ellipse(width/2, height/2, r * 2);
+  }
+  
+  // Bright center
+  fill(200, 40, 100, 60 * pulse);
+  ellipse(width/2, height/2, 20);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
