@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photonic Crystal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const SCALE = 6;
+const SPACING = 28;
+const WAVE_SPEED = 0.02;
+let time = 0;
+let lattice = [];
+let waves = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  background(0);
+  
+  // Create hexagonal lattice of cylindrical rods
+  for (let y = -SPACING; y < height + SPACING; y += SPACING * 0.866) {
+    let offset = (floor(y / (SPACING * 0.866)) % 2) * (SPACING / 2);
+    for (let x = -SPACING; x < width + SPACING; x += SPACING) {
+      lattice.push({
+        x: x + offset,
+        y: y,
+        r: 10,
+        phase: random(TWO_PI)
+      });
+    }
+  }
+  
+  // Initialize waves from multiple sources
+  for (let i = 0; i < 3; i++) {
+    waves.push({
+      x: random(width * 0.2, width * 0.8),
+      y: random(height * 0.2, height * 0.8),
+      freq: random(0.03, 0.08),
+      amp: random(150, 250),
+      phase: random(TWO_PI)
+    });
+  }
+}
+
+function draw() {
+  background(5, 8, 18);
+  
+  time += WAVE_SPEED;
+  
+  // Draw wave interference field
+  loadPixels();
+  for (let y = 0; y < height; y += SCALE) {
+    for (let x = 0; x < width; x += SCALE) {
+      let val = 0;
+      
+      // Sum wave contributions with interference
+      for (let w of waves) {
+        let d = dist(x, y, w.x, w.y);
+        let phase = d * w.freq - time * 2 + w.phase;
+        val += sin(phase) * w.amp * exp(-d * 0.003);
+      }
+      
+      // Normalize and apply bandgap effect
+      val = (val + 300) / 600;
+      
+      // Check if in bandgap (wavelengths that can't propagate)
+      let bandgap = 0;
+      for (let rod of lattice) {
+        let d = dist(x, y, rod.x, rod.y);
+        if (d < rod.r * 2) {
+          bandgap = 1;
+          break;
+        }
+      }
+      
+      // Color mapping - photonic crystal aesthetics
+      let r, g, b;
+      if (bandgap > 0) {
+        // Forbidden band - dark
+        r = val * 30;
+        g = val * 40;
+        b = val * 60;
+      } else {
+        // Pass band - colorful interference
+        let hue = (val * 360 + time * 50) % 360;
+        let sat = 0.7 + sin(val * PI) * 0.3;
+        let bri = val * 255;
+        
+        // HSB to RGB conversion
+        let c = color(`hsb(${hue}, ${sat}, ${bri/255})`);
+        r = red(c);
+        g = green(c);
+        b = blue(c);
+      }
+      
+      // Draw pixel block
+      for (let dy = 0; dy < SCALE && y + dy < height; dy++) {
+        for (let dx = 0; dx < SCALE && x + dx < width; dx++) {
+          let idx = 4 * ((y + dy) * width + (x + dx));
+          pixels[idx] = r;
+          pixels[idx + 1] = g;
+          pixels[idx + 2] = b;
+          pixels[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  updatePixels();
+  
+  // Draw crystal lattice rods
+  noStroke();
+  for (let rod of lattice) {
+    // Rod glow
+    let glowSize = rod.r * 3;
+    for (let i = 5; i > 0; i--) {
+      fill(40, 60, 100, 20);
+      ellipse(rod.x, rod.y, rod.r * 2 + i * 8);
+    }
+    
+    // Rod body
+    fill(20, 30, 50);
+    ellipse(rod.x, rod.y, rod.r * 2);
+    
+    // Rod highlight
+    fill(60, 90, 140);
+    ellipse(rod.x - 2, rod.y - 2, rod.r * 0.8);
+  }
+  
+  // Draw wave sources
+  for (let w of waves) {
+    let pulse = (sin(time * 3 + w.phase) + 1) * 0.5;
+    
+    // Source glow
+    for (let i = 4; i > 0; i--) {
+      fill(255, 200, 100, 30 - i * 5);
+      ellipse(w.x, w.y, 20 + i * 10 + pulse * 10);
+    }
+    
+    // Source core
+    fill(255, 240, 200);
+    ellipse(w.x, w.y, 12);
+  }
+  
+  // Add scanline effect for display feel
+  for (let y = 0; y < height; y += 3) {
+    stroke(0, 0, 0, 30);
+    line(0, y, width, y);
+  }
+  
+  // Vignette
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    fill(0, 0, 0, i * 2);
+    rect(0, 0, width, height);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  lattice = [];
+  setup();
+}
+
+function mousePressed() {
+  // Add new wave source on click
+  waves.push({
+    x: mouseX,
+    y: mouseY,
+    freq: random(0.03, 0.08),
+    amp: random(150, 250),
+    phase: random(TWO_PI)
+  });
+}
+</script>
+</body>
+</html>

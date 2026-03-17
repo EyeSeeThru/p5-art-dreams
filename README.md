@@ -234,6 +234,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **rabi-oscillations** — Quantum Rabi oscillations visualization with Bloch sphere state vector and probability amplitude dynamics
 
+- **photonic-crystal** — Photonic bandgap structure visualization with wave interference and hexagonal lattice of cylindrical rods
+
 All sketches are self-contained single HTML files.
 
 ```bash
