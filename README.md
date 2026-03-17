@@ -228,7 +228,9 @@ The project cycles through different technique categories to ensure variety:
 
 - **crystal-lattice** — Crystal lattice vibration simulation with resonant wave modes and glowing atom dynamics
 
-Open any `.html` file in a browser. All sketches are self-contained single HTML files.
+- **beltrami-flow** — 3D Beltrami helical vector field visualization with particles following velocity-vorticity aligned flow dynamics and ABC flow approximation
+
+All sketches are self-contained single HTML files.
 
 ```bash
 # Or serve locally

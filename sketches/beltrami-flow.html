@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beltrami Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      overflow: hidden; 
+      background: #0a0a0f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Beltrami Flow - 3D helical vector field visualization
+// Vorticity aligned with velocity: ∇×v ∥ v
+
+let particles = [];
+let numParticles = 800;
+let time = 0;
+let colorShift = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize particles with random positions
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(-width/2, width/2),
+      y: random(-height/2, height/2),
+      z: random(-500, 500),
+      hue: random(360),
+      life: random(1000),
+      maxLife: random(800, 1500)
+    });
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function draw() {
+  background(240, 20, 5, 25);
+  
+  translate(width/2, height/2);
+  
+  // Slowly shift base color
+  colorShift += 0.1;
+  let baseHue = (colorShift * 0.5) % 360;
+  
+  // Update and draw particles
+  for (let p of particles) {
+    // Beltrami field: velocity is proportional to curl of itself
+    // Using ABC flow approximation: A*sin(z) + C*cos(y), B*sin(x) + A*cos(z), C*sin(y) + B*cos(x)
+    let A = 0.5;
+    let B = 0.5;
+    let C = 0.5;
+    
+    let px = p.x * 0.003;
+    let py = p.y * 0.003;
+    let pz = p.z * 0.003;
+    
+    // Velocity field (Beltrami-like)
+    let vx = A * sin(pz) + C * cos(py);
+    let vy = B * sin(px) + A * cos(pz);
+    let vz = C * sin(py) + B * cos(px);
+    
+    // Add time-varying component for dynamic flow
+    let t = time * 0.001;
+    vx += 0.3 * sin(t + pz * 0.5);
+    vy += 0.3 * cos(t + px * 0.5);
+    vz += 0.2 * sin(t * 0.7);
+    
+    // Update position
+    p.x += vx * 3;
+    p.y += vy * 3;
+    p.z += vz * 2;
+    p.life++;
+    
+    // Calculate speed for color
+    let speed = sqrt(vx*vx + vy*vy + vz*vz);
+    let hue = (baseHue + speed * 30 + p.z * 0.1) % 360;
+    let sat = 70 + speed * 10;
+    let bri = 60 + speed * 25;
+    let alpha = map(p.life, 0, p.maxLife, 80, 20);
+    
+    // Depth-based size
+    let depth = map(p.z, -500, 500, 2, 6);
+    
+    // Draw particle with glow
+    noStroke();
+    
+    // Outer glow
+    fill(hue, sat * 0.5, bri, alpha * 0.2);
+    ellipse(p.x, p.y, depth * 3, depth * 3);
+    
+    // Core
+    fill(hue, sat, bri, alpha);
+    ellipse(p.x, p.y, depth, depth);
+    
+    // Reset particle if out of bounds or expired
+    if (p.life > p.maxLife || 
+        abs(p.x) > width || 
+        abs(p.y) > height ||
+        abs(p.z) > 600) {
+      p.x = random(-width/2, width/2);
+      p.y = random(-height/2, height/2);
+      p.z = random(-500, 500);
+      p.life = 0;
+      p.maxLife = random(800, 1500);
+    }
+  }
+  
+  // Add subtle connecting lines between nearby particles
+  stroke(255, 5);
+  strokeWeight(0.5);
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      let d = dist(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+      if (d < 40) {
+        let alpha = map(d, 0, 40, 15, 0);
+        stroke(255, alpha);
+        line(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+      }
+    }
+  }
+  
+  time++;
+  
+  // Auto-restart occasionally
+  if (frameCount % 900 === 0 && frameCount > 100) {
+    for (let p of particles) {
+      p.life = p.maxLife - 10;
+    }
+  }
+}
+</script>
+</body>
+</html>
