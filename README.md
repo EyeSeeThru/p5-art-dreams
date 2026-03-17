@@ -61,6 +61,7 @@ The project cycles through different technique categories to ensure variety:
 - **resonance-lattice** — Coupled oscillator lattice creating wave interference patterns with interactive mouse input
 - **stasis-field** — Static field effects
 - **string-art** — Parametric woven curves connecting rotating geometric frames
+- **stokes-flow** — Stokes flow (creeping flow) visualization with particles following laminar streamlines and time-varying flow patterns
 - **strange-attractors** — Chaotic attractor rendering
 - **stochastic-resonance** — Noise-enhanced signal detection demonstrating stochastic resonance phenomenon
 - **perlin-vortex** — Perlin noise-driven vortex field with particle trails
