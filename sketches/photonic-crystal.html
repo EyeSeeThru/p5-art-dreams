@@ -64,8 +64,8 @@ function draw() {
       // Sum wave contributions with interference
       for (let w of waves) {
         let d = dist(x, y, w.x, w.y);
-        let phase = d * w.freq - time * 2 + w.phase;
-        val += sin(phase) * w.amp * exp(-d * 0.003);
+        let ph = d * w.freq - time * 2 + w.phase;
+        val += sin(ph) * w.amp * exp(-d * 0.003);
       }
       
       // Normalize and apply bandgap effect
