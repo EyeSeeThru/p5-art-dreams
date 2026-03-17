@@ -232,6 +232,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **beltrami-flow** — 3D Beltrami helical vector field visualization with particles following velocity-vorticity aligned flow dynamics and ABC flow approximation
 
+- **rabi-oscillations** — Quantum Rabi oscillations visualization with Bloch sphere state vector and probability amplitude dynamics
+
 All sketches are self-contained single HTML files.
 
 ```bash
