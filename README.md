@@ -53,6 +53,7 @@ The project cycles through different technique categories to ensure variety:
 - **clifford-attractor** — Clifford strange attractor with chaotic dynamics and color-cycled particle rendering
 - **quantum-foam** — Quantum foam visualization
 - **quantum-tunneling** — Quantum particle tunneling through potential barriers with wave interference
+- **entangled-particles** — Quantum entanglement visualization with paired particles showing spin correlation and measurement collapse
 - **neural-bloom** — Neural network-inspired patterns
 - **orbital-decay** — Orbital mechanics simulation
 - **orbital-resonance** — Gravitational N-body resonance visualization with orbiting bodies and trail effects
