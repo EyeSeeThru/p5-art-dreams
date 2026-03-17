@@ -233,6 +233,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **beltrami-flow** — 3D Beltrami helical vector field visualization with particles following velocity-vorticity aligned flow dynamics and ABC flow approximation
 
+- **ripple-tank** — Wave interference simulation with interactive sources and ripple dynamics
+
 - **rabi-oscillations** — Quantum Rabi oscillations visualization with Bloch sphere state vector and probability amplitude dynamics
 
 - **photonic-crystal** — Photonic bandgap structure visualization with wave interference and hexagonal lattice of cylindrical rods

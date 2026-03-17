@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ripple Tank — p5.js Art</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Ripple Tank Simulation
+// Wave interference from multiple sources with reflection
+
+let cols, rows;
+let current, previous;
+let damping = 0.99;
+let sources = [];
+let boundaryDamping = 0.7;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  
+  cols = width;
+  rows = height;
+  current = new Float32Array(cols * rows);
+  previous = new Float32Array(cols * rows);
+  
+  // Add interactive wave sources
+  sources.push({ x: width * 0.3, y: height * 0.4, phase: 0 });
+  sources.push({ x: width * 0.7, y: height * 0.6, phase: PI });
+  
+  background(10, 8, 15);
+}
+
+function draw() {
+  loadPixels();
+  
+  // Update wave sources
+  for (let s of sources) {
+    s.phase += 0.08;
+    let idx = floor(s.x) + floor(s.y) * cols;
+    if (idx >= 0 && idx < previous.length) {
+      previous[idx] = 150 * sin(s.phase);
+    }
+  }
+  
+  // Wave equation simulation
+  for (let i = 1; i < cols - 1; i++) {
+    for (let j = 1; j < rows - 1; j++) {
+      let idx = i + j * cols;
+      
+      let val = (
+        previous[idx - 1] +
+        previous[idx + 1] +
+        previous[idx - cols] +
+        previous[idx + cols]
+      ) / 2 - current[idx];
+      
+      val *= damping;
+      current[idx] = val;
+    }
+  }
+  
+  // Render waves with color
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let idx = i + j * cols;
+      let val = current[idx];
+      
+      // Boundary damping
+      if (i < 5 || i > cols - 5 || j < 5 || j > rows - 5) {
+        val *= boundaryDamping;
+      }
+      
+      // Color mapping - deep ocean to bright cyan
+      let normalized = map(val, -150, 150, 0, 1);
+      normalized = constrain(normalized, 0, 1);
+      
+      let r, g, b;
+      if (normalized < 0.5) {
+        let t = normalized * 2;
+        r = lerp(8, 40, t);
+        g = lerp(12, 180, t);
+        b = lerp(25, 220, t);
+      } else {
+        let t = (normalized - 0.5) * 2;
+        r = lerp(40, 200, t);
+        g = lerp(180, 255, t);
+        b = lerp(220, 255, t);
+      }
+      
+      let pixIdx = idx * 4;
+      pixels[pixIdx] = r;
+      pixels[pixIdx + 1] = g;
+      pixels[pixIdx + 2] = b;
+      pixels[pixIdx + 3] = 255;
+    }
+  }
+  
+  updatePixels();
+  
+  // Add glowing source points
+  noStroke();
+  for (let s of sources) {
+    // Outer glow
+    for (let r = 60; r > 0; r -= 5) {
+      fill(255, 255, 255, 3);
+      ellipse(s.x, s.y, r * 2);
+    }
+    // Core
+    fill(255);
+    ellipse(s.x, s.y, 8);
+  }
+  
+  // Swap buffers
+  let temp = previous;
+  previous = current;
+  current = temp;
+}
+
+function mousePressed() {
+  // Add new wave source on click
+  sources.push({ x: mouseX, y: mouseY, phase: random(TWO_PI) });
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = width;
+  rows = height;
+  current = new Float32Array(cols * rows);
+  previous = new Float32Array(cols * rows);
+  background(10, 8, 15);
+}
+</script>
+</body>
+</html>
