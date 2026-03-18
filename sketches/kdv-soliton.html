@@ -76,8 +76,8 @@ function solveKDV() {
   // KDV equation: u_t + alpha * u * u_x + beta * u_xxx = 0
   // Using finite difference method
   
-  for (let i = 1; i < cols - 1; i++) {
-    for (let j = 1; j < rows - 1; j++) {
+  for (let i = 2; i < cols - 2; i++) {
+    for (let j = 2; j < rows - 2; j++) {
       let u = grid[i][j];
       let ux = (grid[i + 1][j] - grid[i - 1][j]) / (2 * dx);
       let uxxx = (grid[i + 2][j] - 3 * grid[i + 1][j] + 3 * grid[i - 1][j] - grid[i - 2][j]) / (dx * dx * dx);
