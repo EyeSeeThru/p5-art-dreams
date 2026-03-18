@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meridian Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Meridian Flow - Spherical coordinate particle flows
+const NUM_PARTICLES = 800;
+const NUM_LAT_BANDS = 12;
+let particles = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  initParticles();
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  background(0, 0, 5, 40);
+  t += 0.008;
+  
+  // Draw latitude band highlights
+  drawLatitudeBands();
+  
+  // Update and draw particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Draw meridian lines (subtle)
+  drawMeridians();
+}
+
+function drawLatitudeBands() {
+  noFill();
+  for (let i = 0; i < NUM_LAT_BANDS; i++) {
+    let lat = map(i, 0, NUM_LAT_BANDS, -PI/2.2, PI/2.2);
+    let bandOffset = sin(t * 2 + lat * 3) * 0.1;
+    let h = map(i, 0, NUM_LAT_BANDS, 180, 300) % 360;
+    
+    stroke(h, 60, 30, 15);
+    strokeWeight(1);
+    beginShape();
+    for (let lon = 0; lon < TWO_PI; lon += 0.15) {
+      let r = (height * 0.35) * cos(lat + bandOffset);
+      let x = width/2 + r * cos(lon);
+      let y = height/2 + r * sin(lon) * 0.6;
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+  }
+}
+
+function drawMeridians() {
+  let numMeridians = 16;
+  noFill();
+  for (let i = 0; i < numMeridians; i++) {
+    let lon = (i / numMeridians) * TWO_PI + t * 0.1;
+    let h = (i * 22.5 + frameCount * 0.2) % 360;
+    
+    stroke(h, 40, 50, 8);
+    strokeWeight(0.8);
+    beginShape();
+    for (let lat = -PI/2.2; lat < PI/2.2; lat += 0.08) {
+      let bandOffset = sin(t * 2 + lat * 3) * 0.1;
+      let r = (height * 0.35) * cos(lat + bandOffset);
+      let x = width/2 + r * cos(lon);
+      let y = height/2 + r * sin(lon) * 0.6;
+      vertex(x, y);
+    }
+    endShape();
+  }
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.lon = random(TWO_PI);
+    this.lat = random(-PI/2.2, PI/2.2);
+    this.speed = random(0.015, 0.035);
+    this.size = random(1.5, 4);
+    this.hue = random(360);
+    this.drift = random(0.01, 0.03);
+  }
+  
+  update() {
+    // Move along meridian (longitude)
+    this.lon += this.speed;
+    
+    // Slowly drift latitude
+    this.lat += sin(t * 2 + this.lon * 4) * this.drift * 0.3;
+    
+    // Constrain latitude
+    this.lat = constrain(this.lat, -PI/2.2, PI/2.2);
+    
+    // Occasionally reset
+    if (this.lon > TWO_PI * 10) {
+      this.lon = 0;
+    }
+    if (random() < 0.002) {
+      this.reset();
+    }
+  }
+  
+  display() {
+    let bandOffset = sin(t * 2 + this.lat * 3) * 0.1;
+    let r = (height * 0.35) * cos(this.lat + bandOffset);
+    let x = width/2 + r * cos(this.lon);
+    let y = height/2 + r * sin(this.lon) * 0.6;
+    
+    // Color based on latitude and time
+    let h = (this.lat * 180 / PI + 180 + frameCount * 0.15) % 360;
+    let s = 70 + sin(t + this.lon) * 20;
+    let b = 80 + cos(t * 2) * 15;
+    
+    noStroke();
+    fill(h, s, b, 85);
+    
+    // Glow effect
+    ellipse(x, y, this.size * 2.5, this.size * 2.5);
+    fill(h, s, b, 60);
+    ellipse(x, y, this.size * 1.5, this.size * 1.5);
+    fill(h, s, min(b + 10, 100), 100);
+    ellipse(x, y, this.size, this.size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
