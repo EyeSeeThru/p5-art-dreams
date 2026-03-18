@@ -183,6 +183,8 @@ The project cycles through different technique categories to ensure variety:
 - **kuramoto-sync** — Kuramoto coupled oscillator synchronization showing spontaneous pattern formation in phase-locked grids
 - **dissipative-patterns** — Far-from-equilibrium self-organization patterns inspired by reaction-diffusion dynamics
 
+- **sine-surface** — 3D parametric wave surface with rotating animation and flowing color gradients
+
 - **warp-field** — Gravitational spacetime grid distortion with orbiting particles and Schwarzschild metric visualization
 
 - **fractal-wood** — Recursive branching tree with organic wood grain texture and bark patterns
