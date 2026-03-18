@@ -39,6 +39,7 @@ The project cycles through different technique categories to ensure variety:
 - **wave-interference** — Wave interference patterns with multiple sources
 - **wave-particle-duality** — Particles exhibiting wave-particle duality with interference patterns
 - **trochoidal-waves** — Parametric trochoid curves creating mesmerizing geometric patterns
+- **toroidal-flow** — 3D torus surface with geodesic particle flows and rotating camera perspective
 - **thermal-drift** — GLSL shader with FBM noise, thermal color palette
 - **turing-patterns** — Reaction-diffusion patterns creating spots and stripes
 - **turing-textures** — Gray-Scott reaction-diffusion with evolving patterns and creative color mapping
