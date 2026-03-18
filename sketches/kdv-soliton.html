@@ -151,11 +151,11 @@ function draw() {
     if (p.y > height) p.y = 0;
     
     // Draw particle
-    let gx = floor(p.x / dx);
-    let gy = floor(p.y / dx);
+    let gx2 = floor(p.x / dx);
+    let gy2 = floor(p.y / dx);
     let waveVal = 0;
-    if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
-      waveVal = grid[gx][gy];
+    if (gx2 >= 0 && gx2 < cols && gy2 >= 0 && gy2 < rows) {
+      waveVal = grid[gx2][gy2];
     }
     
     let alpha = map(abs(waveVal), 0, 30, 30, 100);
