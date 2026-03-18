@@ -142,6 +142,7 @@ The project cycles through different technique categories to ensure variety:
 - **ising-model** — 2D Ising model Monte Carlo simulation showing ferromagnetic phase transition
 - **jacobi-elliptic** — Jacobi elliptic functions visualization with parametric curves, flowing particles, and pulsing center glow
 - **kelvin-helmholtz** — Fluid dynamics simulation of Kelvin-Helmholtz instability with curling vortex patterns
+- **kdv-soliton** — Korteweg-de Vries soliton wave visualization with particle advection and elastic wave interactions
 - **klein-bottle** — Mathematical Klein bottle surface visualization with rotating animation and glowing particles
 - **kinetic-sculpture** — Balancing geometric forms with physics-based rotation, glowing endpoints, and interconnecting particle web
 - **navier-stokes** — 2D fluid simulation with Navier-Stokes equations, interactive swirling density patterns
