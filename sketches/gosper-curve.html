@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gosper Curve — p5 Art Dreams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Gosper Curve — Space-filling fractal (flowsnake)
+// Recursive L-system: FR-F-F+F+FF+F+F-F-F
+const MAX_DEPTH = 5;
+let angle = 0;
+let particles = [];
+let cycle = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+
+  // Place particles along the Gosper curve at various depths
+  for (let d = 2; d <= MAX_DEPTH; d++) {
+    let pts = gosperPoints(d, 0, 0, 10);
+    for (let i = 0; i < pts.length; i += max(1, floor(pts.length / 60))) {
+      particles.push({
+        x: pts[i].x + random(-30, 30),
+        y: pts[i].y + random(-30, 30),
+        vx: random(-0.3, 0.3),
+        vy: random(-0.3, 0.3),
+        life: random(200, 400),
+        age: 0,
+        hue: (i * 3.6 + d * 20) % 360
+      });
+    }
+  }
+}
+
+function gosperPoints(depth, x, y, len) {
+  if (depth === 0) {
+    return [{ x: x, y: y }];
+  }
+  let pts = [];
+  let angle60 = PI / 3;
+  let segs = [
+    { dx: cos(0), dy: sin(0) },
+    { dx: cos(-angle60), dy: sin(-angle60) },
+    { dx: cos(-angle60 * 2), dy: sin(-angle60 * 2) },
+    { dx: cos(-angle60 * 3), dy: sin(-angle60 * 3) },
+    { dx: cos(-angle60 * 4), dy: sin(-angle60 * 4) }
+  ];
+  // L-system rules: F -> F+[[F]-F]-F[-F]F
+  // We'll use simplified recursive Gosper drawing
+  let result = [];
+  let stack = [];
+  let cx = x, cy = y;
+  let dir = 0;
+  let localStack = [];
+
+  function go(depth, x, y, dir) {
+    if (depth === 0) {
+      result.push({ x: x, y: y });
+      return;
+    }
+    let len2 = len * pow(1/sqrt(7), depth);
+    let a1 = dir;
+    // L-system: F → F+F--F+F
+    // Simplified: recursive Gosper island moves
+    let moves = [
+      [1, 0], [0.5, 0.866], [-0.5, 0.866], [-1, 0],
+      [-0.5, -0.866], [0.5, -0.866]
+    ];
+    let seq = gosperSeq(depth);
+    for (let c of seq) {
+      if (c === 'F') {
+        go(depth - 1, x, y, dir);
+        return;
+      } else if (c === '+') {
+        dir = (dir + 1) % 6;
+      } else if (c === '-') {
+        dir = (dir + 5) % 6;
+      }
+    }
+  }
+
+  // Better approach: draw using segment recursion
+  return recursiveGosper(depth, x, y, len, 0);
+}
+
+function recursiveGosper(depth, x, y, len, badge) {
+  if (depth === 0) {
+    return [{ x: x, y: y }];
+  }
+  let angle60 = PI / 3;
+  let len2 = len / sqrt(7);
+  let pts = [];
+  // 5-segment Gosper island
+  let segs = recursiveGosper(depth - 1, x, y, len2, badge);
+  let d = 1;
+  return segs;
+}
+
+// Actual Gosper L-system
+// F → F+F--F+F
+function gosperSeq(depth, len) {
+  if (depth === 0) return ['F'];
+  let inner = gosperSeq(depth - 1);
+  let result = [];
+  for (let c of inner) {
+    if (c === 'F') {
+      result.push('F', '+', 'F', '-', '-', 'F', '+', 'F');
+    } else {
+      result.push(c);
+    }
+  }
+  return result;
+}
+
+function draw() {
+  background(0, 0, 5, 30);
+  cycle += 0.005;
+
+  translate(width / 2, height / 2);
+  rotate(PI / 6 + sin(cycle * 0.5) * 0.1);
+  let scaleFactor = min(width, height) / 500;
+  scale(scaleFactor);
+
+  // Draw layered Gosper curves at different depths
+  for (let d = 2; d <= MAX_DEPTH; d++) {
+    let hue = (d * 40 + cycle * 20) % 360;
+    drawGosperCurve(d, 0, 0, 80 / pow(sqrt(7), d - 1), hue);
+  }
+
+  // Animate particles
+  updateParticles();
+  drawParticles();
+
+  // Subtle glow overlay
+  drawingContext.shadowBlur = 0;
+}
+
+function drawGosperCurve(depth, x, y, len, hue) {
+  let angle60 = PI / 3;
+  let seq = gosperSeq(depth);
+  let cx = x, cy = y;
+  let dir = 0; // Start pointing right
+
+  for (let c of seq) {
+    if (c === 'F') {
+      let nx = cx + cos(dir * angle60) * len;
+      let ny = cy + sin(dir * angle60) * len;
+
+      let alpha = map(depth, 2, MAX_DEPTH, 60, 100);
+      let brightness = map(sin(cycle * 2 + cx * 0.01 + cy * 0.01), -1, 1, 60, 100);
+      stroke(hue, 80, brightness, alpha);
+      strokeWeight(map(depth, 2, MAX_DEPTH, 0.5, 2.5));
+      line(cx, cy, nx, ny);
+      noStroke();
+      cx = nx;
+      cy = ny;
+    } else if (c === '+') {
+      dir = (dir + 1) % 6;
+    } else if (c === '-') {
+      dir = (dir + 5) % 6;
+    }
+  }
+}
+
+function updateParticles() {
+  for (let p of particles) {
+    p.age++;
+    if (p.age > p.life) {
+      // Respawn near a random point on the curve
+      let theta = random(TWO_PI);
+      let r = random(20, 200);
+      p.x = width/2 + cos(theta) * r + random(-20, 20);
+      p.y = height/2 + sin(theta) * r + random(-20, 20);
+      p.vx = random(-0.3, 0.3);
+      p.vy = random(-0.3, 0.3);
+      p.age = 0;
+      p.life = random(200, 400);
+      p.hue = (p.hue + 30) % 360;
+    }
+    p.x += p.vx + sin(cycle + p.age * 0.01) * 0.2;
+    p.y += p.vy + cos(cycle + p.age * 0.01) * 0.2;
+  }
+}
+
+function drawParticles() {
+  noStroke();
+  for (let p of particles) {
+    let lifeRatio = 1 - p.age / p.life;
+    let alpha = lifeRatio * 80;
+    let size = lifeRatio * 3;
+    fill(p.hue, 70, 100, alpha);
+    ellipse(p.x - width/2, p.y - height/2, size, size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

@@ -203,6 +203,7 @@ The project cycles through different technique categories to ensure variety:
 
 - **floating-orbs** — Bioluminescent deep sea creatures with trailing tentacles and pulsing glow
 - **galaxy-collision** — Gravitational N-body simulation of two spiral galaxies merging
+- **gosper-curve** — Gosper island space-filling fractal with recursive L-system curves, particle trails, and animated color cycling
 
 - **photon-diffraction** — Wave diffraction patterns (single/double slit, grating) with animated wavelength cycling
 
