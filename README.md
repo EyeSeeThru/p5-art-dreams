@@ -251,6 +251,8 @@ The project cycles through different technique categories to ensure variety:
 - **maze-generator** — Procedural labyrinth generation using recursive backtracking algorithm with animated path carving
 - **photonic-crystal** — Photonic bandgap structure visualization with wave interference and hexagonal lattice of cylindrical rods
 
+- **affine-flow** — Geometric patterns driven by animated affine transformations with shearing, scaling, and rotating shapes
+
 All sketches are self-contained single HTML files.
 
 ```bash
