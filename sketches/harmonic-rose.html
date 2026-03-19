@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmonic Rose</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Harmonic Rose — parametric rhodonea curves with evolving harmonics
+// Inspired by the mathematical beauty of rose curves r = cos(k·θ)
+
+let t = 0;
+let points = [];
+let layers = [];
+const MAX_POINTS = 1200;
+let hue = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(0);
+  noFill();
+}
+
+function draw() {
+  // Slow fade for glow trail
+  background(0, 0, 0, 3);
+
+  translate(width / 2, height / 2);
+
+  // Evolving harmonic ratio
+  let k = 3 + 2 * sin(t * 0.3);
+
+  // Draw multiple harmonic layers
+  for (let layer = 0; layer < 3; layer++) {
+    let layerK = k + layer * 0.7;
+    let layerHue = (hue + layer * 40) % 360;
+    let layerAlpha = 60 - layer * 15;
+    let layerWeight = 1.5 - layer * 0.3;
+
+    points = [];
+
+    for (let a = 0; a < MAX_POINTS; a++) {
+      let angle = map(a, 0, MAX_POINTS, 0, TWO_PI * (layerK > 2 ? layerK : 2));
+      let r = 180 * cos(layerK * angle + t * (layer + 1) * 0.2);
+      let x = r * cos(angle + t * 0.1);
+      let y = r * sin(angle + t * 0.1);
+      points.push({ x, y });
+    }
+
+    // Draw curve segments with gradient fade
+    noFill();
+    for (let i = 0; i < points.length - 1; i++) {
+      let progress = i / points.length;
+      let alpha = sin(progress * PI) * layerAlpha;
+      let sw = layerWeight * sin(progress * PI) + 0.3;
+      stroke(layerHue, 80, 90, alpha);
+      strokeWeight(sw);
+      let p1 = points[i];
+      let p2 = points[(i + 1) % points.length];
+      line(p1.x, p1.y, p2.x, p2.y);
+    }
+
+    // Particle dots at key points
+    noStroke();
+    for (let i = 0; i < 12; i++) {
+      let idx = floor(map(i, 0, 12, 0, points.length - 1));
+      let p = points[idx];
+      let progress = idx / points.length;
+      let alpha = sin(progress * PI) * 80;
+      fill(layerHue, 70, 100, alpha);
+      let dotSize = 3 + 2 * sin(progress * PI);
+      ellipse(p.x, p.y, dotSize, dotSize);
+    }
+  }
+
+  // Center glow
+  noStroke();
+  for (let r = 60; r > 0; r -= 10) {
+    let alpha = map(r, 60, 0, 0, 20);
+    fill(hue % 360, 60, 100, alpha);
+    ellipse(0, 0, r, r);
+  }
+
+  // Orbiting spark particles
+  for (let i = 0; i < 6; i++) {
+    let angle = t * (0.5 + i * 0.1) + i * TWO_PI / 6;
+    let orbitR = 220 + 20 * sin(t * 0.5 + i);
+    let sx = orbitR * cos(angle);
+    let sy = orbitR * sin(angle);
+    fill((hue + i * 30) % 360, 80, 100, 70);
+    ellipse(sx, sy, 4, 4);
+  }
+
+  t += 0.008;
+  hue += 0.3;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(0);
+}
+
+function mousePressed() {
+  background(0);
+  t = 0;
+}
+</script>
+</body>
+</html>
