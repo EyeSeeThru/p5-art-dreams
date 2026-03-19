@@ -119,6 +119,7 @@ The project cycles through different technique categories to ensure variety:
 - **ink-spread** — Sumi-e style ink diffusion simulation with fiber-guided organic spread patterns
 - **slime-mold** — Physarum slime mold simulation with sensory-driven agent movement and species-based coloring
 - **apollonian-gasket** — Fractal generated through recursive circle inversion using Descartes' Circle Theorem
+- **arnolds-cat** — Arnold's cat map visualization showing chaotic stretching and folding dynamics on a torus
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
 - **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
