@@ -171,6 +171,7 @@ The project cycles through different technique categories to ensure variety:
 - **ulam-spiral** — Prime number spiral visualization with prime numbers glowing and pulsing in a swirling pattern
 - **particle-life** — Emergent artificial life simulation with particle types exhibiting attraction/repulsion behaviors
 - **dna-helix** — Double helix visualization with rotating 3D animation and glowing base pairs
+- **cycloid-vortex** — Multi-layered cycloid curves with spiral arms and vortex dynamics
 - **cycloid-dreams** — Hypotrochoid curves with parametric variations and color cycling
 - **polygonal-drift** — Drifting polygons with Perlin noise particles and connecting lines
 - **schrodinger-field** — Quantum wave function visualization with probability density and particle representation

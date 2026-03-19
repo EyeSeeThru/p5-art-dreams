@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cycloid Vortex</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script>
+    let arms = 7;
+    let points = [];
+    let t = 0;
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      colorMode(HSB, 360, 100, 100, 100);
+      noStroke();
+    }
+
+    function draw() {
+      background(10, 20, 8, 25);
+      
+      translate(width / 2, height / 2);
+      
+      let maxR = min(width, height) * 0.45;
+      
+      // Draw multiple cycloid layers
+      for (let layer = 0; layer < 3; layer++) {
+        let layerOffset = layer * 0.15;
+        let scale = map(layer, 0, 2, 1, 0.6);
+        
+        push();
+        rotate(t * (0.3 + layer * 0.1) * (layer % 2 ? 1 : -1));
+        
+        // Outer cycloid ring
+        for (let i = 0; i < 180; i++) {
+          let angle = (i / 180) * TWO_PI;
+          let R = maxR * scale;
+          let r = R * 0.3;
+          let d = R * 0.7;
+          
+          let speed = 0.5 + layer * 0.2;
+          let x = (R - r) * cos(angle) + d * cos((R - r) / r * angle + t * speed);
+          let y = (R - r) * sin(angle) - d * sin((R - r) / r * angle + t * speed);
+          
+          let hue = (angle * 57 + t * 20 + layer * 40) % 360;
+          let sat = 70 + 20 * sin(angle * 3 + t);
+          let bri = 60 + 30 * cos(angle * 2 + t * 0.5);
+          
+          fill(hue, sat, bri, 60);
+          let size = map(layer, 0, 2, 4, 2);
+          ellipse(x, y, size);
+        }
+        
+        // Inner spiral arms
+        for (let a = 0; a < arms; a++) {
+          let baseAngle = (a / arms) * TWO_PI;
+          
+          for (let i = 0; i < 80; i++) {
+            let prog = i / 80;
+            let spiralAngle = baseAngle + prog * PI * 2 + t * 0.2;
+            let r = prog * maxR * 0.4 * scale;
+            
+            let x = cos(spiralAngle) * r;
+            let y = sin(spiralAngle) * r;
+            
+            // Add cycloid wobble
+            let wobble = sin(prog * 12 + t * 3 + a) * 5 * (1 - prog);
+            x += cos(spiralAngle + HALF_PI) * wobble;
+            y += sin(spiralAngle + HALF_PI) * wobble;
+            
+            let hue = (baseAngle * 57 + t * 15) % 360;
+            fill(hue, 80, 90, 80 * (1 - prog * 0.5));
+            ellipse(x, y, 3 * (1 - prog * 0.3));
+          }
+        }
+        
+        pop();
+      }
+      
+      // Central glow
+      let glowSize = 60 + sin(t * 2) * 10;
+      for (let i = 5; i > 0; i--) {
+        fill(200, 90, 50, 5);
+        ellipse(0, 0, glowSize * i);
+      }
+      
+      // Connecting vortex lines
+      strokeWeight(0.5);
+      for (let i = 0; i < 12; i++) {
+        let angle = (i / 12) * TWO_PI + t * 0.1;
+        let innerR = 20;
+        let outerR = maxR * 0.9;
+        
+        noFill();
+        stroke(180, 30, 70, 20);
+        beginShape();
+        for (let r = innerR; r < outerR; r += 5) {
+          let a = angle + sin(r * 0.05 + t) * 0.3;
+          curveVertex(cos(a) * r, sin(a) * r);
+        }
+        endShape();
+      }
+      
+      t += 0.008;
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
