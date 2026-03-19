@@ -144,6 +144,7 @@ The project cycles through different technique categories to ensure variety:
 - **islands-of-chaos** — Self-organized criticality via sandpile model with cluster visualization
 - **ising-model** — 2D Ising model Monte Carlo simulation showing ferromagnetic phase transition
 - **jacobi-elliptic** — Jacobi elliptic functions visualization with parametric curves, flowing particles, and pulsing center glow
+- **jeans-instability** — Gravitational collapse in a perturbed gas cloud forming filamentary structures under the Jeans instability criterion
 - **kelvin-helmholtz** — Fluid dynamics simulation of Kelvin-Helmholtz instability with curling vortex patterns
 - **kdv-soliton** — Korteweg-de Vries soliton wave visualization with particle advection and elastic wave interactions
 - **klein-bottle** — Mathematical Klein bottle surface visualization with rotating animation and glowing particles
