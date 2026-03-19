@@ -136,6 +136,7 @@ The project cycles through different technique categories to ensure variety:
 - **prism-dispersion** — Light dispersion through a prism with spectral rainbow refraction and animated particles
 - **quantum-field** — Quantum field fluctuations with virtual particle pairs appearing and disappearing in quantum vacuum
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
+- **riemann-zeta** — Riemann zeta function visualization with critical line, nontrivial zeros, and particle dynamics along Re(s)=1/2
 - **tesla-discharge** — Electrical discharge simulation with branching lightning from Tesla coils
 - **capillary-waves** — Surface tension wave simulation with oscillating sources and curvature-driven dynamics
 - **carpet-turbulence** — Fractal carpet patterns combined with turbulent Perlin noise flow fields creating chaotic geometric art
