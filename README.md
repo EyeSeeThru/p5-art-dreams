@@ -195,6 +195,8 @@ The project cycles through different technique categories to ensure variety:
 
 - **sine-surface** — 3D parametric wave surface with rotating animation and flowing color gradients
 
+- **flower-of-life** — Sacred geometry pattern with animated overlapping circles, rotating hexagonal symmetry, and harmonic color gradients
+
 - **warp-field** — Gravitational spacetime grid distortion with orbiting particles and Schwarzschild metric visualization
 
 - **fractal-wood** — Recursive branching tree with organic wood grain texture and bark patterns
