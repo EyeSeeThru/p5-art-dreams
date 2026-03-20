@@ -265,6 +265,7 @@ The project cycles through different technique categories to ensure variety:
 - **affine-flow** — Geometric patterns driven by animated affine transformations with shearing, scaling, and rotating shapes
 - **lissajous-spiral** — Spiral-armed Lissajous patterns with wobbling filaments and color-cycled particle nodes
 - **harmonic-rose** — Parametric rhodonea curves with evolving harmonics, orbiting sparks, and layered color cycling
+- **doppler-waves** — Moving source emitting expanding wave rings with Doppler color shifting and Mach cone shock wave visualization
 
 All sketches are self-contained single HTML files.
 

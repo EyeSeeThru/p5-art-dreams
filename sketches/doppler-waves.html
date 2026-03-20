@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doppler Waves</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+let source;
+let sourceVel;
+let particles = [];
+let waveRings = [];
+let time = 0;
+const NUM_PARTICLES = 120;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  source = createVector(width * 0.3, height * 0.5);
+  sourceVel = createVector(2.8, 0);
+}
+
+function draw() {
+  background(0, 0, 5, 18);
+  time += 0.016;
+
+  // Move source in an elliptical orbit
+  let orbitRx = width * 0.22;
+  let orbitRy = height * 0.18;
+  let speed = 0.6;
+  source.x = width * 0.5 + cos(time * speed) * orbitRx;
+  source.y = height * 0.5 + sin(time * speed * 1.3) * orbitRy;
+
+  // Velocity changes direction along path — approximate velocity vector
+  let nextX = width * 0.5 + cos((time + 0.016) * speed) * orbitRx;
+  let nextY = height * 0.5 + sin((time + 0.016) * speed * 1.3) * orbitRy;
+  sourceVel.set(nextX - source.x, nextY - source.y);
+  let spd = sourceVel.mag();
+
+  // Emit wave rings
+  if (frameCount % 3 === 0) {
+    waveRings.push({ x: source.x, y: source.y, r: 2, life: 1.0, spd: spd });
+  }
+
+  // Draw and update wave rings
+  for (let i = waveRings.length - 1; i >= 0; i--) {
+    let w = waveRings[i];
+    w.r += 2.5 + w.spd * 0.4;
+    w.life -= 0.008;
+
+    // Doppler hue shift based on radial velocity component relative to viewer (center)
+    let dx = w.x - width * 0.5;
+    let dy = w.y - height * 0.5;
+    let dist = sqrt(dx * dx + dy * dy) || 1;
+    let radialV = ((sourceVel.x * dx) + (sourceVel.y * dy)) / dist;
+    let dopplerShift = map(radialV, -3, 3, -60, 60);
+
+    let hue = (200 + dopplerShift + time * 15) % 360;
+    let alpha = w.life * 60;
+
+    noFill();
+    stroke(hue, 80, 95, alpha);
+    strokeWeight(1.2);
+    ellipse(w.x, w.y, w.r * 2, w.r * 2);
+
+    // Inner glow ring
+    stroke(hue, 60, 100, alpha * 0.4);
+    strokeWeight(3);
+    ellipse(w.x, w.y, w.r * 2, w.r * 2);
+
+    if (w.life <= 0) waveRings.splice(i, 1);
+  }
+
+  // Particles drifting outward
+  while (particles.length < NUM_PARTICLES) {
+    let angle = random(TWO_PI);
+    let d = random(5, 40);
+    particles.push({
+      x: source.x + cos(angle) * d,
+      y: source.y + sin(angle) * d,
+      vx: cos(angle) * random(0.5, 2),
+      vy: sin(angle) * random(0.5, 2),
+      life: random(0.3, 1.0),
+      size: random(1.5, 4),
+      hue: random(360)
+    });
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.004;
+
+    // Color based on velocity
+    let speed2 = sqrt(p.vx * p.vx + p.vy * p.vy);
+    let h = (p.hue + time * 20 + speed2 * 20) % 360;
+    let b = map(p.life, 0, 1, 20, 90);
+
+    noStroke();
+    fill(h, 70, b, p.life * 80);
+    ellipse(p.x, p.y, p.size);
+
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Mach cone lines (shock wave approximation)
+  let machAngle = asin(constrain(spd / 6, 0, 1));
+  drawMachCone(source.x, source.y, sourceVel.heading(), machAngle, time);
+
+  // Source glow
+  noStroke();
+  for (let r = 30; r > 0; r -= 5) {
+    fill(200, 90, 100, map(r, 30, 0, 5, 40));
+    ellipse(source.x, source.y, r * 2);
+  }
+  fill(60, 20, 100);
+  ellipse(source.x, source.y, 8);
+}
+
+function drawMachCone(cx, cy, heading, angle, t) {
+  if (angle < 0.05) return;
+  push();
+  translate(cx, cy);
+  rotate(heading);
+
+  let coneColor = (t * 20) % 360;
+  stroke(coneColor, 60, 80, 25);
+  strokeWeight(0.8);
+  noFill();
+
+  for (let side = -1; side <= 1; side += 2) {
+    beginShape();
+    for (let d = 0; d < 300; d += 4) {
+      let x = d;
+      let y = tan(angle) * d * side;
+      vertex(x, y);
+    }
+    endShape();
+  }
+
+  // Leading edge arcs
+  noFill();
+  stroke(coneColor + 30, 70, 90, 20);
+  strokeWeight(1.5);
+  arc(0, 0, 60, 60, -angle, angle);
+  arc(0, 0, 120, 120, -angle, angle);
+  pop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
