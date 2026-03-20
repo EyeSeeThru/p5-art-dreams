@@ -139,6 +139,7 @@ The project cycles through different technique categories to ensure variety:
 - **riesenberg** — Riesenberg-style geometric patterns with rotating chords and interconnecting lines
 - **riemann-zeta** — Riemann zeta function visualization with critical line, nontrivial zeros, and particle dynamics along Re(s)=1/2
 - **tesla-discharge** — Electrical discharge simulation with branching lightning from Tesla coils
+- **tesla-resonance** — Tesla coil electrical discharge visualization with branching lightning patterns, glowing plasma sparks, and pulsing coil dynamics
 - **capillary-waves** — Surface tension wave simulation with oscillating sources and curvature-driven dynamics
 - **carpet-turbulence** — Fractal carpet patterns combined with turbulent Perlin noise flow fields creating chaotic geometric art
 - **islands-of-chaos** — Self-organized criticality via sandpile model with cluster visualization
