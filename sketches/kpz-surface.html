@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>KPZ Surface</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// KPZ Surface Growth — Kardar-Parisi-Zhang equation visualization
+//dz/dt = ν∇²z + (λ/2)(∇z)² + η(x,t)
+// Discrete simulation on a 2D grid with deposition/erosion dynamics
+
+let cols, rows;
+let scale = 4;
+let gridA, gridB; // two height grids for smoothing
+let particles = [];
+const N = 120;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100);
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+  gridA = [];
+  gridB = [];
+  for (let i = 0; i < cols; i++) {
+    gridA[i] = [];
+    gridB[i] = [];
+    for (let j = 0; j < rows; j++) {
+      gridA[i][j] = random(-1, 1);
+      gridB[i][j] = 0;
+    }
+  }
+
+  // Spawn deposition particles
+  for (let i = 0; i < 60; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  background(0, 0, 5);
+
+  // KPZ update step — simplified discrete growth
+  for (let i = 1; i < cols - 1; i++) {
+    for (let j = 1; j < rows - 1; j++) {
+      let lap = gridA[i+1][j] + gridA[i-1][j] + gridA[i][j+1] + gridA[i][j-1] - 4 * gridA[i][j];
+      let gradSq = pow(gridA[i+1][j] - gridA[i-1][j], 2) + pow(gridA[i][j+1] - gridA[i][j-1], 2);
+      let noise = random(-0.5, 0.5);
+      gridB[i][j] = gridA[i][j] + 0.08 * lap + 0.15 * gradSq + noise;
+      gridB[i][j] *= 0.97; // damping
+    }
+  }
+
+  // Swap grids
+  let tmp = gridA;
+  gridA = gridB;
+  gridB = tmp;
+
+  // Draw height field as flowing polygons
+  noStroke();
+  for (let i = 0; i < cols - 1; i++) {
+    for (let j = 0; j < rows - 1; j++) {
+      let h = gridA[i][j];
+      let hx = gridA[i+1][j];
+      let hy = gridA[i][j+1];
+
+      let x0 = i * scale;
+      let y0 = j * scale;
+      let x1 = (i+1) * scale;
+      let y1 = (j+1) * scale;
+
+      // Color by height
+      let hue = map(sin(h * 2 + frameCount * 0.02), -1, 1, 180, 300);
+      let sat = map(abs(h), 0, 2, 20, 80);
+      let bri = map(h, -2, 2, 10, 95);
+
+      fill(hue, sat, bri, 0.85);
+      beginShape();
+      vertex(x0, y0 + h * 8);
+      vertex(x1, y0 + hx * 8);
+      vertex(x1, y1 + gridA[i+1][j+1] * 8);
+      vertex(x0, y1 + hy * 8);
+      endShape(CLOSE);
+    }
+  }
+
+  // Overlay flowing particles riding the surface
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+
+  // Subtle vignette
+  noStroke();
+  fill(0, 0, 0, 60);
+  rect(0, 0, width, 40);
+  rect(0, height - 40, width, 40);
+  rect(0, 0, 40, height);
+  rect(width - 40, 0, 40, height);
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.vx = random(-0.5, 0.5);
+    this.vy = random(-0.3, 0.1);
+    this.life = random(150, 400);
+    this.maxLife = this.life;
+    this.hue = random(200, 320);
+  }
+
+  update() {
+    let i = floor(this.x / scale);
+    let j = floor(this.y / scale);
+    i = constrain(i, 1, cols - 2);
+    j = constrain(j, 1, rows - 2);
+
+    let slopeX = gridA[i+1][j] - gridA[i-1][j];
+    let slopeY = gridA[i][j+1] - gridA[i][j-1];
+
+    this.vx += slopeX * 0.4 + random(-0.1, 0.1);
+    this.vy += slopeY * 0.2 + 0.02; // slight downward bias
+    this.vx *= 0.92;
+    this.vy *= 0.92;
+
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life--;
+
+    if (this.life <= 0 || this.x < 0 || this.x > width || this.y > height) {
+      this.reset();
+    }
+  }
+
+  display() {
+    let alpha = map(this.life, 0, this.maxLife, 0, 255);
+    let bri = map(this.life, 0, this.maxLife, 30, 100);
+    stroke(this.hue, 60, bri, alpha);
+    strokeWeight(1.2);
+    point(this.x, this.y);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+  let oldA = gridA, oldB = gridB;
+  gridA = []; gridB = [];
+  for (let i = 0; i < cols; i++) {
+    gridA[i] = []; gridB[i] = [];
+    for (let j = 0; j < rows; j++) {
+      let ii = floor(map(i, 0, cols, 0, oldA.length));
+      let jj = floor(map(j, 0, rows, 0, oldA[0] ? oldA[0].length : 0));
+      gridA[i][j] = (oldA[ii] && oldA[ii][jj] !== undefined) ? oldA[ii][jj] : random(-1, 1);
+      gridB[i][j] = 0;
+    }
+  }
+}
+</script>
+</body>
+</html>

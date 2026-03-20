@@ -191,6 +191,7 @@ The project cycles through different technique categories to ensure variety:
 - **helicity-flow** — Fluid helicity visualization with particles following helical paths, color-coded by vorticity alignment
 - **hilbert-curve** — Hilbert space-filling curve with animated traversal, glowing trails, and background pattern grid
 - **kuramoto-sync** — Kuramoto coupled oscillator synchronization showing spontaneous pattern formation in phase-locked grids
+- **kpz-surface** — Kardar-Parisi-Zhang surface growth equation with flowing particles riding the evolving height field
 - **dissipative-patterns** — Far-from-equilibrium self-organization patterns inspired by reaction-diffusion dynamics
 
 - **sine-surface** — 3D parametric wave surface with rotating animation and flowing color gradients
