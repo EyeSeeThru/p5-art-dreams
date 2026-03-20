@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nakayama Fractals</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050508; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Nakayama Fractals - Recursive Ideal Decomposition
+// Visualizing how finitely generated modules over Artinian rings
+// decompose into direct sums — creating recursive geometric fractals.
+// Inspired by Nakayama's lemma: M = IM implies M = 0 for I in J(R)
+
+let triangles = [];
+let maxDepth = 7;
+let time = 0;
+let palette = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(5, 20, 8);
+  
+  // Initialize with large triangle
+  let cx = width / 2;
+  let cy = height / 2;
+  let size = min(width, height) * 0.85;
+  
+  // Three vertices of equilateral-ish triangle (slightly asymmetric for asymmetry)
+  let v1 = { x: cx, y: cy - size * 0.5 };
+  let v2 = { x: cx - size * 0.5, y: cy + size * 0.4 };
+  let v3 = { x: cx + size * 0.45, y: cy + size * 0.45 };
+  
+  triangles.push({ v1, v2, v3, depth: 0, hue: random(360), age: 0 });
+  
+  // Color palettes for variety
+  palette = [
+    [280, 70, 90], // magenta-violet
+    [200, 80, 95], // cyan-blue
+    [340, 75, 95], // pink-crimson
+    [40, 85, 100],  // gold-amber
+    [160, 70, 90],  // teal
+  ];
+}
+
+function subdivide(tri) {
+  let results = [];
+  let d = tri.depth;
+  
+  // Get midpoints of each edge
+  let m1 = { 
+    x: (tri.v1.x + tri.v2.x) / 2, 
+    y: (tri.v1.y + tri.v2.y) / 2 
+  };
+  let m2 = { 
+    x: (tri.v2.x + tri.v3.x) / 2, 
+    y: (tri.v2.y + tri.v3.y) / 2 
+  };
+  let m3 = { 
+    x: (tri.v3.x + tri.v1.x) / 2, 
+    y: (tri.v3.y + tri.v1.y) / 2 
+  };
+  
+  // Add slight noise to midpoint positions for organic feel
+  let noiseAmt = map(d, 0, maxDepth, 3, 12);
+  m1.x += random(-noiseAmt, noiseAmt);
+  m1.y += random(-noiseAmt, noiseAmt);
+  m2.x += random(-noiseAmt, noiseAmt);
+  m2.y += random(-noiseAmt, noiseAmt);
+  m3.x += random(-noiseAmt, noiseAmt);
+  m3.y += random(-noiseAmt, noiseAmt);
+  
+  // Create 4 subtriangles (center one is inverted)
+  // Top subtriangle
+  results.push({
+    v1: tri.v1, v2: m1, v3: m3,
+    depth: d + 1,
+    hue: (tri.hue + random(15, 40)) % 360,
+    age: 0
+  });
+  
+  // Left subtriangle
+  results.push({
+    v1: m1, v2: tri.v2, v3: m2,
+    depth: d + 1,
+    hue: (tri.hue + random(15, 40)) % 360,
+    age: 0
+  });
+  
+  // Right subtriangle
+  results.push({
+    v1: m3, v2: m2, v3: tri.v3,
+    depth: d + 1,
+    hue: (tri.hue + random(15, 40)) % 360,
+    age: 0
+  });
+  
+  // Center inverted triangle (smaller)
+  if (d < maxDepth - 1) {
+    results.push({
+      v1: m1, v2: m2, v3: m3,
+      depth: d + 2,
+      hue: (tri.hue + 60) % 360,
+      age: 0,
+      inverted: true
+    });
+  }
+  
+  return results;
+}
+
+function drawTriangleEdge(tri) {
+  let alpha = map(tri.depth, 0, maxDepth, 40, 90);
+  let strokeW = map(tri.depth, 0, maxDepth, 2.5, 0.8);
+  
+  // Pulsing glow based on age
+  let pulse = sin(time * 2 + tri.age * 0.1) * 0.3 + 0.7;
+  alpha *= pulse;
+  
+  let c = palette[tri.depth % palette.length];
+  let hue = (c[0] + tri.hue * 0.1) % 360;
+  let sat = c[1];
+  let bri = c[2];
+  
+  stroke(hue, sat, bri, alpha);
+  strokeWeight(strokeW);
+  noFill();
+  
+  beginShape();
+  vertex(tri.v1.x, tri.v1.y);
+  vertex(tri.v2.x, tri.v2.y);
+  vertex(tri.v3.x, tri.v3.y);
+  endShape(CLOSE);
+}
+
+function drawTriangleFill(tri) {
+  let c = palette[tri.depth % palette.length];
+  let hue = (c[0] + tri.hue * 0.15 + time * 5) % 360;
+  let sat = c[1] * 0.3;
+  let bri = c[2] * 0.15;
+  
+  let pulse = sin(time * 1.5 + tri.age * 0.15) * 0.5 + 0.5;
+  let alpha = map(tri.depth, 0, maxDepth, 8, 25) * pulse;
+  
+  if (tri.inverted) {
+    alpha *= 1.5;
+    bri *= 1.3;
+  }
+  
+  noStroke();
+  fill(hue, sat, bri, alpha);
+  
+  beginShape();
+  vertex(tri.v1.x, tri.v1.y);
+  vertex(tri.v2.x, tri.v2.y);
+  vertex(tri.v3.x, tri.v3.y);
+  endShape(CLOSE);
+}
+
+function drawVertexGlow(tri) {
+  let verts = [tri.v1, tri.v2, tri.v3];
+  let c = palette[tri.depth % palette.length];
+  let hue = (c[0] + tri.hue * 0.2) % 360;
+  
+  let pulse = sin(time * 3 + tri.age * 0.2) * 0.4 + 0.6;
+  let size = map(tri.depth, 0, maxDepth, 8, 2) * pulse;
+  
+  for (let v of verts) {
+    // Outer glow
+    noStroke();
+    fill(hue, 60, 100, 15);
+    ellipse(v.x, v.y, size * 4, size * 4);
+    
+    // Inner bright point
+    fill(hue, 40, 100, 60);
+    ellipse(v.x, v.y, size, size);
+  }
+}
+
+function draw() {
+  // Very subtle fade
+  background(5, 20, 8, 12);
+  
+  time += 0.015;
+  
+  // Age all triangles
+  for (let tri of triangles) {
+    tri.age++;
+  }
+  
+  // Draw fills first (behind everything)
+  for (let tri of triangles) {
+    if (tri.depth < 5) {
+      drawTriangleFill(tri);
+    }
+  }
+  
+  // Draw edges
+  for (let tri of triangles) {
+    drawTriangleEdge(tri);
+  }
+  
+  // Draw vertex glows on deeper triangles
+  for (let tri of triangles) {
+    if (tri.depth >= 3 && tri.depth <= 5) {
+      drawVertexGlow(tri);
+    }
+  }
+  
+  // Occasionally subdivide some triangles
+  if (frameCount % 30 === 0 && triangles.length < 2000) {
+    let candidates = triangles.filter(t => 
+      t.depth < maxDepth && 
+      !t.inverted && 
+      t.age > 10
+    );
+    
+    if (candidates.length > 0) {
+      let idx = floor(random(min(5, candidates.length)));
+      let toSplit = candidates[idx];
+      let newTris = subdivide(toSplit);
+      
+      // Remove parent
+      let splitIdx = triangles.indexOf(toSplit);
+      if (splitIdx > -1) {
+        triangles.splice(splitIdx, 1);
+      }
+      
+      // Add children
+      triangles.push(...newTris);
+    }
+  }
+  
+  // Add new root triangles occasionally
+  if (frameCount % 180 === 0 && triangles.length < 3000) {
+    let cx = width / 2 + random(-width * 0.2, width * 0.2);
+    let cy = height / 2 + random(-height * 0.2, height * 0.2);
+    let size = min(width, height) * random(0.2, 0.4);
+    
+    let angle = random(TWO_PI);
+    let v1 = { x: cx + cos(angle) * size * 0.5, y: cy + sin(angle) * size * 0.5 };
+    let v2 = { x: cx + cos(angle + TWO_PI * 0.33) * size * 0.5, y: cy + sin(angle + TWO_PI * 0.33) * size * 0.5 };
+    let v3 = { x: cx + cos(angle + TWO_PI * 0.66) * size * 0.5, y: cy + sin(angle + TWO_PI * 0.66) * size * 0.5 };
+    
+    triangles.push({
+      v1, v2, v3, depth: 0,
+      hue: random(360),
+      age: 0
+    });
+  }
+  
+  // Slight global rotation drift for entire composition
+  if (frameCount % 5 === 0) {
+    let rotAngle = sin(time * 0.3) * 0.0005;
+    for (let tri of triangles) {
+      let cx = width / 2;
+      let cy = height / 2;
+      
+      for (let v of [tri.v1, tri.v2, tri.v3]) {
+        let dx = v.x - cx;
+        let dy = v.y - cy;
+        let cosA = cos(rotAngle);
+        let sinA = sin(rotAngle);
+        v.x = cx + dx * cosA - dy * sinA;
+        v.y = cy + dx * sinA + dy * cosA;
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(5, 20, 8);
+}
+
+function mousePressed() {
+  // Click to add new triangle at mouse position
+  let size = min(width, height) * 0.25;
+  let angle = random(TWO_PI);
+  let v1 = { x: mouseX + cos(angle) * size * 0.5, y: mouseY + sin(angle) * size * 0.5 };
+  let v2 = { x: mouseX + cos(angle + TWO_PI * 0.33) * size * 0.5, y: mouseY + sin(angle + TWO_PI * 0.33) * size * 0.5 };
+  let v3 = { x: mouseX + cos(angle + TWO_PI * 0.66) * size * 0.5, y: mouseY + sin(angle + TWO_PI * 0.66) * size * 0.5 };
+  
+  triangles.push({
+    v1, v2, v3, depth: 0,
+    hue: random(360),
+    age: 0
+  });
+}
+</script>
+</body>
+</html>
