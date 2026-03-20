@@ -262,6 +262,7 @@ The project cycles through different technique categories to ensure variety:
 - **photonic-crystal** — Photonic bandgap structure visualization with wave interference and hexagonal lattice of cylindrical rods
 
 - **affine-flow** — Geometric patterns driven by animated affine transformations with shearing, scaling, and rotating shapes
+- **lissajous-spiral** — Spiral-armed Lissajous patterns with wobbling filaments and color-cycled particle nodes
 - **harmonic-rose** — Parametric rhodonea curves with evolving harmonics, orbiting sparks, and layered color cycling
 
 All sketches are self-contained single HTML files.
