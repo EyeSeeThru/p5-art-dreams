@@ -87,6 +87,7 @@ The project cycles through different technique categories to ensure variety:
 - **lindenmayer** — L-system plant generation with animated branching and particle effects
 - **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling
 - **menger-vortex** — Menger sponge cubes with vortex dynamics, Perlin noise displacement, and animated 3D rotation
+- **whorl-pool** — Swirling vortex visualization with particles spiraling inward through concentric rings and iridescent color gradients
 - **nakayama-fractals** — Recursive ideal decomposition visualization with glowing geometric subdivisions
 - **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
