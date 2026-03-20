@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helical Resonance</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+let t = 0;
+
+function draw() {
+  background(0, 0, 5, 30);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  let maxR = min(width, height) * 0.42;
+  
+  // Multiple helical arms
+  let arms = 7;
+  let pointsPerArm = 80;
+  
+  for (let arm = 0; arm < arms; arm++) {
+    let armOffset = (TWO_PI / arms) * arm;
+    
+    for (let i = 0; i < pointsPerArm; i++) {
+      let progress = i / pointsPerArm;
+      let r = progress * maxR;
+      
+      // Helical wave
+      let helixFreq = 12;
+      let waveAmp = sin(progress * PI * 4 + t * 2) * 30;
+      let angle = armOffset + progress * TWO_PI * helixFreq + t * 0.5;
+      
+      // Add resonance shimmer
+      let resonance = sin(progress * 20 + t * 3) * sin(angle * 3 + t * 2);
+      waveAmp += resonance * 15;
+      
+      let x = cx + cos(angle) * (r + waveAmp);
+      let y = cy + sin(angle) * (r + waveAmp);
+      
+      // Color cycling
+      let hue = (arm * 50 + progress * 180 + t * 20) % 360;
+      let sat = 70 + resonance * 20;
+      let bri = 60 + progress * 30 + resonance * 15;
+      let alpha = 80 - progress * 40;
+      
+      let size = map(i, 0, pointsPerArm, 1, 4);
+      fill(hue, sat, bri, alpha);
+      circle(x, y, size);
+      
+      // Connecting glow
+      if (i > 0) {
+        let pProgress = (i - 1) / pointsPerArm;
+        let pR = pProgress * maxR;
+        let pAngle = armOffset + pProgress * TWO_PI * helixFreq + t * 0.5;
+        let pResonance = sin(pProgress * 20 + t * 3) * sin(pAngle * 3 + t * 2);
+        let pWaveAmp = sin(pProgress * PI * 4 + t * 2) * 30 + pResonance * 15;
+        
+        let px = cx + cos(pAngle) * (pR + pWaveAmp);
+        let py = cy + sin(pAngle) * (pR + pWaveAmp);
+        
+        stroke(hue, sat * 0.7, bri * 0.8, alpha * 0.4);
+        strokeWeight(size * 0.3);
+        line(x, y, px, py);
+        noStroke();
+      }
+    }
+  }
+  
+  // Central glow
+  let glowSize = 60 + sin(t * 2) * 10;
+  for (let i = 5; i > 0; i--) {
+    let alpha = 20 - i * 3;
+    fill(60, 80, 90, alpha);
+    circle(cx, cy, glowSize + i * 15);
+  }
+  
+  // Orbiting particles
+  for (let p = 0; p < 12; p++) {
+    let pAngle = (TWO_PI / 12) * p + t * 0.8;
+    let pR = maxR * 0.3 + sin(t * 3 + p) * 40;
+    let px = cx + cos(pAngle) * pR;
+    let py = cy + sin(pAngle) * pR;
+    let pHue = (p * 30 + t * 30) % 360;
+    
+    fill(pHue, 90, 100, 80);
+    circle(px, py, 6);
+    
+    // Trail
+    for (let k = 1; k <= 5; k++) {
+      let trailAngle = pAngle - k * 0.15;
+      let trailR = pR + k * 5;
+      let tx = cx + cos(trailAngle) * trailR;
+      let ty = cy + sin(trailAngle) * trailR;
+      fill(pHue, 90 - k * 10, 100 - k * 15, 60 - k * 10);
+      circle(tx, ty, 6 - k);
+    }
+  }
+  
+  t += 0.015;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

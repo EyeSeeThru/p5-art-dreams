@@ -90,6 +90,7 @@ The project cycles through different technique categories to ensure variety:
 - **whorl-pool** — Swirling vortex visualization with particles spiraling inward through concentric rings and iridescent color gradients
 - **nakayama-fractals** — Recursive ideal decomposition visualization with glowing geometric subdivisions
 - **neon-streaming** — Glowing particle streams with Perlin flow field and trail effects
+- **helical-resonance** — Helical wave resonance with multiple rotating arms, connecting glow lines, and orbiting particle trails
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
 - **moire-weave** — Overlapping oscillating grids creating interference moire patterns
 - **concentric-tensions** — Oscillating concentric rings with connecting tension lines
