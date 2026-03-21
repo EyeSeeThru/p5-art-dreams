@@ -271,6 +271,7 @@ The project cycles through different technique categories to ensure variety:
 - **pinwheel-fractal** — Recursive pinwheel tiling with 3-4-5 right triangle subdivisions, animated breathing, and floating particles along geometric edges
 
 - **kotelnikov** — Sampling theorem visualization demonstrating Nyquist-Shannon interpolation with sinc reconstruction, aliasing effects at different sampling rates
+- **gabor-patches** — Gabor function patches arranged in a grid with varying frequency, orientation, and phase creating visual perception inspired optical patterns
 
 All sketches are self-contained single HTML files.
 
