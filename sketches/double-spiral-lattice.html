@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Double Spiral Lattice</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const NUM_ARMS = 12;
+const PARTICLES_PER_ARM = 80;
+const TOTAL_PARTICLES = NUM_ARMS * PARTICLES_PER_ARM;
+let particles = [];
+let t = 0;
+
+class SpiralParticle {
+  constructor(arm, index) {
+    this.arm = arm;
+    this.index = index;
+    this.angle = (TWO_PI / NUM_ARMS) * arm;
+    this.baseRadius = 0;
+    this.trail = [];
+    this.maxTrail = 25;
+    this.hue = (this.arm / NUM_ARMS) * 360 + 180;
+  }
+
+  update() {
+    let phase = (this.index / PARTICLES_PER_ARM) * TWO_PI * 3;
+    let spiralTightness = 2.5;
+    let radiusNoise = noise(this.arm * 0.3, this.index * 0.1, t * 0.3) * 150;
+    
+    this.currentRadius = this.baseRadius + radiusNoise * sin(t * 0.8 + phase);
+    this.x = width/2 + cos(this.angle + t * 0.4) * this.currentRadius;
+    this.y = height/2 + sin(this.angle + t * 0.4) * this.currentRadius;
+    
+    this.trail.push({x: this.x, y: this.y});
+    if (this.trail.length > this.maxTrail) this.trail.shift();
+    
+    this.baseRadius += 0.15;
+    if (this.baseRadius > max(width, height)) {
+      this.baseRadius = 0;
+      this.trail = [];
+    }
+  }
+
+  draw() {
+    noFill();
+    for (let i = 1; i < this.trail.length; i++) {
+      let alpha = map(i, 0, this.trail.length, 0, 180);
+      let weight = map(i, 0, this.trail.length, 0.5, 2);
+      stroke(this.hue, 80, 90, alpha);
+      strokeWeight(weight);
+      line(this.trail[i-1].x, this.trail[i-1].y, this.trail[i].x, this.trail[i].y);
+    }
+    
+    let pulse = sin(t * 2 + this.index * 0.2) * 0.3 + 0.7;
+    fill(this.hue, 70, 100, 200 * pulse);
+    noStroke();
+    circle(this.x, this.y, 3 + 2 * pulse);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 255);
+  background(0);
+  
+  for (let arm = 0; arm < NUM_ARMS; arm++) {
+    for (let i = 0; i < PARTICLES_PER_ARM; i++) {
+      particles.push(new SpiralParticle(arm, i));
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 0, 15);
+  
+  translate(width/2, height/2);
+  
+  let secondSpiralOffset = PI / NUM_ARMS;
+  push();
+  rotate(secondSpiralOffset);
+  
+  for (let p of particles) {
+    p.update();
+    p.draw();
+  }
+  pop();
+  
+  fill(0, 0, 100, 3);
+  noStroke();
+  circle(0, 0, 8);
+  
+  t += 0.015;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
