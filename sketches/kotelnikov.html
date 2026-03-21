@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kotelnikov — Sampling Theorem</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a12; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      color: #e0e0e0;
+      overflow: hidden;
+    }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      pointer-events: none;
+    }
+    #title {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      letter-spacing: 3px;
+      color: #5af;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div id="title">Kotelnikov Sampling Theorem</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script>
+    let time = 0;
+    let samplePoints = [];
+    let reconstructedPoints = [];
+    let originalWave = [];
+    const NUM_POINTS = 500;
+    const NUM_SAMPLES = 25;
+    let sampleRate = 25;
+    let mode = 0;
+    
+    function setup() {
+      createCanvas(800, 600);
+      colorMode(RGB);
+      generateWave();
+    }
+    
+    function generateWave() {
+      originalWave = [];
+      for (let i = 0; i < NUM_POINTS; i++) {
+        let x = map(i, 0, NUM_POINTS, 0, TWO_PI * 3);
+        let y = 0;
+        // Composite signal
+        y += sin(x) * 1.0;
+        y += sin(x * 3) * 0.5;
+        y += sin(x * 5) * 0.25;
+        y += sin(x * 7) * 0.125;
+        originalWave.push(y);
+      }
+    }
+    
+    function sampleSignal() {
+      samplePoints = [];
+      let step = floor(NUM_POINTS / NUM_SAMPLES);
+      for (let i = 0; i < NUM_POINTS; i += step) {
+        samplePoints.push({
+          x: i,
+          y: originalWave[i],
+          phase: (i / NUM_POINTS) * 3 * TWO_PI
+        });
+      }
+    }
+    
+    function reconstructSignal() {
+      // Whittaker-Shannon interpolation
+      reconstructedPoints = [];
+      let step = floor(NUM_POINTS / NUM_SAMPLES);
+      
+      for (let i = 0; i < NUM_POINTS; i++) {
+        let y = 0;
+        let t = map(i, 0, NUM_POINTS, 0, NUM_SAMPLES - 1);
+        
+        for (let j = 0; j < samplePoints.length; j++) {
+          let x = j - t;
+          // Sinc function
+          let sinc = x === 0 ? 1 : sin(PI * x) / (PI * x);
+          // Hamming window to reduce Gibbs phenomenon
+          let window = 0.54 + 0.46 * cos(2 * PI * x / (NUM_SAMPLES));
+          y += samplePoints[j].y * sinc * window;
+        }
+        reconstructedPoints.push(y);
+      }
+    }
+    
+    function draw() {
+      background(10, 10, 18);
+      
+      time += 0.01;
+      
+      // Draw panels
+      let panelWidth = width * 0.7;
+      let panelHeight = height * 0.4;
+      let startX = width * 0.15;
+      let startY1 = height * 0.15;
+      let startY2 = height * 0.55;
+      
+      // Mode cycling
+      mode = floor(time * 0.3) % 3;
+      sampleRate = [25, 12, 8][mode];
+      
+      // Resample based on rate
+      samplePoints = [];
+      let step = floor(NUM_POINTS / sampleRate);
+      for (let i = 0; i < NUM_POINTS; i += step) {
+        samplePoints.push({
+          x: i,
+          y: originalWave[i]
+        });
+      }
+      reconstructSignal();
+      
+      // Title
+      fill(100, 170, 255);
+      textSize(12);
+      textAlign(CENTER, CENTER);
+      
+      // Panel 1: Original signal
+      drawSignal(startX, startY1, panelWidth, panelHeight, originalWave, 'ORIGINAL SIGNAL (BANDLIMITED)', color(100, 200, 255));
+      
+      // Panel 2: Sampled and reconstructed
+      drawSampledSignal(startX, startY2, panelWidth, panelHeight, 'SAMPLED & RECONSTRUCTED', color(255, 150, 100));
+      
+      // Draw sampling rate indicator
+      let rateText = sampleRate >= 20 ? 'NYQUIST RATE: PERFECT RECONSTRUCTION' : 
+                     sampleRate >= 12 ? 'BELOW NYQUIST: ALIASING BEGINNING' : 'UNDERSAMPLED: HEAVY ALIASING';
+      let rateColor = sampleRate >= 20 ? color(100, 255, 150) : 
+                     sampleRate >= 12 ? color(255, 255, 100) : color(255, 100, 100);
+      
+      fill(rateColor);
+      textSize(11);
+      text(rateText, width/2, height - 30);
+      
+      // Draw sample rate
+      fill(150);
+      textSize(10);
+      text('SAMPLES PER PERIOD: ' + sampleRate, width/2, height - 15);
+    }
+    
+    function drawSignal(x, y, w, h, signal, label, col) {
+      push();
+      translate(x, y);
+      
+      // Grid
+      stroke(40);
+      strokeWeight(0.5);
+      for (let i = 0; i <= 4; i++) {
+        line(0, i * h/4, w, i * h/4);
+        line(i * w/4, 0, i * w/4, h);
+      }
+      
+      // Axis
+      stroke(60);
+      line(0, h/2, w, h/2);
+      
+      // Signal
+      noFill();
+      stroke(col);
+      strokeWeight(2);
+      beginShape();
+      for (let i = 0; i < signal.length; i++) {
+        let sx = map(i, 0, signal.length, 0, w);
+        let sy = map(signal[i], -2, 2, h * 0.8, h * 0.2);
+        vertex(sx, sy);
+      }
+      endShape();
+      
+      // Label
+      fill(col);
+      noStroke();
+      textSize(10);
+      textAlign(LEFT, CENTER);
+      text(label, 5, 12);
+      
+      pop();
+    }
+    
+    function drawSampledSignal(x, y, w, h, label, col) {
+      push();
+      translate(x, y);
+      
+      // Grid
+      stroke(40);
+      strokeWeight(0.5);
+      for (let i = 0; i <= 4; i++) {
+        line(0, i * h/4, w, i * h/4);
+        line(i * w/4, 0, i * w/4, h);
+      }
+      
+      // Axis
+      stroke(60);
+      line(0, h/2, w, h/2);
+      
+      // Reconstructed signal (faded)
+      noFill();
+      stroke(255, 100);
+      strokeWeight(1.5);
+      beginShape();
+      for (let i = 0; i < reconstructedPoints.length; i++) {
+        let sx = map(i, 0, reconstructedPoints.length, 0, w);
+        let sy = map(reconstructedPoints[i], -2, 2, h * 0.8, h * 0.2);
+        vertex(sx, sy);
+      }
+      endShape();
+      
+      // Original signal (faded reference)
+      stroke(100, 50);
+      strokeWeight(1);
+      beginShape();
+      for (let i = 0; i < originalWave.length; i++) {
+        let sx = map(i, 0, originalWave.length, 0, w);
+        let sy = map(originalWave[i], -2, 2, h * 0.8, h * 0.2);
+        vertex(sx, sy);
+      }
+      endShape();
+      
+      // Sample points
+      for (let pt of samplePoints) {
+        let sx = map(pt.x, 0, NUM_POINTS, 0, w);
+        let sy = map(pt.y, -2, 2, h * 0.8, h * 0.2);
+        
+        // Glow
+        noStroke();
+        fill(255, 200, 100, 50);
+        ellipse(sx, sy, 12, 12);
+        fill(255, 220, 150);
+        ellipse(sx, sy, 6, 6);
+        fill(255);
+        ellipse(sx, sy, 3, 3);
+      }
+      
+      // Vertical lines to sample points
+      stroke(255, 100);
+      strokeWeight(0.5);
+      for (let pt of samplePoints) {
+        let sx = map(pt.x, 0, NUM_POINTS, 0, w);
+        line(sx, h/2, sx, h);
+      }
+      
+      // Label
+      fill(col);
+      noStroke();
+      textSize(10);
+      textAlign(LEFT, CENTER);
+      text(label + ' (SINC INTERPOLATION)', 5, 12);
+      
+      pop();
+    }
+    
+    function mousePressed() {
+      // Advance mode on click
+      time += 0.5;
+    }
+  </script>
+  <div id="info">Click to advance sampling rate</div>
+</body>
+</html>

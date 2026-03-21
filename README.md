@@ -270,6 +270,8 @@ The project cycles through different technique categories to ensure variety:
 - **double-spiral-lattice** — Dual interweaving spiral lattices with particle trails and phase-shifted rotation creating hypnotic lattice interference patterns
 - **pinwheel-fractal** — Recursive pinwheel tiling with 3-4-5 right triangle subdivisions, animated breathing, and floating particles along geometric edges
 
+- **kotelnikov** — Sampling theorem visualization demonstrating Nyquist-Shannon interpolation with sinc reconstruction, aliasing effects at different sampling rates
+
 All sketches are self-contained single HTML files.
 
 ```bash
