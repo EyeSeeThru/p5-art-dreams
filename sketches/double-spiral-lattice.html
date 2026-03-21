@@ -36,8 +36,8 @@ class SpiralParticle {
     let radiusNoise = noise(this.arm * 0.3, this.index * 0.1, t * 0.3) * 150;
     
     this.currentRadius = this.baseRadius + radiusNoise * sin(t * 0.8 + phase);
-    this.x = width/2 + cos(this.angle + t * 0.4) * this.currentRadius;
-    this.y = height/2 + sin(this.angle + t * 0.4) * this.currentRadius;
+    this.x = cos(this.angle + t * 0.4) * this.currentRadius;
+    this.y = sin(this.angle + t * 0.4) * this.currentRadius;
     
     this.trail.push({x: this.x, y: this.y});
     if (this.trail.length > this.maxTrail) this.trail.shift();
