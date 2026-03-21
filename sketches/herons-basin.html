@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heron's Basin</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050508; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Heron's Basin — Newton's fractal for z³ - 1 = 0
+// Shows basins of attraction for the three cube roots of unity
+// Boundaries form beautiful fractal patterns
+
+let particles = [];
+let time = 0;
+const NUM_PARTICLES = 600;
+const MAX_ITER = 80;
+
+let roots;
+let palette;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Three cube roots of 1: e^(2πik/3) for k=0,1,2
+  roots = [
+    { r: 1, theta: 0 },
+    { r: 1, theta: TWO_PI / 3 },
+    { r: 1, theta: 4 * TWO_PI / 3 }
+  ];
+
+  // Palette: three distinct hues for each basin
+  palette = [color(340, 85, 95), color(180, 85, 95), color(50, 85, 95)];
+
+  // Init particles at complex plane positions
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new NewtonParticle());
+  }
+}
+
+function complexMul(a, b) {
+  return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
+}
+
+function complexDiv(a, b) {
+  let denom = b.re * b.re + b.im * b.im;
+  return { re: (a.re * b.re + a.im * b.im) / denom, im: (a.im * b.re - a.re * b.im) / denom };
+}
+
+function complexSub(a, b) {
+  return { re: a.re - b.re, im: a.im - b.im };
+}
+
+function newtonIter(z) {
+  // z^3 - 1 = 0, Newton: z_new = z - f(z)/f'(z)
+  // z_new = z - (z^3 - 1) / (3z^2)
+  let z2 = complexMul(z, z);
+  let z3 = complexMul(z2, z);
+  let f = complexSub(z3, { re: 1, im: 0 });
+  let fPrime = { re: 3 * z2.re, im: 3 * z2.im };
+
+  if (fPrime.re === 0 && fPrime.im === 0) return z;
+  return complexSub(z, complexDiv(f, fPrime));
+}
+
+function findBasin(z) {
+  let prev = z;
+  let curr = z;
+  for (let i = 0; i < MAX_ITER; i++) {
+    curr = newtonIter(curr);
+    let d0 = dist(curr.re, curr.im, roots[0].r * cos(roots[0].theta), roots[0].r * sin(roots[0].theta));
+    let d1 = dist(curr.re, curr.im, roots[1].r * cos(roots[1].theta), roots[1].r * sin(roots[1].theta));
+    let d2 = dist(curr.re, curr.im, roots[2].r * cos(roots[2].theta), roots[2].r * sin(roots[2].theta));
+    let minD = min(d0, d1, d2);
+    if (minD < 0.02) {
+      if (minD === d0) return 0;
+      if (minD === d1) return 1;
+      return 2;
+    }
+    prev = curr;
+  }
+  return -1;
+}
+
+function mapComplex(x, y) {
+  let scale = 3.5;
+  let cx = x - width / 2;
+  let cy = y - height / 2;
+  return {
+    re: cx / (width / 2) * scale,
+    im: cy / (height / 2) * scale
+  };
+}
+
+function draw() {
+  background(240, 15, 3, 25);
+
+  let res = 4;
+  noStroke();
+  for (let px = 0; px < width; px += res) {
+    for (let py = 0; py < height; py += res) {
+      let z = mapComplex(px, py);
+      let basin = findBasin(z);
+      if (basin >= 0) {
+        let c = palette[basin];
+        fill(hue(c), saturation(c), brightness(c), 70);
+        rect(px, py, res, res);
+      }
+    }
+  }
+
+  // Draw root markers
+  for (let i = 0; i < 3; i++) {
+    let sx = width / 2 + roots[i].r * cos(roots[i].theta) * (width / 2) / 3.5;
+    let sy = height / 2 + roots[i].r * sin(roots[i].theta) * (height / 2) / 3.5;
+
+    // Glow rings
+    let pulse = (sin(time * 2 + i * 2) + 1) * 0.5;
+    noFill();
+    stroke(hue(palette[i]), 80, 100, 30 + pulse * 30);
+    strokeWeight(1.5);
+    ellipse(sx, sy, 30 + pulse * 20, 30 + pulse * 20);
+
+    // Core dot
+    fill(hue(palette[i]), 70, 100, 90);
+    noStroke();
+    ellipse(sx, sy, 8, 8);
+
+    // Label
+    fill(hue(palette[i]), 50, 80, 100);
+    textSize(9);
+    textAlign(CENTER);
+    text("ζ" + (i + 1), sx, sy - 18);
+  }
+
+  // Floating boundary particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+
+  // Animated axis grid
+  stroke(0, 0, 40, 15);
+  strokeWeight(0.5);
+  line(width / 2, 0, width / 2, height);
+  line(0, height / 2, width, height / 2);
+
+  // Title
+  noStroke();
+  fill(0, 0, 60, 80);
+  textSize(10);
+  textAlign(LEFT);
+  text("Newton's Fractal  ·  z³ − 1 = 0  ·  basins of attraction", 20, 30);
+
+  time += 0.012;
+}
+
+class NewtonParticle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    // Spawn near the fractal boundary (equidistant from roots)
+    let angle = random(TWO_PI);
+    let radius = random(0.5, 2.5);
+    this.z = {
+      re: radius * cos(angle),
+      im: radius * sin(angle)
+    };
+    this.prevZ = { ...this.z };
+    this.basin = findBasin(this.z);
+    this.hue = this.basin >= 0 ? hue(palette[this.basin]) : random(360);
+    this.life = random(60, 180);
+    this.maxLife = this.life;
+    this.trail = [];
+    this.speed = random(0.02, 0.06);
+  }
+
+  update() {
+    this.prevZ = { ...this.z };
+    this.z = newtonIter(this.z);
+
+    // Add gentle drift
+    this.z.re += random(-0.01, 0.01) * sin(time + this.life);
+    this.z.im += random(-0.01, 0.01) * cos(time + this.life);
+
+    // Remap to screen
+    let sx = map(this.z.re, -3.5, 3.5, 0, width);
+    let sy = map(this.z.im, -3.5, 3.5, 0, height);
+
+    this.trail.push({ x: sx, y: sy });
+    if (this.trail.length > 25) this.trail.shift();
+
+    // Update basin color dynamically
+    this.basin = findBasin(this.z);
+    if (this.basin >= 0) {
+      this.hue = (hue(palette[this.basin]) + time * 10) % 360;
+    }
+
+    this.life -= 0.8;
+    if (this.life <= 0 || sx < 0 || sx > width || sy < 0 || sy > height) {
+      this.reset();
+    }
+  }
+
+  display() {
+    if (this.trail.length < 2) return;
+
+    let lifeRatio = this.life / this.maxLife;
+    noFill();
+
+    beginShape();
+    for (let i = 0; i < this.trail.length; i++) {
+      let alpha = map(i, 0, this.trail.length, 0, lifeRatio * 60);
+      stroke(this.hue, 80, 90, alpha);
+      strokeWeight(map(i, 0, this.trail.length, 0.5, 2));
+      vertex(this.trail[i].x, this.trail[i].y);
+    }
+    endShape();
+
+    // Head glow
+    let head = this.trail[this.trail.length - 1];
+    fill(this.hue, 70, 100, lifeRatio * 80);
+    noStroke();
+    ellipse(head.x, head.y, 3, 3);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

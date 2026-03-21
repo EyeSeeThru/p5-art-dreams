@@ -163,6 +163,7 @@ The project cycles through different technique categories to ensure variety:
 - **fractal-brush** — Recursive brush strokes creating organic fractal patterns with golden/amber palette
 - **galton-board** — Galton board (bean machine) demonstrating normal distribution with falling beads and histogram visualization
 - **gyroid-surface** — Mathematical minimal surface visualization with animated gyroid equation and flowing color gradients
+- **herons-basin** — Newton's fractal for z³ − 1 = 0 showing basins of attraction for cube roots of unity with animated boundary particles and fractal boundaries
 - **halvorsen-attractor** — Chaotic Halvorsen attractor particle simulation with colorful trail visualization
 - **solar-flare** — Solar corona visualization with plasma arcs, magnetic field particles, and coronal mass ejection effects
 - **tesla-coils** — Electrical discharge simulation with branching lightning from multiple Tesla coil sources with glowing particles
