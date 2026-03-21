@@ -272,6 +272,7 @@ The project cycles through different technique categories to ensure variety:
 
 - **kotelnikov** — Sampling theorem visualization demonstrating Nyquist-Shannon interpolation with sinc reconstruction, aliasing effects at different sampling rates
 - **gabor-patches** — Gabor function patches arranged in a grid with varying frequency, orientation, and phase creating visual perception inspired optical patterns
+- **caustic-weaver** — Interference patterns from animated circular wave sources creating luminous caustic lines with shifting hues
 
 All sketches are self-contained single HTML files.
 

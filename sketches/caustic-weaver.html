@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caustic Weaver</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<script>
+// Caustic Weaver - Interference patterns from animated wave sources
+let t = 0;
+let sources = [];
+const NUM_SOURCES = 7;
+
+function setup() {
+  createCanvas(800, 800);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Create wave sources in a circular pattern
+  for (let i = 0; i < NUM_SOURCES; i++) {
+    let angle = (TWO_PI / NUM_SOURCES) * i;
+    sources.push({
+      angle: angle,
+      radius: 280,
+      phase: random(TWO_PI),
+      freq: random(0.8, 1.2)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 5);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  
+  // Draw caustic interference pattern
+  loadPixels();
+  for (let x = 0; x < width; x += 2) {
+    for (let y = 0; y < height; y += 2) {
+      let sum = 0;
+      let sumY = 0;
+      
+      for (let s of sources) {
+        let sx = cx + cos(s.angle + t * 0.1) * s.radius;
+        let sy = cy + sin(s.angle + t * 0.1) * s.radius;
+        let d = dist(x, y, sx, sy);
+        let wave = sin(d * 0.08 - t * 2 * s.freq + s.phase);
+        sum += wave;
+        sumY += cos(d * 0.08 - t * 2 * s.freq + s.phase);
+      }
+      
+      let intensity = (sum / NUM_SOURCES + 1) * 0.5;
+      let phase = (atan2(sumY, sum) + PI) / TWO_PI;
+      
+      let hue = (phase * 360 + t * 20) % 360;
+      let sat = 70 + intensity * 30;
+      let bri = intensity * 90;
+      
+      // Bright caustic lines
+      if (intensity > 0.85) {
+        let bright = map(intensity, 0.85, 1, 0, 100);
+        let c = color(hue, sat, bri + bright);
+        // Draw 2x2 pixels for speed
+        for (let dx = 0; dx < 2 && x + dx < width; dx++) {
+          for (let dy = 0; dy < 2 && y + dy < height; dy++) {
+            let idx = 4 * ((y + dy) * width + (x + dx));
+            pixels[idx] = red(c);
+            pixels[idx + 1] = green(c);
+            pixels[idx + 2] = blue(c);
+            pixels[idx + 3] = 255;
+          }
+        }
+      }
+    }
+  }
+  updatePixels();
+  
+  // Draw source nodes
+  for (let s of sources) {
+    let sx = cx + cos(s.angle + t * 0.1) * s.radius;
+    let sy = cy + sin(s.angle + t * 0.1) * s.radius;
+    
+    // Glowing node
+    noStroke();
+    fill(60, 20, 100, 50);
+    ellipse(sx, sy, 30, 30);
+    fill(60, 30, 100, 80);
+    ellipse(sx, sy, 15, 15);
+    fill(60, 50, 100);
+    ellipse(sx, sy, 6, 6);
+  }
+  
+  t += 0.02;
+  
+  if (frameCount % 10 === 0) {
+    console.log(frameCount);
+  }
+}
+</script>
+</body>
+</html>
