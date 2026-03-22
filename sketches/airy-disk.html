@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Airy Disk</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Airy Disk - Diffraction pattern from circular aperture
+// Based on Bessel function J1 for the intensity distribution
+
+let t = 0;
+
+function setup() {
+  createCanvas(800, 800);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  background(0, 0, 5);
+  
+  translate(width / 2, height / 2);
+  
+  // Scale for the diffraction pattern
+  let scaleVal = 0.008 * map(sin(t * 0.3), -1, 1, 0.8, 1.2);
+  
+  // Draw intensity rings with HSB color cycling
+  let rings = 80;
+  for (let i = 1; i <= rings; i++) {
+    let r = i * 5.5;
+    let x = r * cos(t * 0.2 + i * 0.1);
+    let y = r * sin(t * 0.15 + i * 0.08);
+    
+    // Airy pattern intensity: (2*J1(x)/x)^2
+    let arg = r * scaleVal;
+    let bessel = besselJ1(arg);
+    let intensity = bessel === 0 ? 0 : pow(2 * bessel / arg, 2);
+    intensity = constrain(intensity * 100, 0, 100);
+    
+    // Color cycling
+    let hue = map(i, 1, rings, 200, 320) + sin(t * 0.5) * 20;
+    let sat = 80 + intensity * 0.2;
+    let bri = intensity * 0.9;
+    let alpha = map(intensity, 0, 40, 10, 90);
+    
+    fill(hue, sat, bri, alpha);
+    
+    // Draw as small ellipses forming rings
+    let ellSize = map(intensity, 0, 40, 1, 4);
+    ellipse(x, y, ellSize, ellSize * 0.6);
+  }
+  
+  // Central bright spot (Airy disk core)
+  let coreHue = 60 + sin(t * 0.4) * 30;
+  fill(coreHue, 30, 100, 95);
+  ellipse(0, 0, 18, 18);
+  
+  // Outer scattering particles
+  for (let i = 0; i < 120; i++) {
+    let angle = i * TWO_PI / 120 + t * 0.1;
+    let radBase = 200 + 100 * sin(t * 0.3 + i * 0.2);
+    let px = cos(angle) * radBase;
+    let py = sin(angle) * radBase;
+    
+    let ph = map(i, 0, 120, 180, 280);
+    fill(ph, 70, 80, 30 + 20 * sin(t + i));
+    ellipse(px, py, 2, 2);
+  }
+  
+  t += 0.015;
+}
+
+// Bessel J1 approximation
+function besselJ1(x) {
+  if (x === 0) return 0.5;
+  let ax = abs(x);
+  if (ax < 4) {
+    let y = x * x;
+    let ans1 = x * (72362614232.0 + y * (-7895059235.0 + y * (242396853.1 + y * (-2972611.439 + y * 15704.482)))));
+    let ans2 = 144725228442.0 + y * (2300535178.0 + y * (18583304.74 + y * (99447.43394 + y * (376.999139 + y * 1))));
+    return ans1 / ans2;
+  } else {
+    let z = 8.0 / ax;
+    let y = z * z;
+    let xx = ax - 2.356194491;
+    let ans1 = 1 + y * (0.183105e-2 + y * (-0.3516396496e-4 + y * (0.2457520174e-5 + y * (-0.240337019e-6))));
+    let ans2 = 0.04687499995 + y * (-0.2002690873 + y * (0.8449199096 + y * (-0.693059624 + y * (0.353844555 + y * (-0.10128023))))));
+    let ans = sqrt(0.636619772 / ax) * (cos(xx) * ans1 - z * sin(xx) * ans2);
+    return x < 0 ? -ans : ans;
+  }
+}
+</script>
+</body>
+</html>

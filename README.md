@@ -130,6 +130,7 @@ The project cycles through different technique categories to ensure variety:
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **dendritic-flow** — Perlin noise-driven flow field with branching particle trails and warm amber palette
 - **abelian-sandpile** — Self-organized criticality model with cascading grain toppling
+- **airy-disk** — Circular aperture diffraction pattern with Bessel function intensity rings and color cycling
 - **electrostatic-breakdown** — Dielectric discharge visualization with branching electrical patterns
 - **electrohydrodynamics** — Electric field driven fluid patterns with charged particles and Coulomb forces
 - **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
