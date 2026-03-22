@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eisenstein Lattice</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Eisenstein integers lattice visualization
+// Complex plane with hexagonal grid, root vectors, and animated nodes
+const w = window.innerWidth;
+const h = window.innerHeight;
+const cx = w / 2;
+const cy = h / 2;
+
+// ω = e^(2πi/3) = -1/2 + i*sqrt(3)/2
+const OMEGA = { r: -0.5, i: Math.sqrt(3) / 2 };
+const OMEGA_BAR = { r: -0.5, i: -Math.sqrt(3) / 2 };
+
+let time = 0;
+let nodes = [];
+let glowParticles = [];
+
+function complexMul(a, b) {
+  return { r: a.r * b.r - a.i * b.i, i: a.r * b.i + a.i * b.r };
+}
+
+function complexAdd(a, b) {
+  return { r: a.r + b.r, i: a.i + b.i };
+}
+
+function complexScale(a, s) {
+  return { r: a.r * s, i: a.i * s };
+}
+
+function complexToScreen(z, scale) {
+  return {
+    x: cx + z.r * scale,
+    y: cy - z.i * scale
+  };
+}
+
+function screenToComplex(x, y, scale) {
+  return {
+    r: (x - cx) / scale,
+    i: -(y - cy) / scale
+  };
+}
+
+function isEisensteinInteger(re, im) {
+  // Check if real and imag parts form an Eisenstein integer pair
+  // Valid pairs: (m, n) where m,n are integers
+  // Norm: m² - mn + n²
+  return Number.isInteger(re) && Number.isInteger(im);
+}
+
+function eisensteinNorm(m, n) {
+  return m * m - m * n + n * n;
+}
+
+function eisensteinAdd(m1, n1, m2, n2) {
+  return { m: m1 + m2, n: n1 + n2 };
+}
+
+function eisensteinScale(m, n, s) {
+  return { m: m * s, n: n * s };
+}
+
+// Draw a hex grid using Eisenstein integer coordinates (m, n)
+// x = (m - n/2), y = (n * sqrt(3)/2)
+function eisensteinToCartesian(m, n, scale) {
+  const x = (m - n * 0.5) * scale;
+  const y = (n * Math.sqrt(3) / 2) * scale;
+  return { x: cx + x, y: cy - y };
+}
+
+function cartesianToEisenstein(px, py, scale) {
+  const x = px - cx;
+  const y = -(py - cy);
+  const n = (y / scale) / (Math.sqrt(3) / 2);
+  const m = (x / scale) + n / 2;
+  return { m: Math.round(m), n: Math.round(n) };
+}
+
+function drawHexGrid(scale) {
+  const range = Math.ceil(Math.max(w, h) / scale) + 4;
+  
+  stroke(30, 30, 50, 60);
+  strokeWeight(0.5);
+  noFill();
+  
+  for (let m = -range; m <= range; m++) {
+    for (let n = -range; n <= range; n++) {
+      if (Math.abs(m) > range || Math.abs(n) > range) continue;
+      
+      const pos = eisensteinToCartesian(m, n, scale);
+      if (pos.x < -50 || pos.x > w + 50 || pos.y < -50 || pos.y > h + 50) continue;
+      
+      drawHexagon(pos.x, pos.y, scale * 0.52);
+    }
+  }
+}
+
+function drawHexagon(cx, cy, r) {
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.PI / 3 * i;
+    vertex(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+  }
+  endShape(CLOSE);
+}
+
+function drawRootVectors(scale) {
+  // Primitive root vectors: 1 and ω
+  const v1 = { x: scale, y: 0 };  // +1
+  const v2 = { x: -scale * 0.5, y: -scale * Math.sqrt(3) / 2 };  // ω
+  
+  stroke(255, 100, 50, 40);
+  strokeWeight(1);
+  line(cx, cy, cx + v1.x, cy + v1.y);
+  line(cx, cy, cx + v2.x, cy + v2.y);
+  
+  // Label
+  fill(255, 100, 50, 120);
+  noStroke();
+  textSize(10);
+  textAlign(CENTER);
+  text('1', cx + v1.x * 0.6, cy - 10);
+  text('ω', cx + v2.x * 0.6, cy + v2.y * 0.6 + 5);
+}
+
+function drawEisensteinPrimes(scale) {
+  // Highlight Eisenstein primes — numbers with norm that are prime or 3
+  // An Eisenstein integer m + nω is a prime if:
+  // 1. |m| + |n| = 0 (zero)
+  // 2. Its norm m² - mn + n² is a rational prime
+  // 3. It equals 3 times a unit
+  
+  const range = 14;
+  const primes = [];
+  
+  for (let m = -range; m <= range; m++) {
+    for (let n = -range; n <= range; n++) {
+      if (m === 0 && n === 0) continue;
+      
+      const norm = eisensteinNorm(m, n);
+      
+      // Check if norm is prime
+      let isPrime = true;
+      for (let p = 2; p <= Math.sqrt(norm); p++) {
+        if (norm % p === 0) { isPrime = false; break; }
+      }
+      
+      // 3 is special (3 = -(1-ω)²)
+      // Also units are ±1, ±ω, ±ω²
+      if (isPrime || norm === 3) {
+        const pos = eisensteinToCartesian(m, n, scale);
+        if (pos.x >= 0 && pos.x <= w && pos.y >= 0 && pos.y <= h) {
+          primes.push({ pos, norm, m, n });
+        }
+      }
+    }
+  }
+  
+  // Draw primes
+  noStroke();
+  for (const p of primes) {
+    const pulse = sin(time * 2 + p.norm * 0.1) * 0.3 + 0.7;
+    const hue = (p.norm * 37) % 360;
+    colorMode(HSB, 360, 100, 100);
+    fill(hue, 80, 90 * pulse, 0.9);
+    
+    const sz = map(p.norm, 1, 100, 3, 7) * pulse;
+    ellipse(p.pos.x, p.pos.y, sz, sz);
+    
+    // Glow
+    fill(hue, 80, 60, 0.3);
+    ellipse(p.pos.x, p.pos.y, sz * 3, sz * 3);
+  }
+}
+
+function updateAndDrawParticles(scale) {
+  // Animate particles along lattice paths
+  if (frameCount % 3 === 0) {
+    // Spawn a new particle
+    const angle = random(TWO_PI);
+    const dist = random(100, 300);
+    const start = {
+      x: cx + Math.cos(angle) * dist,
+      y: cy + Math.sin(angle) * dist
+    };
+    
+    const ei = cartesianToEisenstein(start.x, start.y, scale);
+    glowParticles.push({
+      m: ei.m,
+      n: ei.n,
+      progress: 0,
+      speed: random(0.005, 0.015),
+      targetM: 0,
+      targetN: 0,
+      hue: random(360)
+    });
+  }
+  
+  // Update and draw particles
+  noStroke();
+  for (let i = glowParticles.length - 1; i >= 0; i--) {
+    const p = glowParticles[i];
+    p.progress += p.speed;
+    
+    // Lerp from current to target
+    const currM = lerp(p.m, p.targetM, p.progress);
+    const currN = lerp(p.n, p.targetN, p.progress);
+    
+    const pos = eisensteinToCartesian(currM, currN, scale);
+    
+    colorMode(HSB, 360, 100, 100);
+    fill(p.hue, 85, 95, 0.8);
+    ellipse(pos.x, pos.y, 3, 3);
+    
+    // Trail
+    const prevM = lerp(p.m, p.targetM, max(0, p.progress - 0.05));
+    const prevN = lerp(p.n, p.targetN, max(0, p.progress - 0.05));
+    const prevPos = eisensteinToCartesian(prevM, prevN, scale);
+    stroke(p.hue, 80, 80, 0.3);
+    strokeWeight(1);
+    line(prevPos.x, prevPos.y, pos.x, pos.y);
+    noStroke();
+    
+    if (p.progress >= 1) {
+      glowParticles.splice(i, 1);
+    }
+  }
+  
+  // Limit particle count
+  while (glowParticles.length > 150) {
+    glowParticles.shift();
+  }
+}
+
+function drawTitle() {
+  colorMode(RGB);
+  fill(255, 255, 255, 200);
+  textSize(11);
+  textAlign(LEFT);
+  textFont('monospace');
+  text('EISENSTEIN LATTICE', 20, 30);
+  textSize(9);
+  fill(120, 120, 120);
+  text('Z[ω]  —  hexagonal complex integer lattice', 20, 46);
+  text('m + nω  |  norm = m² − mn + n²', 20, 60);
+}
+
+function drawNormHighlight(scale) {
+  // Highlight rings of constant norm
+  const range = 14;
+  noFill();
+  
+  for (let m = -range; m <= range; m++) {
+    for (let n = -range; n <= range; n++) {
+      if (m === 0 && n === 0) continue;
+      
+      const norm = eisensteinNorm(m, n);
+      if (norm > 60) continue;
+      
+      const pos = eisensteinToCartesian(m, n, scale);
+      if (pos.x < -20 || pos.x > w + 20 || pos.y < -20 || pos.y > h + 20) continue;
+      
+      const alpha = map(norm, 1, 60, 30, 5);
+      stroke(100, 150, 200, alpha);
+      strokeWeight(0.3);
+      
+      const r = scale * 0.48;
+      ellipse(pos.x, pos.y, r * 2, r * 2);
+    }
+  }
+}
+
+function setup() {
+  createCanvas(w, h);
+  colorMode(HSB, 360, 100, 100);
+}
+
+function draw() {
+  background(10, 15, 18);
+  
+  time = millis() * 0.001;
+  const scale = min(w, h) / 5;
+  
+  drawNormHighlight(scale);
+  drawHexGrid(scale);
+  drawRootVectors(scale);
+  drawEisensteinPrimes(scale);
+  updateAndDrawParticles(scale);
+  drawTitle();
+}
+</script>
+</body>
+</html>
