@@ -76,6 +76,7 @@ The project cycles through different technique categories to ensure variety:
 - **plasma-fern** — Fractal fern with plasma energy aesthetic and flowing particle trails
 - **chebyshev-bloom** — Chebyshev polynomial-driven blooming patterns with particle trails
 - **chladni-patterns** — Standing wave interference patterns creating geometric sand art
+- **cycloid-dreamwork** — Hypocycloid and epicycloid curves from rolling circle constructions with particle trails
 - **voronoi-dreams** — Voronoi cells influenced by moving attractors with pulsing glow
 - **dielectric-lattices** — Electric discharge patterns forming crystalline lattice structures with glowing nodes
 - **diffusive-precipitation** — Chemical reaction visualization with diffusing chemicals forming precipitates

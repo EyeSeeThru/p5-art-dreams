@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cycloid Dreamwork</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0a; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script>
+    let angle = 0;
+    let particles = [];
+    const NUM_PARTICLES = 500;
+    const R1 = 180;
+    const R2 = 73;
+    const R3 = 47;
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      colorMode(HSB, 360, 100, 100, 100);
+      for (let i = 0; i < NUM_PARTICLES; i++) {
+        particles.push({
+          phase: random(TWO_PI),
+          speed: random(0.008, 0.018),
+          radius: random(0.3, 1.2),
+          hueOffset: random(360)
+        });
+      }
+    }
+
+    function draw() {
+      background(10, 10, 8, 40);
+      
+      translate(width / 2, height / 2);
+      
+      let cx = cos(angle) * 60;
+      let cy = sin(angle) * 60;
+      
+      for (let p of particles) {
+        let t = angle * p.speed * 50 + p.phase;
+        
+        let x1 = cx + cos(t) * R1 * p.radius;
+        let y1 = cy + sin(t) * R1 * p.radius;
+        
+        let x2 = x1 + cos(-t * (R1 / R2)) * R2 * p.radius;
+        let y2 = y1 + sin(-t * (R1 / R2)) * R2 * p.radius;
+        
+        let x3 = x2 + cos(t * (R1 / R3) * 1.5) * R3 * p.radius;
+        let y3 = y2 + sin(t * (R1 / R3) * 1.5) * R3 * p.radius;
+        
+        let hu = (p.hueOffset + angle * 50) % 360;
+        stroke(hu, 80, 90, 60);
+        strokeWeight(1.5);
+        point(x3, y3);
+      }
+      
+      noFill();
+      stroke(0, 0, 100, 15);
+      strokeWeight(0.5);
+      ellipse(0, 0, R1 * 2, R1 * 2);
+      
+      angle += 0.008;
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
