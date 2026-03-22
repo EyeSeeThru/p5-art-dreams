@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poincaré Disc</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+let time = 0;
+let geodesics = [];
+let points = [];
+const NUM_POINTS = 60;
+const DISC_RADIUS = 380;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  initPoints();
+  buildGeodesics();
+}
+
+function initPoints() {
+  points = [];
+  for (let i = 0; i < NUM_POINTS; i++) {
+    let angle = random(TWO_PI);
+    let r = sqrt(random(0.02, 0.85)) * DISC_RADIUS;
+    points.push({
+      x: cos(angle) * r,
+      y: sin(angle) * r,
+      vx: 0,
+      vy: 0,
+      hue: random(360),
+      size: random(2, 5),
+      phase: random(TWO_PI)
+    });
+  }
+}
+
+function buildGeodesics() {
+  geodesics = [];
+  let numLines = 5;
+  for (let i = 0; i < numLines; i++) {
+    let angle = (TWO_PI / numLines) * i + time * 0.1;
+    geodesics.push({
+      angle: angle,
+      speed: random(0.003, 0.008) * (i % 2 === 0 ? 1 : -1)
+    });
+  }
+}
+
+function mobiusTransform(px, py, cx, cy, angle) {
+  // Apply a Möbius transformation: z -> (z - a) / (1 - conj(a) * z)
+  // where a is a point on the boundary
+  let dx = px - cx;
+  let dy = py - cy;
+  let normSq = cx * cx + cy * cy;
+
+  // Rotate center on boundary
+  let ca = cos(angle) * DISC_RADIUS * 0.98;
+  let sa = sin(angle) * DISC_RADIUS * 0.98;
+
+  let ux = px - ca;
+  let uy = py - sa;
+
+  let denom = 1 - ca * px - sa * py;
+  denom = max(abs(denom), 0.001);
+
+  let tx = ux / denom;
+  let ty = uy / denom;
+
+  let len = sqrt(tx * tx + ty * ty);
+  if (len > DISC_RADIUS * 0.99) {
+    tx = tx * DISC_RADIUS * 0.99 / len;
+    ty = ty * DISC_RADIUS * 0.99 / len;
+  }
+
+  return { x: tx, y: ty };
+}
+
+function drawGeodesic(x1, y1, x2, y2, hueVal, alphaVal) {
+  // Draw circular arc (geodesic) between two points
+  let mx = (x1 + x2) / 2;
+  let my = (y1 + y2) / 2;
+
+  // Perpendicular bisector direction
+  let dx = x2 - x1;
+  let dy = y2 - y1;
+  let len = sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+
+  let perpX = -dy / len;
+  let perpY = dx / len;
+
+  // Circle center along perpendicular bisector
+  let chordLen = len / 2;
+  let distToCenter = DISC_RADIUS * random(1.5, 3.5);
+  let cx2 = mx + perpX * distToCenter;
+  let cy2 = my + perpY * distToCenter;
+
+  // Arc angles
+  let a1 = atan2(y1 - cy2, x1 - cx2);
+  let a2 = atan2(y2 - cy2, x2 - cx2);
+
+  let arcColor = color(hueVal, 70, 95, alphaVal);
+  stroke(arcColor);
+  strokeWeight(0.8);
+  noFill();
+  arc(cx2, cy2, distToCenter * 4, distToCenter * 4, a1, a2);
+}
+
+function draw() {
+  background(0, 0, 4, 25);
+  translate(width / 2, height / 2);
+
+  time += 0.01;
+
+  // Draw boundary circle
+  noFill();
+  stroke(280, 40, 30, 40);
+  strokeWeight(1);
+  ellipse(0, 0, DISC_RADIUS * 2, DISC_RADIUS * 2);
+
+  // Outer glow ring
+  for (let r = 20; r > 0; r -= 4) {
+    noStroke();
+    fill(280, 60, 20, map(r, 20, 0, 2, 8));
+    ellipse(0, 0, DISC_RADIUS * 2 + r * 2);
+  }
+
+  // Draw animated geodesic arcs (hyperbolic tiling suggestion)
+  let numArcs = 7;
+  for (let i = 0; i < numArcs; i++) {
+    let angle = (TWO_PI / numArcs) * i + time * 0.15;
+    let r1 = DISC_RADIUS * 0.3 + sin(time + i) * 50;
+    let r2 = DISC_RADIUS * 0.7 + cos(time * 1.3 + i) * 60;
+
+    let x1 = cos(angle) * r1;
+    let y1 = sin(angle) * r1;
+    let x2 = cos(angle + 0.4) * r2;
+    let y2 = sin(angle + 0.4) * r2;
+
+    let hueVal = (angle * 57.3 + time * 20) % 360;
+    let alphaVal = map(i, 0, numArcs, 20, 50);
+
+    drawGeodesic(x1, y1, x2, y2, hueVal, alphaVal);
+  }
+
+  // Draw radial geodesics
+  let numRadials = 12;
+  for (let i = 0; i < numRadials; i++) {
+    let angle = (TWO_PI / numRadials) * i + time * 0.05;
+    let x1 = cos(angle) * 30;
+    let y1 = sin(angle) * 30;
+    let x2 = cos(angle) * DISC_RADIUS * 0.92;
+    let y2 = sin(angle) * DISC_RADIUS * 0.92;
+
+    let hueVal = (angle * 57.3 + 180) % 360;
+    stroke(hueVal, 60, 80, 15);
+    strokeWeight(0.5);
+    line(x1, y1, x2, y2);
+  }
+
+  // Draw and update points with Möbius drift
+  for (let i = 0; i < points.length; i++) {
+    let p = points[i];
+
+    // Apply Möbius transformation to point position
+    let tx = mobiusTransform(p.x, p.y, 0, 0, time * 0.1 + p.phase);
+
+    // Blend between original and transformed
+    p.x = lerp(p.x, tx.x, 0.02);
+    p.y = lerp(p.y, tx.y, 0.02);
+
+    // Add small velocity for drift
+    p.x += sin(time + p.phase) * 0.3;
+    p.y += cos(time * 1.1 + p.phase) * 0.3;
+
+    // Constrain to disc
+    let d = sqrt(p.x * p.x + p.y * p.y);
+    if (d > DISC_RADIUS * 0.95) {
+      p.x *= DISC_RADIUS * 0.95 / d;
+      p.y *= DISC_RADIUS * 0.95 / d;
+    }
+
+    // Draw connection lines between nearby points (hyperbolic distance)
+    for (let j = i + 1; j < points.length; j++) {
+      let p2 = points[j];
+      let dist = sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
+      let hyperbolicDist = log((1 + dist / DISC_RADIUS) / (1 - dist / DISC_RADIUS));
+
+      if (hyperbolicDist < 1.2) {
+        let alpha = map(hyperbolicDist, 0, 1.2, 40, 5);
+        let hue = (p.hue + p2.hue) / 2 + time * 10;
+        stroke(hue % 360, 70, 80, alpha);
+        strokeWeight(0.4);
+        line(p.x, p.y, p2.x, p2.y);
+      }
+    }
+
+    // Draw point with glow
+    let dNorm = sqrt(p.x * p.x + p.y * p.y) / DISC_RADIUS;
+    let brightness = map(dNorm, 0, 1, 90, 50);
+    let h = (p.hue + time * 15) % 360;
+
+    noStroke();
+    for (let r = 8; r > 0; r -= 2) {
+      fill(h, 70, brightness, map(r, 8, 0, 5, 30));
+      ellipse(p.x, p.y, p.size + r);
+    }
+    fill(h, 30, 100, 90);
+    ellipse(p.x, p.y, p.size);
+  }
+
+  // Draw conformal grid circles (Poincaré metric visualization)
+  drawConformalGrid(time);
+
+  // Central glow
+  noStroke();
+  for (let r = 40; r > 0; r -= 5) {
+    fill(200, 80, 30, map(r, 40, 0, 3, 20));
+    ellipse(0, 0, r * 2);
+  }
+  fill(220, 40, 100, 80);
+  ellipse(0, 0, 6);
+}
+
+function drawConformalGrid(t) {
+  // Draw circles orthogonal to boundary circle (true hyperbolic geodesics)
+  stroke(0, 0, 40, 8);
+  strokeWeight(0.5);
+  noFill();
+
+  // Radial circles
+  for (let i = 1; i <= 6; i++) {
+    let r = (DISC_RADIUS / 7) * i;
+    ellipse(0, 0, r * 2, r * 2);
+  }
+
+  // Orthogonal circles (geodesics as circular arcs through infinity)
+  let numCircles = 8;
+  for (let i = 0; i < numCircles; i++) {
+    let angle = (TWO_PI / numCircles) * i + t * 0.08;
+    let cx2 = cos(angle) * DISC_RADIUS * 1.8;
+    let cy2 = sin(angle) * DISC_RADIUS * 1.8;
+    let cr = DISC_RADIUS * 1.8;
+
+    // Only draw arc inside the disc
+    let x1 = cx2 - cr;
+    let y1 = cy2;
+    let x2 = cx2 + cr;
+    let y2 = cy2;
+
+    stroke(240, 50, 35, 10);
+    strokeWeight(0.6);
+
+    // Check intersection with disc
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let fx = x1 - cx2;
+    let fy = y1 - cy2;
+
+    let a2 = dx * dx + dy * dy;
+    let b2 = 2 * (fx * dx + fy * dy);
+    let c2 = fx * fx + fy * fy - cr * cr;
+
+    let discriminant = b2 * b2 - 4 * a2 * c2;
+    if (discriminant >= 0) {
+      let t1 = (-b2 - sqrt(discriminant)) / (2 * a2);
+      let t2 = (-b2 + sqrt(discriminant)) / (2 * a2);
+
+      let ix1 = x1 + t1 * dx;
+      let iy1 = y1 + t1 * dy;
+      let ix2 = x1 + t2 * dx;
+      let iy2 = y1 + t2 * dy;
+
+      let dist1 = sqrt(ix1 * ix1 + iy1 * iy1);
+      let dist2 = sqrt(ix2 * ix2 + iy2 * iy2);
+
+      if (dist1 < DISC_RADIUS && dist2 < DISC_RADIUS) {
+        line(ix1, iy1, ix2, iy2);
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

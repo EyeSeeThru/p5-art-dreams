@@ -173,6 +173,7 @@ The project cycles through different technique categories to ensure variety:
 - **plasma-sphere** — Glowing plasma sphere with animated tendrils and particle effects
 - **plasma-turbulence** — GLSL shader-based plasma turbulence with FBM noise layers and swirling color gradients
 - **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
+- **poincare-disc** — Hyperbolic Poincaré disc model with Möbius transformations, geodesic flows, and conformal grid visualization
 - **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
 - **wavefront** — Wavefront reconstruction visualization with holographic interference patterns and flowing particles
 - **percolation** — Percolation threshold simulation with cluster visualization and connectivity emergence
