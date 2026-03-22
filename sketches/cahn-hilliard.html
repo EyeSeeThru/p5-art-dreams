@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cahn-Hilliard Phase Separation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Cahn-Hilliard equation: phase separation simulation
+// ∂c/∂t = M∇²( c³ - c - κ∇²c )
+// M = mobility, κ = gradient energy coefficient
+
+const GRID = 200;
+const SCALE = 4;
+const dt = 0.0005;
+const M = 1.0;      // mobility
+const kappa = 0.5;  // gradient energy
+const epsilon = 0.01; // noise amplitude for initial condition
+
+let c = [];         // concentration field
+let c_next = [];    // next state
+let laplacian = []; // ∇²c
+let laplacian2 = []; // ∇⁴c (biharmonic)
+let size;
+
+function setup() {
+  createCanvas(GRID * SCALE, GRID * SCALE);
+  pixelDensity(1);
+  noStroke();
+  
+  size = GRID * GRID;
+  
+  // Initialize concentration with small random noise around 0
+  for (let i = 0; i < size; i++) {
+    c[i] = epsilon * (Math.random() * 2 - 1);
+  }
+  c_next = [...c];
+  laplacian = new Array(size).fill(0);
+  laplacian2 = new Array(size).fill(0);
+}
+
+function draw() {
+  background(10);
+  
+  // Compute laplacian and biharmonic
+  computeLaplacian();
+  computeBiharmonic();
+  
+  // Cahn-Hilliard update: dc/dt = M * ∇²( c³ - c - κ * ∇²c )
+  // Using semi-implicit scheme for stability
+  
+  for (let i = 0; i < size; i++) {
+    let mu = c[i] * c[i] * c[i] - c[i] - kappa * laplacian[i];
+    c_next[i] = c[i] + dt * M * laplacian2[i];
+    // Clamp to prevent blow-up
+    c_next[i] = constrain(c_next[i], -1, 1);
+  }
+  
+  // Swap buffers
+  [c, c_next] = [c_next, c];
+  
+  // Render
+  loadPixels();
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      let idx = y * GRID + x;
+      let val = (c[idx] + 1) * 0.5; // map -1..1 to 0..1
+      
+      // Rich color palette based on phase
+      let r, g, b;
+      if (val > 0.5) {
+        // Phase A: warm gold/amber
+        let t = (val - 0.5) * 2;
+        r = 255;
+        g = 180 + 75 * t;
+        b = 80 + 100 * t;
+      } else {
+        // Phase B: cool blue/purple
+        let t = val * 2;
+        r = 80 + 100 * t;
+        g = 60 + 120 * t;
+        b = 200 + 55 * t;
+      }
+      
+      // Draw scaled pixel
+      let px = x * SCALE;
+      let py = y * SCALE;
+      for (let dy = 0; dy < SCALE; dy++) {
+        for (let dx = 0; dx < SCALE; dx++) {
+          let pixIdx = ((py + dy) * width + (px + dx)) * 4;
+          pixels[pixIdx] = r;
+          pixels[pixIdx + 1] = g;
+          pixels[pixIdx + 2] = b;
+          pixels[pixIdx + 3] = 255;
+        }
+      }
+    }
+  }
+  updatePixels();
+  
+  // Draw title
+  fill(255, 80);
+  textSize(12);
+  textAlign(RIGHT, BOTTOM);
+  text('Cahn-Hilliard Phase Separation', width - 15, height - 15);
+  
+  // Slow down for visibility
+  if (frameCount % 3 === 0) noLoop();
+  else loop();
+}
+
+// 5-point stencil Laplacian: ∇²c
+function computeLaplacian() {
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      let idx = y * GRID + x;
+      let idx_n = ((y - 1 + GRID) % GRID) * GRID + x;
+      let idx_s = ((y + 1) % GRID) * GRID + x;
+      let idx_w = y * GRID + ((x - 1 + GRID) % GRID);
+      let idx_e = y * GRID + ((x + 1) % GRID);
+      
+      laplacian[idx] = (c[idx_n] + c[idx_s] + c[idx_w] + c[idx_e] - 4 * c[idx]) / (1.0);
+    }
+  }
+}
+
+// 13-point stencil biharmonic: ∇⁴c
+function computeBiharmonic() {
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      let idx = y * GRID + x;
+      
+      // Neighbor indices
+      let n  = ((y - 1 + GRID) % GRID) * GRID + x;
+      let s  = ((y + 1) % GRID) * GRID + x;
+      let w  = y * GRID + ((x - 1 + GRID) % GRID);
+      let e  = y * GRID + ((x + 1) % GRID);
+      let ne = ((y - 1 + GRID) % GRID) * GRID + ((x + 1) % GRID);
+      let nw = ((y - 1 + GRID) % GRID) * GRID + ((x - 1 + GRID) % GRID);
+      let se = ((y + 1) % GRID) * GRID + ((x + 1) % GRID);
+      let sw = ((y + 1) % GRID) * GRID + ((x - 1 + GRID) % GRID);
+      
+      // Second derivatives via Laplacian
+      let lap_n = laplacian[n];
+      let lap_s = laplacian[s];
+      let lap_w = laplacian[w];
+      let lap_e = laplacian[e];
+      let lap_c = laplacian[idx];
+      
+      // Corners
+      let lap_ne = laplacian[ne];
+      let lap_nw = laplacian[nw];
+      let lap_se = laplacian[se];
+      let lap_sw = laplacian[sw];
+      
+      // ∇⁴c = ∇²(∇²c) using 13-point stencil
+      laplacian2[idx] = (20 * lap_c - 8 * (lap_n + lap_s + lap_w + lap_e) 
+                         + 2 * (lap_ne + lap_nw + lap_se + lap_sw)
+                         + (lap_n + lap_s) * 0 + 0) / (1.0);
+    }
+  }
+}
+</script>
+</body>
+</html>
