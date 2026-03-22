@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stellar Corona</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const NUM_ARCS = 18;
+const NUM_PARTICLES = 120;
+
+let arcs = [];
+let particles = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  for (let i = 0; i < NUM_ARCS; i++) {
+    arcs.push({
+      angle: (TWO_PI / NUM_ARCS) * i,
+      len: random(0.15, 0.4),
+      phase: random(TWO_PI),
+      speed: random(0.003, 0.009),
+      peak: random(0.05, 0.18),
+      hue: random(30, 55),
+      segs: floor(random(12, 28))
+    });
+  }
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    spawnParticle();
+  }
+}
+
+function spawnParticle() {
+  let a = random(TWO_PI);
+  let r = random(0.04, 0.22);
+  particles.push({
+    angle: a,
+    radius: r * min(width, height),
+    speed: random(0.0008, 0.002),
+    hue: random(30, 60),
+    sz: random(1.5, 4.5),
+    life: 1,
+    decay: random(0.004, 0.012),
+    brightness: random(60, 100)
+  });
+}
+
+function draw() {
+  background(0, 0, 3, 25);
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  let baseR = min(width, height) * 0.06;
+  
+  // Corona glow layers
+  noStroke();
+  for (let i = 8; i >= 0; i--) {
+    let r = baseR * (1 + i * 0.55 + sin(t * 0.4 + i * 0.8) * 0.08);
+    let alpha = map(i, 0, 8, 90, 5);
+    fill(50, 90, 100, alpha);
+    ellipse(cx, cy, r * 2, r * 2);
+  }
+  
+  // Core brightness
+  fill(55, 30, 100, 95);
+  ellipse(cx, cy, baseR * 0.9, baseR * 0.9);
+  
+  // Plasma arcs
+  for (let arc of arcs) {
+    drawPlasmaArc(cx, cy, arc);
+  }
+  
+  // Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.radius += p.speed * min(width, height);
+    p.life -= p.decay;
+    
+    if (p.life <= 0 || p.radius > max(width, height) * 0.55) {
+      particles.splice(i, 1);
+      spawnParticle();
+      continue;
+    }
+    
+    let px = cx + cos(p.angle) * p.radius;
+    let py = cy + sin(p.angle) * p.radius;
+    let alpha = p.life * 80;
+    noStroke();
+    fill(p.hue, 80, p.brightness, alpha);
+    let sz = p.sz * p.life;
+    ellipse(px, py, sz, sz);
+  }
+  
+  // Faint ambient glow
+  for (let i = 0; i < 6; i++) {
+    let angle = (TWO_PI / 6) * i + t * 0.05;
+    let r = baseR * (1.8 + sin(t * 0.3 + i) * 0.3);
+    let gx = cx + cos(angle) * r;
+    let gy = cy + sin(angle) * r;
+    let sz = baseR * (0.3 + sin(t * 0.5 + i * 1.2) * 0.12);
+    fill(40 + sin(t * 0.2 + i) * 15, 85, 90, 8);
+    ellipse(gx, gy, sz, sz);
+  }
+  
+  t += 0.016;
+}
+
+function drawPlasmaArc(cx, cy, arc) {
+  let cx2 = width / 2;
+  let cy2 = height / 2;
+  let baseR = min(width, height) * 0.06;
+  
+  let totalAngle = arc.len * PI;
+  let startA = arc.angle - totalAngle / 2;
+  
+  noFill();
+  let steps = arc.segs;
+  
+  for (let h = 3; h >= 0; h--) {
+    let sw = map(h, 0, 3, 3.5, 0.4);
+    let alpha = map(h, 0, 3, 85, 20);
+    stroke(arc.hue, 90, 95, alpha);
+    strokeWeight(sw);
+    
+    beginShape();
+    for (let i = 0; i <= steps; i++) {
+      let prog = i / steps;
+      let a = startA + prog * totalAngle;
+      
+      let wave = sin(prog * PI * 3 + arc.phase + t * arc.speed * 120) * arc.peak;
+      let flare = sin(prog * PI + t * arc.speed * 80) * 0.015;
+      let r = baseR * (1.4 + prog * 1.8 + wave + flare);
+      r += sin(prog * PI * 5 + arc.phase * 2.3) * baseR * 0.06;
+      
+      let x = cx2 + cos(a) * r;
+      let y = cy2 + sin(a) * r;
+      curveVertex(x, y);
+    }
+    endShape();
+  }
+  
+  // Bright core line
+  stroke(arc.hue + 8, 50, 100, 55);
+  strokeWeight(0.8);
+  beginShape();
+  for (let i = 0; i <= steps; i++) {
+    let prog = i / steps;
+    let a = startA + prog * totalAngle;
+    let wave = sin(prog * PI * 3 + arc.phase + t * arc.speed * 120) * arc.peak;
+    let r = baseR * (1.4 + prog * 1.8 + wave);
+    let x = cx2 + cos(a) * r;
+    let y = cy2 + sin(a) * r;
+    curveVertex(x, y);
+  }
+  endShape();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
