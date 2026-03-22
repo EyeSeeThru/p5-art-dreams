@@ -114,6 +114,7 @@ The project cycles through different technique categories to ensure variety:
 - **fermat-spiral** — Fermat's spiral with golden angle phyllotaxis, animated dots with color cycling and connecting lines
 - **ferrofluid** — Ferrofluid visualization with magnetic field response and orbiting attractors
 - **fibonacci-galaxy** — Spiral galaxy with golden ratio distribution and twinkling stars
+- **elliptic-vortex** — Vortex dynamics within an elliptic domain using conformal mapping with swirling particle trails
 - **terrain-drift** — 3D Perlin noise terrain landscape with elevation-based coloring and gentle drift animation
 - **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
 - **magnetic-pendulum** — Chaotic magnetic pendulum simulation with multiple attractors and particle trails
