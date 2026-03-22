@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Field — FitzHugh-Nagumo Waves</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000008; 
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// FitzHugh-Nagumo Neural Field — Traveling Wave Patterns
+// Coupled excitable media demonstrating pattern formation
+
+let cols, rows;
+let u, v;
+let du, dv;
+const a = 0.5;
+const b = 0.7;
+const c = 0.8;
+const dt = 0.05;
+const dx = 1.0;
+const diffusion = 0.5;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  
+  cols = floor(width / 4);
+  rows = floor(height / 4);
+  
+  u = [];
+  v = [];
+  du = [];
+  dv = [];
+  
+  for (let i = 0; i < cols; i++) {
+    u[i] = [];
+    v[i] = [];
+    du[i] = [];
+    dv[i] = [];
+    for (let j = 0; j < rows; j++) {
+      u[i][j] = random(-0.5, 0.5);
+      v[i][j] = random(-0.2, 0.2);
+    }
+  }
+  
+  // Seed initial excitation wave
+  seedWave();
+}
+
+function seedWave() {
+  // Create a circular wave of excitation
+  let cx = floor(cols / 2);
+  let cy = floor(rows / 2);
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let d = dist(i, j, cx, cy);
+      if (d < 5) {
+        u[i][j] = 1.5;
+        v[i][j] = 0.0;
+      }
+    }
+  }
+  
+  // Add secondary seeds periodically
+  let seedPositions = [
+    [floor(cols * 0.2), floor(rows * 0.3)],
+    [floor(cols * 0.8), floor(rows * 0.7)],
+    [floor(cols * 0.3), floor(rows * 0.8)]
+  ];
+  
+  for (let [sx, sy] of seedPositions) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        let d = dist(i, j, sx, sy);
+        if (d < 3) {
+          u[i][j] = 1.2;
+          v[i][j] = 0.1;
+        }
+      }
+    }
+  }
+}
+
+function computeLaplacian(field, x, y) {
+  let left  = field[(x - 1 + cols) % cols][y];
+  let right = field[(x + 1) % cols][y];
+  let up    = field[x][(y - 1 + rows) % rows];
+  let down  = field[x][(y + 1) % rows];
+  let center = field[x][y];
+  
+  return (left + right + up + down - 4 * center) / (dx * dx);
+}
+
+function f(u) {
+  return u - u * u * u / 3;
+}
+
+function fhn(u, v, laplacianU) {
+  let dudt = c * (u - u * u * u / 3 - v) + diffusion * laplacianU;
+  let dvdt = -(u - a - b * v) / c;
+  return [dudt, dvdt];
+}
+
+function draw() {
+  background(0, 0, 0.02, 0.3);
+  
+  // Re-seed occasionally for perpetual activity
+  if (frameCount % 300 === 0) {
+    let x = floor(random(cols));
+    let y = floor(random(rows));
+    for (let i = -3; i <= 3; i++) {
+      for (let j = -3; j <= 3; j++) {
+        let xi = (x + i + cols) % cols;
+        let yj = (y + j + rows) % rows;
+        u[xi][yj] = 1.0 + random(-0.2, 0.2);
+        v[xi][yj] = random(-0.1, 0.1);
+      }
+    }
+  }
+  
+  // Compute laplacian and update
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let lap = computeLaplacian(u, i, j);
+      let [dudt, dvdt] = fhn(u[i][j], v[i][j], lap);
+      du[i][j] = dudt;
+      dv[i][j] = dvdt;
+    }
+  }
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      u[i][j] += du[i][j] * dt;
+      v[i][j] += dv[i][j] * dt;
+      
+      // Clamp values
+      u[i][j] = constrain(u[i][j], -2, 2);
+      v[i][j] = constrain(v[i][j], -1, 1);
+    }
+  }
+  
+  // Render
+  loadPixels();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let val = map(u[i][j], -1, 1.5, 0, 1);
+      val = constrain(val, 0, 1);
+      
+      // Excited = warm, recovery = cool
+      let hue;
+      if (u[i][j] > 0.5) {
+        hue = map(u[i][j], 0.5, 1.5, 300, 360) % 360; // magenta to red
+      } else if (u[i][j] > 0) {
+        hue = 240; // cyan
+      } else {
+        hue = 200; // blue
+      }
+      
+      let sat = map(abs(u[i][j]), 0, 1, 30, 100);
+      let bri = map(val, 0, 1, 5, 95);
+      
+      let px = i * 4;
+      let py = j * 4;
+      let c = color(hue, sat, bri, 1);
+      
+      for (let dx = 0; dx < 4; dx++) {
+        for (let dy = 0; dy < 4; dy++) {
+          let idx = 4 * ((py + dy) * width + (px + dx));
+          pixels[idx]     = red(c);
+          pixels[idx + 1] = green(c);
+          pixels[idx + 2] = blue(c);
+          pixels[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  updatePixels();
+  
+  t += dt;
+}
+
+function windowResized() {
+  // Preserve state on resize — restart
+  setup();
+}
+</script>
+</body>
+</html>

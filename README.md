@@ -279,6 +279,8 @@ The project cycles through different technique categories to ensure variety:
 - **gabor-patches** — Gabor function patches arranged in a grid with varying frequency, orientation, and phase creating visual perception inspired optical patterns
 - **caustic-weaver** — Interference patterns from animated circular wave sources creating luminous caustic lines with shifting hues
 
+- **zenith-aurora** — Aurora borealis simulation with flowing curtains of light, Perlin noise particles, and ethereal color gradients
+
 All sketches are self-contained single HTML files.
 
 ```bash
