@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobius Transformation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const particles = [];
+const COUNT = 3200;
+const a = 0.3, b = 0.5, c = -0.4, d = 0.6;
+
+function complexMul(ar, ai, br, bi) {
+  return [ar * br - ai * bi, ar * bi + ai * br];
+}
+
+function complexDiv(ar, ai, br, bi) {
+  const den = br * br + bi * bi;
+  return [(ar * br + ai * bi) / den, (ai * br - ar * bi) / den];
+}
+
+function mobius(zr, zi) {
+  const numR = a * zr - b * zi + 0.5;
+  const numI = a * zi + b * zr + 0.3;
+  const denR = c * zr - d * zi + 1.0;
+  const denI = c * zi + d * zr + 0.2;
+  return complexDiv(numR, numI, denR, denI);
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  for (let i = 0; i < COUNT; i++) {
+    particles.push({
+      x: random(-2, 2),
+      y: random(-2, 2),
+      vx: 0,
+      vy: 0,
+      life: random(80, 200),
+      maxLife: 0,
+      hue: random(360)
+    });
+    particles[i].maxLife = particles[i].life;
+  }
+}
+
+function draw() {
+  background(0, 0, 5, 18);
+  translate(width / 2, height / 2);
+  const scale = min(width, height) * 0.38;
+  noStroke();
+  for (let p of particles) {
+    const [wr, wi] = mobius(p.x, p.y);
+    const sx = wr * scale;
+    const sy = -wi * scale;
+    const lifeRatio = p.life / p.maxLife;
+    const alpha = lifeRatio * 80;
+    fill(p.hue, 70, 95, alpha);
+    const sz = lifeRatio * 2.5 + 0.5;
+    ellipse(sx, sy, sz, sz);
+    p.life -= 0.6;
+    const ang = atan2(p.y, p.x);
+    const spd = 0.0012;
+    p.x += cos(ang) * spd;
+    p.y += sin(ang) * spd;
+    const hueShift = frameCount * 0.08;
+    p.hue = (p.hue + 0.15 + hueShift * 0.01) % 360;
+    if (p.life <= 0 || p.x * p.x + p.y * p.y > 16) {
+      const theta = random(TWO_PI);
+      const r = random(0.5, 1.8);
+      p.x = r * cos(theta);
+      p.y = r * sin(theta);
+      p.life = random(100, 220);
+      p.maxLife = p.life;
+      p.hue = (60 + random(80)) % 360;
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

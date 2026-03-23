@@ -182,6 +182,7 @@ The project cycles through different technique categories to ensure variety:
 - **percolation** — Percolation threshold simulation with cluster visualization and connectivity emergence
 - **penrose-tiling** — Animated aperiodic Penrose P3 tiling with kite and dart deflation subdivisions and golden ratio color cycling
 - **meridian-flow** — Spherical coordinate particle flows with flowing particles along meridian lines, color-cycled by latitude bands with pulsing glow effects
+- **mobius-transformation** — Complex Mobius transformation with spiraling particle dynamics and hue-cycled coloring
 - **ulam-spiral** — Prime number spiral visualization with prime numbers glowing and pulsing in a swirling pattern
 - **particle-life** — Emergent artificial life simulation with particle types exhibiting attraction/repulsion behaviors
 - **dna-helix** — Double helix visualization with rotating 3D animation and glowing base pairs
