@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Couette Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a12; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const NUM_PARTICLES = 400;
+const PLATE_GAP = 0.85;
+let particles = [];
+
+class FluidParticle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.baseY = this.y / height;
+    this.vx = 0;
+    this.life = random(0.5, 1.0);
+    this.maxLife = this.life;
+    this.hue = random(200, 260);
+  }
+
+  update() {
+    let yNorm = this.y / height;
+    let inGap = yNorm > (1 - PLATE_GAP) / 2 && yNorm < (1 + PLATE_GAP) / 2;
+    
+    if (!inGap) {
+      this.vx *= 0.95;
+    } else {
+      let midPoint = 0.5;
+      let distFromMid = yNorm - midPoint;
+      let profile = distFromMid / (PLATE_GAP / 2);
+      let targetVx = profile * 2.5;
+      this.vx += (targetVx - this.vx) * 0.03;
+    }
+
+    this.x += this.vx * 0.8 + sin(frameCount * 0.01 + this.y * 0.01) * 0.3;
+    this.y += sin(frameCount * 0.02 + this.x * 0.005) * 0.4;
+
+    if (this.x < 0) this.x += width;
+    if (this.x > width) this.x -= width;
+    if (this.y < 0 || this.y > height) this.reset();
+
+    this.life -= 0.002;
+    if (this.life <= 0) this.reset();
+  }
+
+  draw() {
+    let alpha = (this.life / this.maxLife) * 200;
+    let vNorm = constrain(abs(this.vx) / 2.5, 0, 1);
+    let c = colorMode === 0 
+      ? lerpColor(color(200, 80, 255, alpha), color(80, 200, 255, alpha), vNorm)
+      : lerpColor(color(255, 120, 60, alpha), color(255, 200, 80, alpha), vNorm);
+    fill(c);
+    noStroke();
+    let sz = 1.5 + vNorm * 2;
+    ellipse(this.x, this.y, sz, sz);
+  }
+}
+
+let colorMode = 0;
+let colorTimer = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new FluidParticle());
+  }
+}
+
+function draw() {
+  background(10, 10, 18, 40);
+
+  colorTimer += 0.003;
+  if (colorTimer > 1) {
+    colorTimer = 0;
+    colorMode = (colorMode + 1) % 2;
+  }
+
+  let gapTop = height * (1 - PLATE_GAP) / 2;
+  let gapBottom = height * (1 + PLATE_GAP) / 2;
+  
+  for (let x = 0; x < width; x += 3) {
+    let yNorm = gapTop / height;
+    let distFromMid = yNorm - 0.5;
+    let profile = distFromMid / (PLATE_GAP / 2);
+    let plateVx = profile * 2.5;
+    let alpha = 60 + sin(frameCount * 0.05) * 20;
+    
+    if (colorMode === 0) {
+      stroke(100, 150, 255, alpha);
+    } else {
+      stroke(255, 180, 100, alpha);
+    }
+    strokeWeight(1);
+    let arrowLen = plateVx * 8;
+    line(x, gapTop, x + arrowLen, gapTop);
+    line(x + arrowLen, gapTop, x + arrowLen - 4, gapTop - 3);
+    line(x + arrowLen, gapTop, x + arrowLen - 4, gapTop + 3);
+  }
+
+  stroke(60, 60, 80, 100);
+  strokeWeight(2);
+  line(0, gapTop, width, gapTop);
+  line(0, gapBottom, width, gapBottom);
+
+  fill(40, 40, 60);
+  noStroke();
+  rect(0, 0, width, gapTop);
+  rect(0, gapBottom, width, height - gapBottom);
+
+  fill(200, 200, 220, 150);
+  textSize(11);
+  textAlign(CENTER);
+  text("STATIONARY PLATE", width / 2, gapTop - 12);
+  text("MOVING PLATE (v₀)", width / 2, gapBottom + 20);
+
+  for (let p of particles) {
+    p.update();
+    p.draw();
+  }
+
+  noFill();
+  stroke(255, 255, 255, 15);
+  strokeWeight(0.5);
+  for (let y = gapTop; y <= gapBottom; y += 20) {
+    let yNorm = y / height;
+    let distFromMid = yNorm - 0.5;
+    let profile = distFromMid / (PLATE_GAP / 2);
+    let vx = profile * 2.5;
+    beginShape();
+    for (let x = 0; x < width; x += 20) {
+      let py = y + sin(x * 0.02 + frameCount * 0.03) * 3;
+      curveVertex(x, py);
+    }
+    endShape();
+  }
+
+  if (frameCount % 600 === 0) {
+    colorMode = (colorMode + 1) % 2;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

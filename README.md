@@ -286,7 +286,7 @@ The project cycles through different technique categories to ensure variety:
 - **stellar-corona** — Solar corona visualization with plasma arc filaments, magnetic field dynamics, and glowing particle emissions around a bright stellar core
 
 - **bessel-beams** — Bessel function wave beams with interference patterns and orbiting particle trails
-- **stellar-corona** — Solar corona visualization with plasma arc filaments, magnetic field dynamics, and glowing particle emissions around a bright stellar core
+- **couette-flow** — Classical viscous flow between parallel plates showing parabolic velocity profile with colored particle tracers
 
 All sketches are self-contained single HTML files.
 
