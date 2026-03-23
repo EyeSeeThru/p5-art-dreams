@@ -246,6 +246,7 @@ The project cycles through different technique categories to ensure variety:
 - **wobble-sphere** — 3D sphere with Perlin noise displacement creating organic wobbling effects with flowing color gradients
 - **lattice-oscillators** — Coupled wave equation simulation on a grid with periodic disturbances and glowing wave interference patterns
 
+- **superellipse** — Lamé curve visualization with rotating frames, animated exponent parameter, and flowing particle trails tracing the beautiful superellipse geometry
 - **superformula** — Gielis superformula organic shapes with rotating animation and color cycling
 
 - **fluid-mesh** — Soft body cloth simulation with spring physics, wind forces, and interactive mouse interaction
