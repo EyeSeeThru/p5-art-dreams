@@ -95,6 +95,7 @@ The project cycles through different technique categories to ensure variety:
 - **helical-resonance** — Helical wave resonance with multiple rotating arms, connecting glow lines, and orbiting particle trails
 - **phyllotaxis-bloom** — Golden angle spiral patterns with emergent flower-like bloom
 - **moire-weave** — Overlapping oscillating grids creating interference moire patterns
+- **moyal-quantum** — Moyal star product eigenfunctions in quantum phase space — Gaussian wave packets evolving under the Moyal bracket with Wigner function contours and interference oscillations, showing quantum behavior in phase space
 - **concentric-tensions** — Oscillating concentric rings with connecting tension lines
 - **coulomb-explosion** — Charged particle repulsion visualization with Coulomb force physics
 - **helix-fields** — Rotating helical flow fields with 3D perspective projection
