@@ -122,6 +122,7 @@ The project cycles through different technique categories to ensure variety:
 - **differential-growth** — Organic line growth simulation with Perlin noise movement and colored boundaries
 - **magnetic-pendulum** — Chaotic magnetic pendulum simulation with multiple attractors and particle trails
 - **emergent-swarm** — Particle species with emergent collective behaviors (flocking, separation, cross-type interactions)
+- **envelope-equation** — Modulated wave visualization showing a carrier wave multiplied by a slowly-varying Gaussian envelope — u(x,t) = A(x-ct)·cos(kx−ωt) from nonlinear optics, with multiple drifting pulse envelopes and iridescent color mapping
 - **eulers-spiral** — Clothoid curve visualization with Fresnel integrals creating elegant spiral patterns
 - **eisenstein-lattice** — Hexagonal Eisenstein integers lattice with animated primes, root vectors (1, ω), and particle paths tracing the Z[ω] complex integer structure
 - **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
