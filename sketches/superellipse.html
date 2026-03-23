@@ -28,7 +28,8 @@ function draw() {
   let cx = width * 0.35;
   let cy = height * 0.35;
   let n = map(sin(t * 0.15), -1, 1, 0.3, 5.0);
-  let hue = (t * 2) % 360;
+  let baseHue = 5;
+  let sat = 75 + sin(t * 0.3) * 15;
 
   // Rotating superellipse frames
   for (let layer = 0; layer < 4; layer++) {
@@ -38,7 +39,7 @@ function draw() {
     push();
     rotate(rot);
     strokeWeight(0.6);
-    stroke(hue + layer * 20, 70, 80, alpha);
+    stroke(baseHue + layer * 3, 60 + layer * 5, 70, alpha);
     noFill();
     beginShape();
     for (let a = 0; a < TWO_PI; a += 0.02) {
@@ -54,18 +55,18 @@ function draw() {
 
   // Particle trails along superellipse
   for (let i = 0; i < PARTICLES; i++) {
-    let phase = (i / PARTICLES) * TWO_PI + t * 0.4;
+    let ph = (i / PARTICLES) * TWO_PI + t * 0.4;
     let spd = 0.3 + 0.7 * (i % 7) / 6;
-    let phase2 = phase + t * spd * 0.3;
+    let phase2 = ph + t * spd * 0.3;
     let n2 = map(sin(phase2 * 0.5 + t * 0.1), -1, 1, 0.5, 4.0);
 
-    let rx = cx * pow(abs(cos(phase)), 2 / n2);
-    let ry = cy * pow(abs(sin(phase)), 2 / n2);
-    rx *= sign(cos(phase));
-    ry *= sign(sin(phase));
+    let rx = cx * pow(abs(cos(ph)), 2 / n2);
+    let ry = cy * pow(abs(sin(ph)), 2 / n2);
+    rx *= sign(cos(ph));
+    ry *= sign(sin(ph));
 
     // Second shape — offset
-    let phase3 = phase + PI;
+    let phase3 = ph + PI;
     let rx2 = cx * 0.6 * pow(abs(cos(phase3)), 2 / n2);
     let ry2 = cy * 0.6 * pow(abs(sin(phase3)), 2 / n2);
     rx2 *= sign(cos(phase3));
@@ -76,19 +77,19 @@ function draw() {
 
     let sz = map(sin(phase2 * 3), -1, 1, 1.5, 4.5);
     let alpha2 = map(sin(phase2 * 2 + t), -1, 1, 30, 90);
-    let h = (hue + i * 1.2 + t * 10) % 360;
+    let bri = map(sin(ph * 2 + t), -1, 1, 15, 85);
 
-    fill(h, 75, 90, alpha2);
+    fill(baseHue, sat, bri, alpha2);
     ellipse(px, py, sz, sz);
   }
 
   // Central glow
   let gAlpha = map(sin(t * 0.5), -1, 1, 20, 50);
   noStroke();
-  fill(hue, 80, 100, gAlpha);
+  fill(baseHue, 85, 95, gAlpha);
   ellipse(0, 0, 30, 30);
 
-  t += deltaTime() * 0.001;
+  t += deltaTime * 0.001;
 }
 
 function sign(x) { return x >= 0 ? 1 : -1; }
