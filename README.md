@@ -84,6 +84,7 @@ The project cycles through different technique categories to ensure variety:
 - **lissajous-knots** — Parametric Lissajous curves forming woven knot patterns
 - **lorenz-geometry** — Lorenz attractor visualization with particle trails and color cycling
 - **lyapunov-spectrum** — Chaos theory visualization with multiple strange attractors and Lyapunov exponent spectrum
+- **laplacian-modes** — Standing wave eigenfunctions of the 2D Laplacian on a rectangular domain — visualizing drum membrane harmonics with animated Chladni-style patterns and glowing nodal lines
 - **levy-flight** — Heavy-tailed random walk visualization inspired by animal foraging patterns
 - **lindenmayer** — L-system plant generation with animated branching and particle effects
 - **menger-sponge** — 3D Menger sponge fractal with animated rotation and color cycling

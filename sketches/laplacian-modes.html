@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Laplacian Modes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #060610; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Laplacian Eigenmodes — Standing wave patterns on a rectangular domain
+// Visualizes eigenfunctions of the 2D Laplacian: sin(nx*π*x)sin(my*π*y)
+// m, n are mode numbers; eigenvalues λ = π²(m² + n²)
+let t = 0;
+let modeN = 3, modeM = 4;
+let nextModeTime = 0;
+const MODE_DURATION = 4000;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  nextModeTime = millis() + MODE_DURATION;
+}
+
+function draw() {
+  // Cycle through modes
+  if (millis() > nextModeTime) {
+    modeM = floor(random(1, 7));
+    modeN = floor(random(1, 7));
+    nextModeTime = millis() + MODE_DURATION;
+  }
+
+  background(6, 10, 6);
+
+  // Standing wave amplitude
+  let baseFreq = 0.8 + 0.5 * sin(t * 0.3);
+
+  // Draw each mode contribution
+  drawMode(modeN, modeM, baseFreq, 0);
+  drawMode(modeN + 1, modeM + 1, baseFreq * 0.6, 60);
+  drawMode(modeN, modeM + 1, baseFreq * 0.4, 120);
+  drawMode(modeN + 1, modeM, baseFreq * 0.3, 200);
+
+  // Nodal lines overlay
+  drawNodalLines();
+
+  // Mode label
+  fill(255);
+  textSize(14);
+  textAlign(RIGHT, TOP);
+  text(`m=${modeN}, n=${modeM}`, width - 20, 20);
+
+  let lam = (modeN * modeN + modeM * modeM) * 9.8696;
+  text(`λ=${lam.toFixed(1)}`, width - 20, 38);
+
+  t += deltaTime() * 0.001;
+}
+
+function drawMode(m, n, amp, hueOff) {
+  let cols = 80, rows = 50;
+  let cw = width / cols, ch = height / rows;
+
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let x = (i + 0.5) / cols;
+      let y = (j + 0.5) / rows;
+      let val = eigenmode(x, y, m, n);
+
+      // Phase animation
+      let phase = t * 2.0 * (1 + 0.1 * (m + n));
+      val *= sin(phase);
+
+      // Color
+      let h = (180 + hueOff + val * 80 + t * 5) % 360;
+      let s = abs(val) * 80;
+      let b = 70 + abs(val) * 30;
+      let a = 60 + abs(val) * 40;
+
+      fill(h, s, b, a);
+
+      let sz = cw * 0.85;
+      rect(i * cw, j * ch, sz, sz);
+    }
+  }
+}
+
+function eigenmode(x, y, m, n) {
+  // Eigenfunction of Laplacian on unit square with Dirichlet BC (zero on boundaries)
+  return sin(m * PI * x) * sin(n * PI * y);
+}
+
+function drawNodalLines() {
+  // Draw the nodal lines where eigenmode = 0 (where sin(m*π*x)=0 or sin(n*π*y)=0)
+  stroke(0, 0, 90, 30);
+  strokeWeight(0.8);
+  noFill();
+
+  let m = modeN, n = modeM;
+
+  // Vertical nodal lines: sin(m*π*x) = 0 => x = k/m
+  for (let k = 1; k < m; k++) {
+    let x = (k / m) * width;
+    line(x, 0, x, height);
+  }
+
+  // Horizontal nodal lines: sin(n*π*y) = 0 => y = k/n
+  for (let k = 1; k < n; k++) {
+    let y = (k / n) * height;
+    line(0, y, width, y);
+  }
+
+  // Outer boundary glow
+  noStroke();
+  fill(0, 0, 100, 15);
+  rect(0, 0, width, 8);
+  rect(0, height - 8, width, 8);
+  rect(0, 0, 8, height);
+  rect(width - 8, 0, 8, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
