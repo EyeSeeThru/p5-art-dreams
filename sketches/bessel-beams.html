@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bessel Beams</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+}
+
+function draw() {
+  background(0, 0, 5);
+  
+  const t = millis() * 0.001;
+  const cx = width / 2;
+  const cy = height / 2;
+  
+  // Bessel function approximation using series
+  function besselJ(n, x) {
+    if (x === 0) return n === 0 ? 1 : 0;
+    const ax = abs(x);
+    let sum = 0;
+    let sign = 1;
+    for (let k = 0; k < 20; k++) {
+      sum += sign * pow(ax / 2, 2 * k + n) / (factorial(k) * factorial(k + n));
+      sign *= -1;
+    }
+    return n % 2 === 0 ? sum : -sum;
+  }
+  
+  function factorial(n) {
+    if (n <= 1) return 1;
+    let f = 1;
+    for (let i = 2; i <= n; i++) f *= i;
+    return f;
+  }
+  
+  // Multiple Bessel beam sources
+  const sources = [
+    { x: cx + cos(t * 0.7) * width * 0.25, y: cy + sin(t * 0.5) * height * 0.25, order: 3 },
+    { x: cx + cos(t * 0.7 + PI) * width * 0.25, y: cy + sin(t * 0.5 + PI) * height * 0.25, order: 4 },
+    { x: cx + cos(t * 0.3) * width * 0.1, y: cy + sin(t * 0.4) * height * 0.35, order: 2 },
+  ];
+  
+  // Draw interference field
+  const res = 3;
+  for (let px = 0; px < width; px += res) {
+    for (let py = 0; py < height; py += res) {
+      let val = 0;
+      let hueShift = 0;
+      
+      for (const src of sources) {
+        const dx = px - src.x;
+        const dy = py - src.y;
+        const r = sqrt(dx * dx + dy * dy);
+        const theta = atan2(dy, dx);
+        const k = 0.15;
+        const omega = 0.8;
+        
+        // Bessel beam: J_n(k*r) * exp(i*n*theta - i*omega*t)
+        const n = src.order;
+        const b = besselJ(n, k * r);
+        const phase = n * theta - omega * t * 10;
+        val += b * cos(phase) * exp(-r * 0.003);
+        hueShift += sin(phase) * 30;
+      }
+      
+      val = val * 0.5 + 0.5;
+      if (val > 0.15) {
+        const h = (hueShift + 200) % 360;
+        const s = map(val, 0.15, 1, 20, 90);
+        const b = map(val, 0.15, 1, 10, 95);
+        fill(h, s, b, map(val, 0.15, 1, 0, 85));
+        rect(px, py, res, res);
+      }
+    }
+  }
+  
+  // Orbiting particles along Bessel zeros
+  for (const src of sources) {
+    for (let m = 1; m <= 5; m++) {
+      const r = m * 40 + 20 + sin(t * 2 + m) * 10;
+      const theta = t * (1 + m * 0.2) + m * PI / 3;
+      const x = src.x + cos(theta) * r;
+      const y = src.y + sin(theta) * r;
+      const brt = map(sin(t * 3 + m * 0.5), -1, 1, 50, 100);
+      fill((src.order * 40 + 180) % 360, 80, brt, 90);
+      circle(x, y, 3 + sin(t * 4 + m) * 1.5);
+    }
+  }
+  
+  // Central glow
+  for (let i = 5; i > 0; i--) {
+    fill(200, 60, 100, 5);
+    circle(cx, cy, i * 60 + sin(t + i) * 20);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
