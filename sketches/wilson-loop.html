@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wilson Loop</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Wilson Loop — QCD-inspired gauge-invariant path integrals
+// Rectangular loops with varying aspect ratios creating interference patterns
+
+let loops = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+
+  for (let i = 0; i < 28; i++) {
+    loops.push({
+      x: random(width),
+      y: random(height),
+      w: random(40, 200),
+      h: random(40, 200),
+      phase: random(TWO_PI),
+      phaseY: random(TWO_PI),
+      speed: random(0.003, 0.012),
+      speedY: random(0.002, 0.008),
+      hueOffset: random(360),
+      alpha: random(30, 70),
+      thickness: random(0.5, 2)
+    });
+  }
+}
+
+function draw() {
+  background(0, 0, 5, 25);
+
+  t += 0.01;
+
+  for (let loop of loops) {
+    drawWilsonLoop(loop);
+  }
+
+  // Central gauge field lines
+  drawGaugeField();
+}
+
+function drawWilsonLoop(loop) {
+  let { x, y, w, h, phase, phaseY, speed, speedY, hueOffset, alpha, thickness } = loop;
+
+  let wt = w * (1 + 0.3 * sin(t * speed * 50 + phase));
+  let ht = h * (1 + 0.3 * sin(t * speedY * 50 + phaseY));
+
+  // Wilson loop phase from rectangular path
+  // The holonomy around rectangle traces SU(2) parallel transport
+  let a = wt / 2;
+  let b = ht / 2;
+  let lambda = sqrt(a * a + b * b);
+
+  // Phase accumulated around loop edges (like lattice QCD Wilson action)
+  let phi = 4 * atan(b / a) + t * 5 + phase;
+
+  // Color from phase — gauge-invariant holonomy
+  let hue = (phi * 57.3 + hueOffset) % 360;
+  let sat = 70 + 20 * sin(t * 2 + phase);
+  let bri = 60 + 30 * sin(t * 3 + phaseY);
+
+  push();
+  translate(x, y);
+
+  // Draw loop path with glow
+  let segs = 60;
+
+  // Glow layers
+  for (let g = 3; g >= 0; g--) {
+    let glowAlpha = alpha * (0.3 - g * 0.05);
+    let glowWeight = thickness + g * 3;
+
+    stroke(hue, sat * 0.7, bri, glowAlpha);
+    strokeWeight(glowWeight);
+    noFill();
+
+    beginShape();
+    for (let i = 0; i <= segs; i++) {
+      let s = i / segs;
+      let px, py;
+
+      if (s < 0.25) {
+        // Bottom edge
+        let ss = s / 0.25;
+        px = lerp(-a, a, ss);
+        py = b;
+      } else if (s < 0.5) {
+        // Right edge
+        let ss = (s - 0.25) / 0.25;
+        px = a;
+        py = lerp(b, -b, ss);
+      } else if (s < 0.75) {
+        // Top edge
+        let ss = (s - 0.5) / 0.25;
+        px = lerp(a, -a, ss);
+        py = -b;
+      } else {
+        // Left edge
+        let ss = (s - 0.75) / 0.25;
+        px = -a;
+        py = lerp(-b, b, ss);
+      }
+
+      // Add quantum fluctuations
+      px += cos(s * TWO_PI * 4 + t * 3 + phase) * 2;
+      py += sin(s * TWO_PI * 4 + t * 3 + phaseY) * 2;
+
+      vertex(px, py);
+    }
+    endShape(CLOSE);
+  }
+
+  // Interior phase fill
+  noStroke();
+  fill(hue, sat * 0.5, bri * 0.3, alpha * 0.15);
+  rectMode(CENTER);
+  rect(0, 0, wt * 0.8, ht * 0.8, 2);
+
+  // Corner nodes — gauge field vertices
+  let nodeSize = 3 + 2 * sin(t * 4 + phase);
+  fill(hue, sat, bri, alpha);
+  for (let nx = -1; nx <= 1; nx += 2) {
+    for (let ny = -1; ny <= 1; ny += 2) {
+      ellipse(nx * a, ny * b, nodeSize, nodeSize);
+    }
+  }
+
+  pop();
+}
+
+function drawGaugeField() {
+  // Subtle central gauge field lines emanating from center
+  let cx = width / 2;
+  let cy = height / 2;
+
+  stroke(200, 30, 60, 15);
+  strokeWeight(0.5);
+  noFill();
+
+  for (let i = 0; i < 12; i++) {
+    let angle = (i / 12) * TWO_PI + t * 0.1;
+    let r1 = 50;
+    let r2 = 250 + 50 * sin(t * 2 + i);
+
+    beginShape();
+    for (let j = 0; j <= 50; j++) {
+      let tt = j / 50;
+      let r = lerp(r1, r2, tt);
+      let theta = angle + 0.5 * sin(tt * PI + t * 3 + i);
+      let px = cx + cos(theta) * r;
+      let py = cy + sin(theta) * r;
+      vertex(px, py);
+    }
+    endShape();
+  }
+
+  // Central Wilson line
+  let lineLen = 120 + 40 * sin(t);
+  let lineHue = (t * 50) % 360;
+  stroke(lineHue, 60, 70, 30);
+  strokeWeight(1.5);
+  line(cx, cy - lineLen/2, cx, cy + lineLen/2);
+
+  // Endpoint holonomy markers
+  fill(lineHue, 70, 80, 50);
+  noStroke();
+  ellipse(cx, cy - lineLen/2, 6, 6);
+  ellipse(cx, cy + lineLen/2, 6, 6);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

@@ -101,6 +101,7 @@ The project cycles through different technique categories to ensure variety:
 - **recursive-polygons** — Nested geometric shapes with recursive subdivision
 - **wave-particles** — Wave interference combined with particle dynamics
 - **weber-curves** — Curves of constant visual angle with orbital dynamics and glowing particle trails
+- **wilson-loop** — QCD-inspired Wilson loop holonomy with rectangular gauge-invariant path integrals and quantum fluctuations
 - **wireworld** — Cellular automaton for electronic circuits simulating electron flow through wire networks
 - **turbulent-flow** — Perlin noise flow field with particle trails and spectral colors
 - **metaballs** — Organic blob dynamics using marching squares algorithm
