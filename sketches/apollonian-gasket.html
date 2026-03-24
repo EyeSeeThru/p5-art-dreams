@@ -1,187 +1,254 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
   <title>Apollonian Gasket</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #0a0a0f; }
+    body { background: #050508; overflow: hidden; }
     canvas { display: block; }
   </style>
 </head>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script>
-// Apollonian Gasket - Fractal of mutually tangent circles
-// Generated through circle inversion and recursive tangent circle finding
-
+// Apollonian Gasket — fractal circle packing
+// Algorithm: start with 3 mutually tangent circles, insert Soddy circle recursively
+// via Descartes circle theorem: (b1+b2+b3+b4)^2 = 2(b1^2+b2^2+b3^2+b4^2)
 let circles = [];
-let maxDepth = 5;
-let baseHue = 0;
-let animPhase = 0;
-
-class Circle {
-  constructor(x, y, r) {
-    this.x = x;
-    this.y = y;
-    this.r = r;
-    this.curvature = 1 / r;
-  }
-  
-  draw() {
-    noFill();
-    strokeWeight(this.r > 50 ? 2 : 1);
-    let hue = (baseHue + this.curvature * 50) % 360;
-    let sat = 70 + sin(this.curvature * 10 + animPhase) * 20;
-    let bri = 60 + this.r * 0.3;
-    
-    stroke(hue, sat, bri, 180);
-    ellipse(this.x, this.y, this.r * 2);
-    
-    // Inner glow for larger circles
-    if (this.r > 30) {
-      stroke(hue, sat * 0.5, bri + 20, 80);
-      strokeWeight(this.r * 0.1);
-      ellipse(this.x, this.y, this.r * 2);
-    }
-  }
-}
-
-function generateGasket(x1, y1, r1, x2, y2, r2, x3, y3, r3, depth) {
-  if (depth > maxDepth || r1 < 2 || r2 < 2 || r3 < 2) return;
-  
-  // Calculate the fourth circle using Descartes' Circle Theorem
-  // (k1 + k2 + k3 + k4)^2 = 2 * (k1^2 + k2^2 + k3^2 + k4^2)
-  // For three tangent circles, there are two solutions
-  
-  let k1 = 1 / r1;
-  let k2 = 1 / r2;
-  let k3 = 1 / r3;
-  
-  let k4a = k1 + k2 + k3 + 2 * sqrt(k1*k2 + k2*k3 + k3*k1);
-  let k4b = k1 + k2 + k3 - 2 * sqrt(k1*k2 + k2*k3 + k3*k1);
-  
-  [k4a, k4b].forEach(k4 => {
-    if (k4 > 0 && k4 < 50) {
-      let r4 = 1 / k4;
-      
-      // Find center using circle inversion
-      let c1 = {x: x1, y: y1, r: r1};
-      let c2 = {x: x2, y: y2, r: r2};
-      let c3 = {x: x3, y: y3, r: r3};
-      
-      // Solve for center using intersection of two circles
-      let d12 = dist(c1.x, c1.y, c2.x, c2.y);
-      let d13 = dist(c1.x, c1.y, c3.x, c3.y);
-      let d23 = dist(c2.x, c2.y, c3.x, c3.y);
-      
-      let a = (r1*r1 - r2*r2 + d12*d12) / (2 * d12);
-      let h = sqrt(max(0, r1*r1 - a*a));
-      
-      let cx2 = c1.x + a * (c2.x - c1.x) / d12;
-      let cy2 = c1.y + a * (c2.y - c1.y) / d12;
-      
-      let sign = (c3.y - c1.y) * (c2.x - c1.x) > (c3.x - c1.x) * (c2.y - c1.y) ? 1 : -1;
-      
-      let x4 = cx2 + sign * h * (c2.y - c1.y) / d12;
-      let y4 = cy2 - sign * h * (c2.x - c1.x) / d12;
-      
-      // Check if this is a valid new circle
-      let valid = true;
-      for (let c of circles) {
-        let d = dist(x4, y4, c.x, c.y);
-        if (d < abs(r4 - c.r) - 1 || d > r4 + c.r + 1) {
-          valid = false;
-          break;
-        }
-      }
-      
-      if (valid && r4 > 2) {
-        circles.push(new Circle(x4, y4, r4));
-        
-        // Recurse with the new circle
-        generateGasket(x4, y4, r4, x1, y1, r1, x2, y2, r2, depth + 1);
-        generateGasket(x4, y4, r4, x2, y2, r2, x3, y3, r3, depth + 1);
-        generateGasket(x4, y4, r4, x3, y3, r3, x1, y1, r1, depth + 1);
-      }
-    }
-  });
-}
-
-function generateSimpleGasket() {
-  circles = [];
-  
-  let cx = width / 2;
-  let cy = height / 2;
-  let r = min(width, height) * 0.4;
-  
-  // Three initial circles forming a curved triangle
-  let angle1 = -PI / 2;
-  let angle2 = -PI / 2 + TWO_PI / 3;
-  let angle3 = -PI / 2 + 2 * TWO_PI / 3;
-  
-  let x1 = cx + cos(angle1) * r * 0.5;
-  let y1 = cy + sin(angle1) * r * 0.5;
-  let r1 = r * 0.5;
-  
-  let x2 = cx + cos(angle2) * r * 0.5;
-  let y2 = cy + sin(angle2) * r * 0.5;
-  let r2 = r * 0.5;
-  
-  let x3 = cx + cos(angle3) * r * 0.5;
-  let y3 = cy + sin(angle3) * r * 0.5;
-  let r3 = r * 0.5;
-  
-  // Add boundary circle (negative curvature)
-  let boundaryR = r * 1.2;
-  circles.push(new Circle(cx, cy, boundaryR));
-  
-  // Add the three initial circles
-  circles.push(new Circle(x1, y1, r1));
-  circles.push(new Circle(x2, y2, r2));
-  circles.push(new Circle(x3, y3, r3));
-  
-  // Generate recursively
-  generateGasket(x1, y1, r1, x2, y2, r2, x3, y3, r3, 0);
-  generateGasket(x1, y1, r1, x3, y3, r3, cx, cy, boundaryR, 0);
-  generateGasket(x2, y2, r2, x3, y3, r3, cx, cy, boundaryR, 0);
-  generateGasket(x1, y1, r1, x2, y2, r2, cx, cy, boundaryR, 0);
-}
+let colors = [];
+const MAX_DEPTH = 7;
+let time = 0;
+let rSeed = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  colorMode(HSB, 360, 100, 100, 255);
-  generateSimpleGasket();
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  rSeed = random(10000);
+  buildGasket();
+}
+
+function buildGasket() {
+  circles = [];
+  let cx = width / 2;
+  let cy = height / 2;
+  let R = min(width, height) * 0.44;
+
+  // Start with 3 large circles arranged symmetrically, all tangent to outer boundary
+  // Use curvatures (bend = 1/r). Large outer circle = curvature 0.
+  // Three circles inside, all tangent to each other and to the outer circle
+  let r0 = R * 0.38; // radius of the three initial circles
+  let d = R - r0;     // distance from center to each circle center
+
+  let angles = [PI * 0.5, PI * (0.5 + 2/3), PI * (0.5 + 4/3)]; // top, bottom-right, bottom-left
+
+  let initialCircles = [];
+  for (let k = 0; k < 3; k++) {
+    let ax = cx + cos(angles[k]) * d;
+    let ay = cy + sin(angles[k]) * d;
+    initialCircles.push({ x: ax, y: ay, bend: 1 / r0, parent: -1 });
+  }
+
+  // Also add the outer boundary circle (as a reference, bend = 0)
+  // For Descartes with one bend=0, the new bend = b1 + b2 + b3 ± 2*sqrt(b1*b2 + b2*b3 + b3*b1)
+  // With two equal and one different...
+  // Actually, let me use the 3-circle Soddy approach instead
+
+  // Start with the 3 circles, then recurse into the triangular gap
+  for (let i = 0; i < 3; i++) {
+    circles.push(initialCircles[i]);
+  }
+
+  // Find the first Soddy circle in the center gap (bounded by the 3 circles)
+  let c0 = initialCircles[0], c1 = initialCircles[1], c2 = initialCircles[2];
+
+  // Descartes theorem for 3 circles + outer (bend=0):
+  // b4 = b0 + b1 + b2 ± 2*sqrt(b0*b1 + b1*b2 + b2*b0)
+  // where b0 = 0 (outer circle)
+  // b4 = b1 + b2 + b3 ± 2*sqrt(b1*b2 + b2*b3 + b3*b1)
+  let b1 = c0.bend, b2 = c1.bend, b3 = c2.bend;
+  let sqrtTerm = 2 * sqrt(b1 * b2 + b2 * b3 + b3 * b1);
+  let b4_small = b1 + b2 + b3 - sqrtTerm;  // inner Soddy circle
+  let b4_large = b1 + b2 + b3 + sqrtTerm;  // outer circle (negative bend = outer)
+
+  let r4 = 1 / b4_small;
+  // The center of the Soddy circle is found by solving the Soddy circle equation
+  // For 3 circles: intersection of the two radical axes
+  // We'll use the linear algebra approach: solve for center
+  let cx0 = c0.x, cy0 = c0.y, r0c = 1/b1;
+  let cx1 = c1.x, cy1 = c1.y, r1c = 1/b2;
+  let cx2 = c2.x, cy2 = c2.y, r2c = 1/b3;
+
+  // Find center of circle tangent to all 3 given circles
+  // Using the property that the distance from center to each circle center = r ± r_i
+  // where sign depends on whether we're inside or outside
+  // For inner Soddy circle: |center - ci| = r4 - ri (all ri are smaller than r4)
+  // Solve: center = intersection of perpendicular bisectors in "bend space"
+  let x4, y4;
+
+  // Use radical center approach
+  // d_ij^2 = (r_i ± r_j)^2 for tangent circles
+  // For inner Soddy circle tangent externally to all 3:
+  // |center - ci|^2 = (r4 + ri)^2
+  // Subtract pairs to get linear equations
+  let A = 2 * (cx1 - cx0);
+  let B = 2 * (cy1 - cy0);
+  let C = (r0c + r4)**2 - (r1c + r4)**2 - cx0**2 - cy0**2 + cx1**2 + cy1**2;
+  let D = 2 * (cx2 - cx1);
+  let E = 2 * (cy2 - cy1);
+  let F = (r1c + r4)**2 - (r2c + r4)**2 - cx1**2 - cy1**2 + cx2**2 + cy2**2;
+
+  let det = A * E - B * D;
+  if (abs(det) > 0.001) {
+    x4 = (C * E - B * F) / det;
+    y4 = (A * F - C * D) / det;
+  } else {
+    // fallback: use centroid of the 3
+    x4 = (cx0 + cx1 + cx2) / 3;
+    y4 = (cy0 + cy1 + cy2) / 3;
+  }
+
+  // But wait — for 3 equal circles arranged symmetrically with an outer tangent,
+  // the inner Soddy circle center should be at the centroid
+  x4 = (cx0 + cx1 + cx2) / 3;
+  y4 = (cy0 + cy1 + cy2) / 3;
+
+  let initialSoddy = { x: x4, y: y4, bend: b4_small, parent: -1 };
+  circles.push(initialSoddy);
+
+  // Now recurse into the 3 gaps between the initial circles
+  // Gap 0: between c1, c2, and the Soddy circle
+  recurse(c1, c2, initialSoddy, 0);
+  recurse(c2, c0, initialSoddy, 0);
+  recurse(c0, c1, initialSoddy, 0);
+}
+
+function recurse(cA, cB, cC, depth) {
+  if (depth >= MAX_DEPTH) return;
+
+  // Find Soddy circle tangent to cA, cB, cC
+  // Descartes: b4 = bA + bB + bC + 2*sqrt(bA*bB + bB*bC + cA*cB)
+  // For three mutually tangent circles, the new circle is in the gap
+  let bA = cA.bend, bB = cB.bend, bC = cC.bend;
+  let sqrtTerm = 2 * sqrt(max(0, bA * bB + bB * bC + bC * bA));
+  let b4 = bA + bB + bC + sqrtTerm; // this is the "inner" Soddy
+
+  let r4 = 1 / b4;
+  if (r4 < 1.5) return; // too small to render
+
+  // Find center of tangent circle
+  // For three circles with centers (xA,yA), (xB,yB), (xC,yC) and radii rA, rB, rC
+  // The center (x,y) satisfies: (x-xA)²+(y-yA)² = (r4+rA)² etc.
+  // Linear system from subtracting pairs
+  let rA = 1/bA, rB = 1/bB, rC = 1/bC;
+
+  let xA = cA.x, yA = cA.y, xB = cB.x, yB = cB.y, xC = cC.x, yC = cC.y;
+
+  // Use the matrix method
+  let A1 = 2 * (xB - xA);
+  let B1 = 2 * (yB - yA);
+  let C1 = (rA + r4)**2 - (rB + r4)**2 - xA**2 - yA**2 + xB**2 + yB**2;
+  let A2 = 2 * (xC - xB);
+  let B2 = 2 * (yC - yB);
+  let C2 = (rB + r4)**2 - (rC + r4)**2 - xB**2 - yB**2 + xC**2 + yC**2;
+
+  let det = A1 * B2 - B1 * A2;
+  if (abs(det) < 0.001) return;
+
+  let x4 = (C1 * B2 - B1 * C2) / det;
+  let y4 = (A1 * C2 - C1 * A2) / det;
+
+  // Sanity check: should be inside the triangle of the 3 centers
+  // and at distance rA - r4 from cA (for externally tangent)
+  let newCircle = { x: x4, y: y4, bend: b4, parent: depth - 1 };
+
+  // Check it's not too big or too small
+  if (r4 < 1 || r4 > min(width, height) * 0.5) return;
+
+  circles.push(newCircle);
+
+  // Recurse into the 3 new gaps
+  recurse(cA, cB, newCircle, depth + 1);
+  recurse(cB, cC, newCircle, depth + 1);
+  recurse(cC, cA, newCircle, depth + 1);
 }
 
 function draw() {
-  background(250, 20, 8, 30);
-  
-  animPhase += 0.02;
-  baseHue = (baseHue + 0.3) % 360;
-  
-  // Draw all circles
-  for (let c of circles) {
-    c.draw();
-  }
-  
-  // Add subtle animation - pulse some circles
+  randomSeed(rSeed + floor(time * 0.0008));
+  background(5, 12, 6);
+
+  let cx = width / 2;
+  let cy = height / 2;
+  let R = min(width, height) * 0.44;
+
+  // Outer ring glow
   noFill();
-  strokeWeight(0.5);
-  stroke(baseHue, 60, 80, 50);
-  let pulseR = 100 + sin(frameCount * 0.03) * 50;
-  ellipse(width/2, height/2, pulseR * 2);
+  for (let i = 4; i >= 0; i--) {
+    stroke(240, 30, 30, 8 * i);
+    strokeWeight(2 + i * 3);
+    ellipse(cx, cy, R * 2 + i * 4, R * 2 + i * 4);
+  }
+
+  // Draw all circles
+  for (let i = 0; i < circles.length; i++) {
+    let c = circles[i];
+    let r = 1 / c.bend;
+    if (r < 1) continue;
+
+    // Color based on depth (from rSeed for consistency) and position
+    let depthFrac = constrain(map(log(r + 1), log(3), log(R), 0, 1), 0, 1);
+    let hue = (230 + depthFrac * 120 + sin(time * 0.0003 + i * 0.3) * 15) % 360;
+    let sat = 35 + depthFrac * 45;
+    let bri = 45 + depthFrac * 50;
+    let alp = 65 + depthFrac * 30;
+
+    // Pulsing based on time
+    let pulse = sin(time * 0.002 + i * 0.5) * 0.12 + 0.88;
+
+    // Glow layers
+    noStroke();
+    fill(hue, sat * 0.3, bri * 0.25, alp * 0.15);
+    ellipse(c.x, c.y, r * 2 * pulse * 1.35, r * 2 * pulse * 1.35);
+    fill(hue, sat * 0.5, bri * 0.5, alp * 0.25);
+    ellipse(c.x, c.y, r * 2 * pulse * 1.15, r * 2 * pulse * 1.15);
+
+    // Main circle
+    stroke(hue, sat, bri, alp);
+    strokeWeight(0.6 + depthFrac * 0.8);
+    noFill();
+    ellipse(c.x, c.y, r * 2 * pulse, r * 2 * pulse);
+
+    // Inner highlight for larger circles
+    if (r > 20) {
+      noStroke();
+      fill(hue, sat * 0.4, bri * 0.7, bri * 0.12);
+      ellipse(c.x, c.y, r * 2 * pulse * 0.7, r * 2 * pulse * 0.7);
+    }
+  }
+
+  // Title
+  noStroke();
+  fill(200, 15, 65, 70);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Apollonian Gasket — fractal circle packing where every circle is tangent to three others', 16, 16);
+  fill(160, 15, 55, 55);
+  text('Recursive Soddy circles via Descartes theorem: (b\u2081+b\u2082+b\u2083+b\u2084)\u00B2 = 2(b\u2081\u00B2+b\u2082\u00B2+b\u2083\u00B2+b\u2084\u00B2)', 16, 32);
+  fill(130, 15, 50, 45);
+  text('Colors shift by circle size (blue=larger/smaller bend, red=smaller), gently pulsing with time', 16, 48);
+
+  // Stats
+  textAlign(RIGHT, TOP);
+  fill(200, 15, 60, 55);
+  text('Circles: ' + circles.length + '   Depth: ' + MAX_DEPTH, width - 16, 16);
+
+  time++;
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  generateSimpleGasket();
-}
-
-function mousePressed() {
-  generateSimpleGasket();
-  baseHue = random(360);
+  buildGasket();
 }
 </script>
 </body>

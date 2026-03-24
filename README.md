@@ -132,7 +132,7 @@ The project cycles through different technique categories to ensure variety:
 - **inverse-squares** — Gravitational field visualization with inverse square law physics and orbiting attractors
 - **ink-spread** — Sumi-e style ink diffusion simulation with fiber-guided organic spread patterns
 - **slime-mold** — Physarum slime mold simulation with sensory-driven agent movement and species-based coloring
-- **apollonian-gasket** — Fractal generated through recursive circle inversion using Descartes' Circle Theorem
+- **apollonian-gasket** — Fractal circle packing via recursive Soddy circles using Descartes theorem: (b₁+b₂+b₃+b₄)² = 2(b₁²+b₂²+b₃²+b₄²). Three equal circles arranged symmetrically inside a boundary; each triangular gap gets inscribed with a new tangent circle, recursively. Circles color-coded by size (hue shifts blue→red for larger→smaller), gently pulsing over time.
 - **arnolds-cat** — Arnold's cat map visualization showing chaotic stretching and folding dynamics on a torus
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
