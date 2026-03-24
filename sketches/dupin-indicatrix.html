@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dupin Indicatrix</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050508; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Dupin Indicatrix — local curvature signature of surfaces
+// Second fundamental form: κ₁u² + 2κ₁₂uv + κ₂v² = ±1
+// Elliptic (κ₁κ₂ > κ₁₂²), Hyperbolic (κ₁κ₂ < κ₁₂²), Parabolic (κ₁κ₂ = κ₁₂²)
+let t = 0;
+const SCALE = 200;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noFill();
+}
+
+function draw() {
+  background(5, 8, 9);
+
+  // Compute principal curvatures and twist (evolving over the surface)
+  let k1 = 2.5 + 1.8 * sin(t * 0.3);
+  let k2 = 0.8 + 1.0 * cos(t * 0.4 + 1.2);
+  let k12 = 0.6 * sin(t * 0.2);
+
+  // Determine type
+  let det = k1 * k2 - k12 * k12;
+
+  translate(width / 2, height / 2);
+  let viewAngle = t * 0.12;
+
+  // Draw multiple level sets: = ±0.5, ±1, ±1.5
+  for (let level = -2; level <= 2; level += 0.25) {
+    if (abs(level) < 0.05) continue; // skip 0
+    let alpha = map(abs(level), 0.5, 2, 15, 55);
+    let bright = map(abs(level), 0.5, 2, 50, 80);
+
+    // Color: positive = warm, negative = cool (negative Gaussian curvature regions)
+    let hue = level > 0 ? color(45, 60, bright, alpha) : color(200, 60, bright, alpha);
+    stroke(hue);
+
+    if (abs(det) < 0.05) {
+      // Parabolic case: draw parabola
+      drawParabola(k1, k2, k12, level, viewAngle, SCALE);
+    } else if (det > 0) {
+      // Elliptic case: draw ellipse
+      drawEllipse(k1, k2, k12, level, viewAngle, SCALE);
+    } else {
+      // Hyperbolic case: draw hyperbola
+      drawHyperbola(k1, k2, k12, level, viewAngle, SCALE);
+    }
+  }
+
+  // Draw coordinate axes
+  push();
+  rotate(viewAngle);
+  stroke(255, 0, 40, 25);
+  strokeWeight(0.8);
+  line(-SCALE * 2, 0, SCALE * 2, 0);
+  line(0, -SCALE * 2, 0, SCALE * 2);
+  pop();
+
+  // Draw principal direction arrows
+  push();
+  rotate(viewAngle);
+  stroke(60, 50, 80, 50);
+  strokeWeight(1.5);
+  let arrowLen1 = SCALE / sqrt(abs(k1));
+  let arrowLen2 = SCALE / sqrt(abs(k2));
+  drawArrow(0, 0, arrowLen1, 0);
+  drawArrow(0, 0, 0, arrowLen2);
+  pop();
+
+  // Info overlay
+  noStroke();
+  fill(255, 0, 70, 65);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Dupin Indicatrix: κ₁u² + 2κ₁₂uv + κ₂v² = ±1', -width/2 + 20, -height/2 + 18);
+  text(`κ₁=${k1.toFixed(2)}  κ₂=${k2.toFixed(2)}  κ₁₂=${k12.toFixed(2)}  det=${det.toFixed(2)}`, -width/2 + 20, -height/2 + 34);
+
+  let typeCol = det > 0 ? color(45, 60, 90, 75) : det < 0 ? color(200, 60, 90, 75) : color(120, 40, 80, 75);
+  fill(typeCol);
+  let typeStr = det > 0 ? 'ELLIPTIC point (κ₁κ₂ > κ₁₂²)' : det < 0 ? 'HYPERBOLIC / saddle point (κ₁κ₂ < κ₁₂²)' : 'PARABOLIC / cylinder direction';
+  text(typeStr, -width/2 + 20, -height/2 + 50);
+
+  t += deltaTime() * 0.001;
+}
+
+function drawEllipse(k1, k2, k12, level, angle, sc) {
+  // (k1*u² + 2*k12*u*v + k2*v² = level) is an ellipse when det > 0
+  // Use parametric: rotate to diagonalize, then draw ellipse
+  let a = k1, b = k12, c = k2;
+  let trace = a + c;
+  let disc = sqrt((a - c) * (a - c) + 4 * b * b);
+  let lambda1 = (trace + disc) / 2;
+  let lambda2 = (trace - disc) / 2;
+  let theta = 0.5 * atan2(2 * b, a - c);
+
+  // Parametric ellipse: u = sqrt(level/|lambda1|)*cos(s), v = sqrt(level/|lambda2|)*sin(s)
+  let sgn1 = lambda1 > 0 ? 1 : -1;
+  let sgn2 = lambda2 > 0 ? 1 : -1;
+  if (sgn1 * sgn2 < 0) return; // not an ellipse in this configuration
+
+  let r1 = sqrt(abs(level / lambda1));
+  let r2 = sqrt(abs(level / lambda2));
+
+  beginShape();
+  for (let s = 0; s <= TWO_PI; s += 0.05) {
+    let u = r1 * cos(s);
+    let v = r2 * sin(s);
+    // Rotate by theta
+    let x = (u * cos(theta) - v * sin(theta)) * sc;
+    let y = (u * sin(theta) + v * cos(theta)) * sc;
+    // Apply view rotation
+    let px = x * cos(angle) - y * sin(angle) * 0.25;
+    let py = x * sin(angle) * 0.2 + y * cos(angle);
+    vertex(px, py);
+  }
+  endShape(CLOSE);
+}
+
+function drawHyperbola(k1, k2, k12, level, angle, sc) {
+  // For hyperbola, diagonalize — one positive eigenvalue, one negative
+  let a = k1, b = k12, c = k2;
+  let trace = a + c;
+  let disc = sqrt((a - c) * (a - c) + 4 * b * b);
+  let lambda1 = (trace + disc) / 2;
+  let lambda2 = (trace - disc) / 2;
+  let theta = 0.5 * atan2(2 * b, a - c);
+
+  // Hyperbola: lambda1*u² - |lambda2|*v² = level
+  let r1 = sqrt(abs(level / lambda1));
+  let r2 = sqrt(abs(level / lambda2));
+
+  // Right branch
+  beginShape();
+  for (let s = -1.2; s <= 1.2; s += 0.04) {
+    let u = r1 * cosh(s);
+    let v = r2 * sinh(s);
+    let x = (u * cos(theta) - v * sin(theta)) * sc;
+    let y = (u * sin(theta) + v * cos(theta)) * sc;
+    let px = x * cos(angle) - y * sin(angle) * 0.25;
+    let py = x * sin(angle) * 0.2 + y * cos(angle);
+    vertex(px, py);
+  }
+  endShape();
+  // Left branch
+  beginShape();
+  for (let s = -1.2; s <= 1.2; s += 0.04) {
+    let u = -r1 * cosh(s);
+    let v = r2 * sinh(s);
+    let x = (u * cos(theta) - v * sin(theta)) * sc;
+    let y = (u * sin(theta) + v * cos(theta)) * sc;
+    let px = x * cos(angle) - y * sin(angle) * 0.25;
+    let py = x * sin(angle) * 0.2 + y * cos(angle);
+    vertex(px, py);
+  }
+  endShape();
+}
+
+function drawParabola(k1, k2, k12, level, angle, sc) {
+  // Degenerate case: k1*k2 = k12², draw as parabola-like curve
+  // Simplified: rotate and draw y = k*x²
+  let theta = 0.5 * atan2(2 * k12, k1 - k2);
+  beginShape();
+  for (let u = -3; u <= 3; u += 0.05) {
+    let aEff = k1 - k12 * k12 / k2;
+    let v = (level - aEff * u * u) / (2 * k12 * u + 0.001);
+    let x = (u * cos(theta) - v * sin(theta)) * sc;
+    let y = (u * sin(theta) + v * cos(theta)) * sc;
+    let px = x * cos(angle) - y * sin(angle) * 0.25;
+    let py = x * sin(angle) * 0.2 + y * cos(angle);
+    if (isFinite(px) && isFinite(py) && abs(px) < sc * 4 && abs(py) < sc * 4) {
+      vertex(px, py);
+    }
+  }
+  endShape();
+}
+
+function drawArrow(x1, y1, x2, y2) {
+  line(x1, y1, x2, y2);
+  let ang = atan2(y2 - y1, x2 - x1);
+  let alen = 7;
+  line(x2, y2, x2 - alen * cos(ang - 0.4), y2 - alen * sin(ang - 0.4));
+  line(x2, y2, x2 - alen * cos(ang + 0.4), y2 - alen * sin(ang + 0.4));
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

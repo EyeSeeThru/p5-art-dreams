@@ -32,6 +32,7 @@ The project cycles through different technique categories to ensure variety:
 - **double-pendulum** — Chaotic double pendulum simulation using Lagrangian mechanics with colorful trail visualization
 - **droplet-ripples** — Interactive water droplet ripple interference patterns with mouse interaction
 - **duffing-oscillator** — Chaotic Duffing oscillator in double-well potential with phase space trajectory visualization
+- **dupin-indicatrix** — Local curvature signature of surfaces — second fundamental form κ₁u² + 2κ₁₂uv + κ₂v² = ±1 with evolving elliptic/hyperbolic/parabolic point classification, rotating conic sections, and principal direction arrows
 - **dust-devil** — Spiraling particle vortex simulation with rising dust and turbulence dynamics
 - **spirograph-harmonics** — Parametric curves with multiple rotating arms creating intricate geometric patterns
 - **splash-drops** — Droplet impact simulation with crown splash, secondary droplets, and radial ripples
