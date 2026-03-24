@@ -39,7 +39,7 @@ function setup() {
     // Initialize kink soliton: φ jumps by 2π over the chain
     // tanh profile: φ = 2π * (1 - 0.5*(tanh((i - N*0.25)*0.15) + 1))
     let x0 = i - N * 0.28;
-    ph[i] = PI * (1 - tanh(x0 * 0.18));
+    ph[i] = PI * (1 - Math.tanh(x0 * 0.18));
     // Kick it rightward
     v[i] = 0.6 * exp(-x0 * x0 * 0.01);
   }
@@ -47,7 +47,7 @@ function setup() {
   // Second antikink going left
   for (let i = 0; i < N; i++) {
     let x0 = i - N * 0.72;
-    ph[i] -= PI * (1 + tanh(x0 * 0.18));
+    ph[i] -= PI * (1 + Math.tanh(x0 * 0.18));
     v[i] -= 0.5 * exp(-x0 * x0 * 0.01);
   }
 }
