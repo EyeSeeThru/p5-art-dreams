@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Von Kármán Vortex Street</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #03060a; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Von Kármán Vortex Street — alternating vortex shedding from a cylinder in fluid flow
+// Famous pattern: alternating vortices shed at Strouhal number St ≈ 0.2
+// Each vortex pair: shed, moves downstream, decays
+let t = 0;
+const U = 1.8;       // free stream velocity
+const R = 38;        // cylinder radius
+const ST = 0.198;    // Strouhal number for a cylinder
+const VORTEX_LIFE = 120; // frames before vortex decays
+
+let vortices = [];
+let particles = [];
+const NUM_PARTICLES = 320;
+let lastShed = -999;
+let shedSide = 1;    // alternate left/right
+const SHED_INTERVAL = 1 / (ST * 60 / R); // frames between sheds
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+
+  // Initialize particles spread across domain
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push({
+      x: random(-width * 0.4, width * 0.6),
+      y: random(height),
+      vx: 0, vy: 0,
+      trail: [],
+      hue: random(160, 220),
+    });
+  }
+}
+
+function draw() {
+  background(3, 10, 8);
+
+  translate(width * 0.28, height / 2);
+
+  // Flow field from all vortices
+  function getVelocity(px, py) {
+    let vx = U;
+    let vy = 0;
+    for (let v of vortices) {
+      let dx = px - v.x;
+      let dy = py - v.y;
+      let r2 = dx * dx + dy * dy;
+      if (r2 < 16) r2 = 16;
+      let r = sqrt(r2);
+      let gamma = v.gamma;
+      let vTheta = gamma / (2 * PI * r2);
+      let vxV = -dy / r * vTheta;
+      let vyV = dx / r * vTheta;
+      vx += vxV;
+      vy += vyV;
+    }
+    return { vx, vy };
+  }
+
+  // Shed new vortex pair at Strouhal frequency
+  if (frameCount - lastShed > SHED_INTERVAL) {
+    let x = width * 0.22 + R;
+    let y = 0;
+    let gamma = 2800 + random(-200, 200);
+    // Shed alternating up/down
+    vortices.push({ x: x, y: y + shedSide * R * 0.4, gamma: gamma, life: VORTEX_LIFE, side: shedSide });
+    vortices.push({ x: x, y: y - shedSide * R * 0.4, gamma: -gamma, life: VORTEX_LIFE, side: -shedSide });
+    shedSide *= -1;
+    lastShed = frameCount;
+  }
+
+  // Update and draw vortices
+  for (let i = vortices.length - 1; i >= 0; i--) {
+    let v = vortices[i];
+    // Convection downstream at ~0.8U
+    v.x += U * 0.82;
+    v.life--;
+    if (v.life <= 0 || v.x > width * 1.2) {
+      vortices.splice(i, 1);
+      continue;
+    }
+
+    // Draw vortex as a spinning spiral
+    push();
+    translate(v.x, v.y);
+    let alpha = map(v.life, 0, VORTEX_LIFE, 0, 60);
+    let hue = v.side > 0 ? 195 : 300; // blue for CCW, magenta for CW
+    let sat = 55;
+    let bright = 80;
+
+    // Spiral arms
+    for (let arm = 0; arm < 3; arm++) {
+      beginShape();
+      noFill();
+      stroke(hue, sat, bright, alpha);
+      strokeWeight(1.2);
+      for (let a = 0; a < TWO_PI * 2.5; a += 0.08) {
+        let spiralR = map(a, 0, TWO_PI * 2.5, 3, R * 1.8 * (v.life / VORTEX_LIFE));
+        let sx = cos(a + arm * TWO_PI / 3 + t * (v.side > 0 ? 3 : -3)) * spiralR;
+        let sy = sin(a + arm * TWO_PI / 3 + t * (v.side > 0 ? 3 : -3)) * spiralR;
+        vertex(sx, sy);
+      }
+      endShape();
+    }
+
+    // Glow center
+    noStroke();
+    fill(hue, sat, bright + 10, alpha * 1.5);
+    ellipse(0, 0, 8, 8);
+    pop();
+  }
+
+  // Update particles — advect through vortex flow field
+  for (let p of particles) {
+    let vel = getVelocity(p.x, p.y);
+    p.vx = vel.vx * 0.9 + p.vx * 0.1;
+    p.vy = vel.vy * 0.9 + p.vy * 0.1;
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Trail
+    p.trail.push({ x: p.x, y: p.y });
+    if (p.trail.length > 14) p.trail.shift();
+
+    // Draw trail
+    noFill();
+    for (let i = 1; i < p.trail.length; i++) {
+      let a = map(i, 0, p.trail.length, 0, 25);
+      stroke(p.hue, 40, 70, a);
+      strokeWeight(0.8);
+      line(p.trail[i - 1].x, p.trail[i - 1].y, p.trail[i].x, p.trail[i].y);
+    }
+
+    // Draw particle
+    fill(p.hue, 30, 85, 55);
+    noStroke();
+    ellipse(p.x, p.y, 2.8, 2.8);
+
+    // Reset when past domain
+    if (p.x > width * 1.1) {
+      p.x = -width * 0.1;
+      p.y = random(-height * 0.55, height * 0.55);
+      p.trail = [];
+    }
+    if (p.y < -height * 0.6 || p.y > height * 0.6) {
+      p.x = -width * 0.1;
+      p.y = random(-height * 0.55, height * 0.55);
+      p.trail = [];
+    }
+  }
+
+  // Draw cylinder
+  let cx = width * 0.22;
+  push();
+  translate(cx, 0);
+
+  // Cylinder shadow
+  noStroke();
+  fill(0, 0, 0, 40);
+  ellipse(3, 3, R * 2, R * 2);
+
+  // Cylinder body
+  fill(20, 15, 55);
+  stroke(30, 30, 70, 80);
+  strokeWeight(2);
+  ellipse(0, 0, R * 2, R * 2);
+
+  // Cylinder highlight
+  noStroke();
+  fill(0, 0, 100, 15);
+  ellipse(-R * 0.3, -R * 0.3, R * 0.8, R * 0.8);
+  pop();
+
+  // Draw flow direction arrow
+  push();
+  stroke(180, 30, 60, 40);
+  strokeWeight(1.5);
+  noFill();
+  let arrowLen = 60;
+  let ax = cx - R - 80;
+  let ay = 0;
+  line(ax, ay, ax + arrowLen, ay);
+  // Arrowhead
+  let ang = atan2(0, arrowLen);
+  line(ax + arrowLen, ay, ax + arrowLen - 8 * cos(ang - 0.4), ay - 8 * sin(ang - 0.4));
+  line(ax + arrowLen, ay, ax + arrowLen - 8 * cos(ang + 0.4), ay - 8 * sin(ang + 0.4));
+  pop();
+
+  // Labels
+  noStroke();
+  fill(180, 25, 65, 65);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Von Kármán Vortex Street — alternating vortex shedding from a cylinder in uniform flow', -width * 0.28 + 18, -height/2 + 16);
+  fill(200, 30, 60, 50);
+  text(`Strouhal number St ≈ ${ST}   Free stream velocity U = ${U.toFixed(1)}   Cylinder radius R = ${R}`, -width * 0.28 + 18, -height/2 + 32);
+  fill(160, 25, 60, 45);
+  text('Vortex age: blue = CCW | magenta = CW', -width * 0.28 + 18, -height/2 + 48);
+
+  t += deltaTime() * 0.001;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

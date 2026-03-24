@@ -68,6 +68,7 @@ The project cycles through different technique categories to ensure variety:
 - **stochastic-resonance** — Noise-enhanced signal detection demonstrating stochastic resonance phenomenon
 - **perlin-vortex** — Perlin noise-driven vortex field with particle trails
 - **vortex-lattice** — Lattice of coupled vortices with oscillating positions and interconnecting flow lines
+- **von-karman-vortex** — Von Kármán vortex street — alternating vortex shedding from a cylinder in uniform flow at Strouhal number St ≈ 0.2, with spiral-arm vortices color-coded by rotation direction (blue CCW, magenta CW) and particle advection through the wake field
 - **vortex-shedding** — Von Kármán vortex street simulation with alternating swirling vortices behind an obstacle
 - **phase-portraits** — Phase space visualization
 - **temporal-fractures** — Temporal fractal patterns
