@@ -43,10 +43,10 @@ function setup() {
     nextGrid[y] = [];
     for (let x = 0; x < COLS; x++) {
       // Initial condition: random with slight spatial structure
-      let noise = noise(x * 0.08, y * 0.08) * 3;
-      if (noise < 0.5) grid[y][x] = 0;       // A
-      else if (noise < 1.0) grid[y][x] = 1; // B
-      else if (noise < 1.5) grid[y][x] = 2; // C
+      let n = noise(x * 0.08, y * 0.08) * 3;
+      if (n < 0.5) grid[y][x] = 0;       // A
+      else if (n < 1.0) grid[y][x] = 1; // B
+      else if (n < 1.5) grid[y][x] = 2; // C
       else grid[y][x] = -1;                   // empty
     }
   }
