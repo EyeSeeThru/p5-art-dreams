@@ -233,6 +233,7 @@ The project cycles through different technique categories to ensure variety:
 
 - **diffraction-grating** — Multi-slit diffraction grating interference with spectral color visualization and intensity graph
 - **sine-cascade** — Cascading sine wave layers with flowing particles and interconnecting lines creating mesmerizing wave dynamics
+- **sine-gordon-soliton** — Sine-Gordon N-pendulum soliton chain with kink/antikink collision — space-time diagram (top), angle visualization (middle green→red→blue = 0→±π), energy profile (bottom); solitons pass through each other unchanged as exact solutions of this integrable system
 - **schwarzschild** — Black hole visualization with gravitational lensing, photon sphere effects, and accretion disk dynamics
 
 - **rope-dynamics** — Rope physics simulation using Verlet integration with realistic swinging, gravity, and mouse interaction

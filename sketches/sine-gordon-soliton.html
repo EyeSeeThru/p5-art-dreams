@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Sine-Gordon Solitons</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020408; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Sine-Gordon Solitons — chain of coupled pendulums
+// Equation: d²φ/dt² = -sin(φ) + κ(φ_{i+1} - 2φ_i + φ_{i-1})
+// Kink (2π) and antikink (-2π) solitons pass through each other unchanged
+const N = 48;          // number of pendulums
+const G = 1.2;         // gravity / restoring strength
+const KAPPA = 0.55;    // coupling strength between neighbors
+const DT = 0.025;
+let ph = [];            // angles
+let v = [];             // angular velocities
+const DAMPING = 0.0004;
+let history = [];       // [time][pendulum] angle history for space-time diagram
+const HIST_LEN = 120;
+
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+
+  for (let i = 0; i < N; i++) {
+    ph.push(0.0);
+    v.push(0.0);
+    history.push([]);
+    // Initialize kink soliton: φ jumps by 2π over the chain
+    // tanh profile: φ = 2π * (1 - 0.5*(tanh((i - N*0.25)*0.15) + 1))
+    let x0 = i - N * 0.28;
+    ph[i] = PI * (1 - tanh(x0 * 0.18));
+    // Kick it rightward
+    v[i] = 0.6 * exp(-x0 * x0 * 0.01);
+  }
+
+  // Second antikink going left
+  for (let i = 0; i < N; i++) {
+    let x0 = i - N * 0.72;
+    ph[i] -= PI * (1 + tanh(x0 * 0.18));
+    v[i] -= 0.5 * exp(-x0 * x0 * 0.01);
+  }
+}
+
+function integrate() {
+  // Compute accelerations
+  let a = [];
+  for (let i = 0; i < N; i++) {
+    let prev = i > 0 ? i - 1 : i;
+    let next = i < N - 1 ? i + 1 : i;
+    let d2ph = -G * sin(ph[i]) + KAPPA * (ph[next] - 2 * ph[i] + ph[prev]);
+    a.push(d2ph - DAMPING * v[i]);
+  }
+  // Velocity Verlet
+  for (let i = 0; i < N; i++) {
+    v[i] += a[i] * DT * 0.5;
+    ph[i] += v[i] * DT;
+    // wrap angle to [-PI, PI]
+    while (ph[i] > PI) ph[i] -= TWO_PI;
+    while (ph[i] < -PI) ph[i] += TWO_PI;
+  }
+  // recalc after position update
+  for (let i = 0; i < N; i++) {
+    let prev = i > 0 ? i - 1 : i;
+    let next = i < N - 1 ? i + 1 : i;
+    let d2ph = -G * sin(ph[i]) + KAPPA * (ph[next] - 2 * ph[i] + ph[prev]);
+    a[i] = d2ph - DAMPING * v[i];
+  }
+  for (let i = 0; i < N; i++) {
+    v[i] += a[i] * DT * 0.5;
+  }
+}
+
+function draw() {
+  background(2, 20, 5);
+
+  // Multiple integration steps per frame
+  for (let step = 0; step < 6; step++) {
+    integrate();
+  }
+
+  // Update history
+  for (let i = 0; i < N; i++) {
+    history[i].push(ph[i]);
+    if (history[i].length > HIST_LEN) history[i].shift();
+  }
+
+  let pendX = width * 0.08;
+  let pendY = height * 0.22;
+  let spacing = (width * 0.84) / (N - 1);
+  let armLen = 38;
+  let bobR = 7;
+
+  // === SPACE-TIME DIAGRAM (top) ===
+  let stY = height * 0.06;
+  let stH = height * 0.3;
+  let stW = width * 0.84;
+  let stX = width * 0.08;
+
+  // Grid
+  stroke(0, 0, 30, 20);
+  strokeWeight(0.5);
+  for (let i = 0; i < 5; i++) {
+    let gx = stX + i * stW / 4;
+    line(gx, stY, gx, stY + stH);
+  }
+  for (let j = 0; j < 4; j++) {
+    let gy = stY + j * stH / 3;
+    line(stX, gy, stX + stW, gy);
+  }
+
+  // Zero line
+  let zeroY = stY + stH * 0.5;
+  stroke(0, 0, 50, 40);
+  strokeWeight(0.8);
+  line(stX, zeroY, stX + stW, zeroY);
+
+  // ±2π reference lines
+  stroke(0, 0, 40, 25);
+  strokeWeight(0.5);
+  line(stX, zeroY - stH * 0.4, stX + stW, zeroY - stH * 0.4);
+  line(stX, zeroY + stH * 0.4, stX + stW, zeroY + stH * 0.4);
+
+  // Draw angle history as colored strips
+  noStroke();
+  for (let i = 0; i < N; i++) {
+    let sx = stX + i * spacing;
+    let hx = (stX + stW - sx) / stW; // temporal offset for perspective
+    for (let j = 1; j < history[i].length; j++) {
+      let age = history[i].length - j;
+      let alpha = map(age, 0, HIST_LEN, 0, 80);
+      let px = sx + hx * 0.0;
+      let py = stY + stH * 0.5 - history[i][j] / PI * stH * 0.4;
+      let pyPrev = stY + stH * 0.5 - history[i][j-1] / PI * stH * 0.4;
+      let hue = map(sin(history[i][j]), -1, 1, 420, 240) % 360;
+      if (hue < 0) hue += 360;
+      stroke(hue, 50, 80, alpha);
+      strokeWeight(0.7);
+      if (py > stY && py < stY + stH) {
+        line(sx - age * spacing * 0.005, pyPrev, sx - (age - 1) * spacing * 0.005, py);
+      }
+    }
+  }
+
+  // === SPACE-FILLED PENDULUMS (middle) ===
+  let cy = height * 0.58;
+
+  // Background ribbon showing angle
+  for (let i = 0; i < N - 1; i++) {
+    let x1 = pendX + i * spacing;
+    let x2 = pendX + (i + 1) * spacing;
+    let hue = map(sin(ph[i]), -1, 1, 420, 240) % 360;
+    if (hue < 0) hue += 360;
+    let bri = map(ph[i], -PI, PI, 60, 95);
+    stroke(hue, 40, bri, 15);
+    strokeWeight(spacing * 0.9);
+    line(x1, cy, x2, cy);
+  }
+
+  // Draw each pendulum
+  for (let i = 0; i < N; i++) {
+    let px = pendX + i * spacing;
+    let angle = ph[i];
+    let bobX = px + sin(angle) * armLen;
+    let bobY = cy - cos(angle) * armLen;
+
+    // Hue based on angle (wrapping: 0=green, π=red, -π=red)
+    let hue = map(sin(angle), -1, 1, 420, 240) % 360;
+    if (hue < 0) hue += 360;
+    let bri = map(ph[i], -PI, PI, 55, 100);
+
+    // Connection line
+    stroke(0, 0, 50, 40);
+    strokeWeight(1);
+    line(px, cy, bobX, bobY);
+
+    // Bob glow
+    noStroke();
+    fill(hue, 40, bri, 20);
+    ellipse(bobX, bobY, bobR * 3.5, bobR * 3.5);
+    fill(hue, 30, bri + 5, 35);
+    ellipse(bobX, bobY, bobR * 2, bobR * 2);
+
+    // Bob
+    fill(hue, 45, bri);
+    stroke(hue, 50, 100, 60);
+    strokeWeight(1.2);
+    ellipse(bobX, bobY, bobR * 1.8, bobR * 1.8);
+  }
+
+  // Mounting rod
+  stroke(0, 0, 60, 60);
+  strokeWeight(2.5);
+  line(pendX - spacing, cy, pendX + N * spacing + spacing, cy);
+
+  // === ENERGY PROFILE (bottom) ===
+  let ey = height * 0.82;
+  let ew = width * 0.88;
+  let eh = height * 0.1;
+  let ex = width * 0.06;
+
+  // Background
+  noStroke();
+  fill(0, 0, 10, 30);
+  rect(ex, ey, ew, eh);
+
+  // Zero energy reference
+  stroke(0, 0, 50, 30);
+  strokeWeight(0.5);
+  line(ex, ey + eh * 0.5, ex + ew, ey + eh * 0.5);
+
+  // Draw energy per pendulum: E = 1 - cos(φ) + 0.5*v² + coupling
+  noFill();
+  for (let i = 0; i < N - 1; i++) {
+    let e = (1 - cos(ph[i])) * 0.5 + 0.5 * v[i] * v[i];
+    let ex1 = ex + i * ew / (N - 1);
+    let ex2 = ex + (i + 1) * ew / (N - 1);
+    let ey1 = constrain(ey + eh - e * eh * 0.5, ey + 2, ey + eh - 2);
+    let ey2 = constrain(ey + eh - e * eh * 0.5, ey + 2, ey + eh - 2);
+    let hue = map(e, 0, 2, 300, 60) % 360;
+    if (hue < 0) hue += 360;
+    stroke(hue, 60, 80, 60);
+    strokeWeight(1.5);
+    line(ex1, ey1, ex2, ey2);
+  }
+
+  // Labels
+  noStroke();
+  fill(200, 20, 65, 60);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Sine-Gordon Solitons — N = ' + N + ' coupled pendulums with Josephson coupling', 18, 16);
+  fill(180, 25, 60, 50);
+  text('Top: space-time diagram (φ vs x,t) — middle: pendulum angles (green→red→blue = 0→±π) — bottom: energy per site', 18, 32);
+  fill(160, 20, 60, 40);
+  text('Kink (2π) and antikink (-2π) solitons collide and pass through each other — hallmark of integrability', 18, 48);
+
+  t += DT * 6;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
