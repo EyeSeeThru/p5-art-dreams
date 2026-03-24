@@ -145,6 +145,7 @@ The project cycles through different technique categories to ensure variety:
 - **electrohydrodynamics** — Electric field driven fluid patterns with charged particles and Coulomb forces
 - **wavefunction-collapse** — Quantum wave function collapse visualization with entropy-based state reduction
 - **audio-aurora** — Audio-reactive aurora visualization with flowing particle ribbons responding to simulated frequency bands
+- **barber-pole** — Rotating spiral stripe optical illusion. Stacked horizontal bands drawn with perspective give 3D cylinder look; depth-based shading makes middle brighter; wobble adds life. Classic barber pole effect where sequential diagonal bands create apparent upward motion along cylinder axis.
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
 - **cahn-hilliard** — Phase separation simulation using the Cahn-Hilliard equation with spinodal decomposition and colorful phase boundaries
 - **bezier-weave** — Parametric Bezier curves with animated control points creating woven tapestry patterns with glow effects

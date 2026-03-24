@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Barber Pole</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0f; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Barber Pole — rotating spiral stripe optical illusion
+// Each pole: diagonal stripes that appear to scroll upward due to apparent motion
+// The 3D illusion: stripes seem to move along the axis of the cylinder
+let poles = [];
+let time = 0;
+const NUM_POLES = 5;
+
+class BarberPole {
+  constructor(x, y, baseRadius, height, stripeWidth, rotationSpeed, colors, id) {
+    this.x = x;
+    this.y = y;
+    this.baseRadius = baseRadius;        // horizontal radius of ellipse (perspective)
+    this.height = height;                // vertical height
+    this.stripeWidth = stripeWidth;      // width of each stripe band
+    this.rotationSpeed = rotationSpeed; // how fast it appears to scroll
+    this.colors = colors;                // array of color arrays [h, s, b]
+    this.phase = random(TWO_PI);          // phase offset for animation
+    this.id = id;
+    this.tilt = random(-0.15, 0.15);      // slight tilt angle
+    this.wobbleAmp = random(0.5, 2);      // wobble amplitude
+    this.wobbleFreq = random(0.3, 0.8);  // wobble frequency
+  }
+
+  draw(t) {
+    push();
+    translate(this.x, this.y);
+    rotate(this.tilt);
+
+    let apparentScroll = (t * this.rotationSpeed + this.phase) % this.stripeWidth;
+    let numStripes = ceil(this.height / this.stripeWidth) + 2;
+    let h = this.baseRadius * 2.2; // total height with perspective expansion
+
+    // Draw the cylinder as stacked horizontal bands with perspective
+    let segments = 60;
+    for (let i = 0; i < segments; i++) {
+      let frac = i / segments;
+      let nextFrac = (i + 1) / segments;
+
+      // Perspective: ellipse width varies with depth
+      let depth = sin(frac * PI); // 0 at top/bottom, 1 at middle
+      let w = this.baseRadius * (0.15 + depth * 0.85 * 1.0);
+
+      let yPos = map(frac, 0, 1, -h / 2, h / 2);
+      let nextYPos = map(nextFrac, 0, 1, -h / 2, h / 2);
+      let bandH = abs(nextYPos - yPos) + 1;
+
+      // Which color stripe is this?
+      let stripeIdx = floor((frac * this.height + apparentScroll) / this.stripeWidth) % this.colors.length;
+      let c = this.colors[abs(stripeIdx) % this.colors.length];
+
+      // Depth-based shading (darker at edges, brighter in middle)
+      let shade = 0.3 + depth * 0.7;
+      let wobble = sin(t * this.wobbleFreq + this.id) * this.wobbleAmp;
+
+      // Shadow/glow
+      noStroke();
+      fill(c[0], c[1] * 0.4, c[2] * 0.15, 40);
+      ellipse(wobble, yPos + bandH / 2, w * 2 + 12, bandH + 2);
+
+      // Main band
+      fill(c[0], c[1] * 0.85, c[2] * shade, 255);
+      ellipse(wobble, yPos + bandH / 2, w * 2, bandH);
+
+      // Highlight at center of each stripe
+      if (depth > 0.5) {
+        let hlFrac = (frac - 0.5) * 2; // 0 at center, 1 at edges of middle half
+        let hlAlpha = (1 - hlFrac) * 80;
+        fill(c[0], c[1] * 0.3, min(c[2] * 1.1, 100), hlAlpha);
+        ellipse(wobble, yPos + bandH / 2, w * 1.5, bandH * 0.8);
+      }
+    }
+
+    // End caps (top and bottom ellipses for 3D cylinder look)
+    // Top cap
+    strokeWeight(1.5);
+    noFill();
+    stroke(this.colors[0][0], this.colors[0][1] * 0.9, this.colors[0][2] * 0.6, 180);
+    ellipse(0, -h / 2, this.baseRadius * 0.3 * 2, this.baseRadius * 0.3 * 0.6);
+
+    // Bottom cap
+    stroke(this.colors[1 % this.colors.length][0], this.colors[1 % this.colors.length][1] * 0.9, this.colors[1 % this.colors.length][2] * 0.6, 180);
+    ellipse(0, h / 2, this.baseRadius * 0.3 * 2, this.baseRadius * 0.3 * 0.6);
+
+    pop();
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 255);
+  noStroke();
+
+  buildPoles();
+}
+
+function buildPoles() {
+  poles = [];
+  let cols = 3;
+  let rows = 2;
+  let cellW = width / (cols + 0.5);
+  let cellH = height * 0.65;
+  let baseR = min(cellW, cellH) * 0.32;
+  let poleH = cellH * 1.4;
+
+  let idx = 0;
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (idx >= NUM_POLES) break;
+      let cx = cellW * (col + 0.7) + cellW * 0.15 * row;
+      let cy = height * 0.5 + (row - 0.5) * 20;
+
+      // Different color schemes
+      let schemes = [
+        [[0, 85, 95], [30, 90, 100], [60, 95, 100]],      // red-yellow-cyan classic
+        [[200, 85, 95], [240, 80, 90], [280, 85, 92]],    // blue-purple-pink
+        [[120, 80, 90], [80, 85, 92], [45, 90, 95]],      // green-yellow-green
+        [[20, 90, 95], [350, 95, 100], [190, 85, 95]],    // orange-red-cyan
+        [[280, 75, 88], [320, 80, 92], [200, 70, 85]],    // magenta-violet-blue
+      ];
+
+      let scheme = schemes[idx % schemes.length];
+      let sw = baseR * 0.35 + idx * baseR * 0.05;
+      let spd = 1.2 + idx * 0.4;
+
+      poles.push(new BarberPole(cx, cy, baseR, poleH, sw, spd, scheme, idx));
+      idx++;
+    }
+  }
+}
+
+function draw() {
+  background(10, 10, 8);
+
+  // Subtle grid backdrop
+  stroke(255, 5, 20, 12);
+  strokeWeight(0.5);
+  let gs = 40;
+  for (let x = 0; x < width; x += gs) line(x, 0, x, height);
+  for (let y = 0; y < height; y += gs) line(0, y, width, y);
+
+  // Draw all poles
+  for (let pole of poles) {
+    pole.draw(time);
+  }
+
+  // Light reflection streaks
+  noStroke();
+  for (let i = 0; i < 3; i++) {
+    let x = width * (0.2 + i * 0.3) + sin(time * 0.01 + i * 2) * 20;
+    let alpha = 3 + sin(time * 0.02 + i * 1.5) * 2;
+    fill(0, 0, 100, alpha);
+    rect(x - 30, 0, 60, height);
+  }
+
+  // Title
+  noStroke();
+  fill(0, 8, 70, 80);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Barber Pole — rotating spiral stripe illusion, apparent upward motion from sequential diagonal bands', 16, 16);
+  fill(0, 5, 55, 55);
+  text('Each cylinder: stacked horizontal bands with perspective, depth-based shading, and subtle wobble', 16, 32);
+  fill(0, 5, 45, 40);
+  text('Optical illusion: the brain interprets sequential diagonal stripes as continuous upward motion along cylinder axis', 16, 48);
+
+  // Stats
+  textAlign(RIGHT, TOP);
+  fill(0, 8, 60, 55);
+  text('Poles: ' + poles.length + '   Time: ' + nf(time * 0.01, 1, 1), width - 16, 16);
+
+  time++;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  buildPoles();
+}
+</script>
+</body>
+</html>
