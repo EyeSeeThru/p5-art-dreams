@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Toda Lattice Solitons</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #030710; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Toda Lattice — Integrable nonlinear lattice with exact soliton solutions
+// Exponential repulsion: d²x_n/dt² = e^{-(x_{n+1}-x_n)} - e^{-(x_n-x_{n-1})}
+// Solitons pass through each other unchanged (integrable!)
+const N = 28;        // number of particles
+const G = 9.8;       // gravity-like coupling
+let particles = [];
+let history = [];    // track recent positions for trails
+const HISTORY_LEN = 60;
+
+class TodaParticle {
+  constructor(n) {
+    this.n = n;
+    this.x = n * 28; // equilibrium spacing
+    this.vx = 0;
+    this.ax = 0;
+    this.y = 0;
+    this.vy = 0;
+    this.ax = 0;
+    this.phase = 0;
+  }
+}
+
+let prevX = [], nextX = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+
+  // Initialize particles with small random perturbations
+  for (let n = 0; n < N; n++) {
+    particles.push(new TodaParticle(n));
+    prevX.push(0.0);
+    nextX.push(0.0);
+    history.push([]);
+  }
+
+  // Kick a few solitons
+  // Soliton initial condition: step in position
+  // Single soliton centered at particle 10, moving right
+  for (let i = 10; i < N; i++) {
+    let d = i - 10;
+    particles[i].x += 45 * exp(-d * d / 8.0);
+    particles[i].vx = 3.2;
+  }
+  // Second soliton going left from particle 20
+  for (let i = 0; i < 20; i++) {
+    let d = 20 - i;
+    particles[i].x -= 35 * exp(-d * d / 6.0);
+    particles[i].vx = -2.5;
+  }
+  // Third smaller soliton
+  for (let i = 14; i < N; i++) {
+    let d = i - 14;
+    particles[i].x += 25 * exp(-d * d / 4.0);
+    particles[i].vx = 2.0;
+  }
+}
+
+let t = 0;
+const DT = 0.016;
+const DAMPING = 0.0002;
+
+function computeAccelerations() {
+  for (let n = 0; n < N; n++) {
+    let pn = particles[n].x;
+    let pp = n > 0 ? particles[n - 1].x : particles[n].x - 28; // periodic boundary
+    let pn2 = n < N - 1 ? particles[n + 1].x : particles[N - 1].x + 28;
+
+    let r1 = pn2 - pn;  // distance to next
+    let r2 = pn - pp;   // distance to prev
+
+    // Toda equation: a = e^{-r_next} - e^{-r_prev}
+    // But with equilibrium spacing of 28, we measure deviations
+    let eq = 28.0;
+    let r1e = r1 - eq;
+    let r2e = r2 - eq;
+
+    // Soft boundary: pull back if stretched too much
+    let force = exp(-r1e / eq) - exp(r2e / eq);
+    force *= G;
+
+    // Coupling to next and prev
+    let forcePrev = 0, forceNext = 0;
+    if (n > 0) {
+      forcePrev = exp(-(r2 - eq) / eq) - exp((r2 - eq) / eq);
+    }
+    if (n < N - 1) {
+      forceNext = exp(-(r1 - eq) / eq) - exp((r1 - eq) / eq);
+    }
+
+    particles[n].ax = (forcePrev - forceNext) * G * 0.5 - DAMPING * particles[n].vx;
+  }
+}
+
+function integrate() {
+  // Velocity Verlet
+  for (let n = 0; n < N; n++) {
+    particles[n].vx += particles[n].ax * DT * 0.5;
+    particles[n].x += particles[n].vx * DT;
+  }
+  computeAccelerations();
+  for (let n = 0; n < N; n++) {
+    particles[n].vx += particles[n].ax * DT * 0.5;
+  }
+}
+
+function draw() {
+  background(3, 15, 6);
+
+  // Multiple integration steps per frame for stability
+  for (let step = 0; step < 4; step++) {
+    integrate();
+  }
+
+  let yCenter = height / 2;
+  let xStart = width * 0.05;
+  let spacing = (width * 0.88) / (N - 1);
+
+  // Update history
+  for (let n = 0; n < N; n++) {
+    history[n].push(particles[n].x - particles[n].n * 28);
+    if (history[n].length > HISTORY_LEN) history[n].shift();
+  }
+
+  // Draw potential well background
+  for (let n = 0; n < N; n++) {
+    let bx = xStart + n * spacing;
+    let wellDepth = 18;
+    let by = yCenter + wellDepth;
+
+    // Potential well
+    noStroke();
+    fill(200, 40, 20, 20);
+    for (let dy = 0; dy < wellDepth * 2; dy += 2) {
+      let xOff = sqrt(max(0, wellDepth * wellDepth - (dy - wellDepth) * (dy - wellDepth))) * 0.15;
+      fill(200, 30, 18, 15);
+      rect(bx - xOff, yCenter + dy - wellDepth, xOff * 2, 2);
+    }
+  }
+
+  // Draw spring connections
+  for (let n = 0; n < N - 1; n++) {
+    let x1 = xStart + n * spacing + (particles[n].x - particles[n].n * 28) * 0.7;
+    let x2 = xStart + (n + 1) * spacing + (particles[n + 1].x - (n + 1) * 28) * 0.7;
+    let y1 = yCenter;
+    let y2 = yCenter;
+    let dx = x2 - x1;
+    let stretch = dx - 28;
+    let sag = abs(stretch) * 0.15;
+
+    stroke(160, 50, 55, 50);
+    strokeWeight(1.2);
+    noFill();
+    beginShape();
+    for (let i = 0; i <= 8; i++) {
+      let u = i / 8;
+      let cx = lerp(x1, x2, u);
+      let cy = lerp(y1, y2, u) + sin(u * PI) * sag * (stretch > 0 ? -1 : 1);
+      vertex(cx, cy);
+    }
+    endShape();
+  }
+
+  // Draw particles and their displacement trails
+  for (let n = 0; n < N; n++) {
+    let baseX = xStart + n * spacing;
+    let disp = particles[n].x - particles[n].n * 28;
+    let px = baseX + disp * 0.7;
+    let py = yCenter;
+
+    // Draw history trail (displacement over time)
+    if (history[n].length > 1) {
+      noFill();
+      for (let i = 1; i < history[n].length; i++) {
+        let a = map(i, 0, history[n].length, 0, 50);
+        let trailX = xStart + n * spacing + history[n][i] * 0.7;
+        let trailY = yCenter - (i * 2.5);
+        let hue = map(disp, -30, 30, 280, 440) % 360;
+        if (hue < 0) hue += 360;
+        stroke(hue, 55, 75, a);
+        strokeWeight(0.8);
+        line(trailX, trailY, trailX, trailY + 2.5);
+      }
+    }
+
+    // Color by displacement (compression = warm, extension = cool)
+    let hue = map(constrain(disp, -30, 30), -30, 30, 420, 240) % 360;
+    if (hue < 0) hue += 360;
+    let sat = map(abs(disp), 0, 30, 40, 80);
+    let bri = map(abs(disp), 0, 30, 70, 100);
+
+    push();
+    translate(px, py);
+
+    // Glow
+    noStroke();
+    fill(hue, sat, bri, 20);
+    ellipse(0, 0, 32, 32);
+    fill(hue, sat, bri, 35);
+    ellipse(0, 0, 18, 18);
+
+    // Particle
+    fill(hue, sat, bri);
+    stroke(hue, sat + 10, 100, 80);
+    strokeWeight(1.5);
+    ellipse(0, 0, 11, 11);
+
+    // Velocity indicator (tiny arrow)
+    let vx = particles[n].vx;
+    if (abs(vx) > 0.3) {
+      stroke(hue, sat, bri, 60);
+      strokeWeight(1);
+      let arrowLen = constrain(vx * 2, -8, 8);
+      line(0, 0, arrowLen, 0);
+      // arrowhead
+      line(arrowLen, 0, arrowLen - sign(arrowLen) * 2, -1.5);
+      line(arrowLen, 0, arrowLen - sign(arrowLen) * 2, 1.5);
+    }
+    pop();
+  }
+
+  // Draw time series at bottom
+  let tsY = height - 100;
+  let tsH = 60;
+  let tsStart = width * 0.05;
+  let tsW = width * 0.88;
+  let tsSpacing = tsW / (N - 1);
+
+  noStroke();
+  fill(0, 0, 100, 8);
+  rect(tsStart, tsY, tsW, tsH);
+
+  // Zero line
+  stroke(0, 0, 40, 30);
+  strokeWeight(0.5);
+  line(tsStart, tsY + tsH / 2, tsStart + tsW, tsY + tsH / 2);
+
+  // Time series traces
+  for (let n = 0; n < N; n++) {
+    let tx = tsStart + n * tsSpacing;
+    let disp = particles[n].x - particles[n].n * 28;
+    let ty = tsY + tsH / 2 - disp * 0.8;
+    let hue = map(constrain(disp, -30, 30), -30, 30, 420, 240) % 360;
+    if (hue < 0) hue += 360;
+    fill(hue, 60, 80, 70);
+    noStroke();
+    ellipse(tx, constrain(ty, tsY + 3, tsY + tsH - 3), 3, 3);
+  }
+
+  // Labels
+  noStroke();
+  fill(180, 20, 65, 60);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Toda Lattice — N = ' + N + ' particles with exponential repulsion on a periodic ring', 18, 16);
+  fill(160, 20, 60, 50);
+  text('Solitons: nonlinear localized pulses that pass through each other unchanged (integrable system)', 18, 32);
+  fill(200, 25, 60, 45);
+  text('Top: particle displacement (up = extension, down = compression)  |  Bottom: real-time position trace', 18, 48);
+
+  t += DT;
+}
+
+function sign(x) { return x > 0 ? 1 : x < 0 ? -1 : 0; }
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

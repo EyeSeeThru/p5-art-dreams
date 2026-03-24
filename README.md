@@ -39,6 +39,7 @@ The project cycles through different technique categories to ensure variety:
 - **soap-film-interference** — Thin film interference patterns with iridescent colors simulating soap bubbles
 - **wave-interference** — Wave interference patterns with multiple sources
 - **wave-particle-duality** — Particles exhibiting wave-particle duality with interference patterns
+- **toda-lattice** — Toda lattice N-particle soliton chain with exponential repulsion on a periodic ring — three soliton pulses pass through each other unchanged, with particle displacement above and real-time position trace below, color-coded by compression (orange) vs extension (blue)
 - **trochoidal-waves** — Parametric trochoid curves creating mesmerizing geometric patterns
 - **toroidal-flow** — 3D torus surface with geodesic particle flows and rotating camera perspective
 - **thermal-drift** — GLSL shader with FBM noise, thermal color palette
