@@ -77,21 +77,30 @@ function draw() {
   t += 0.015;
 }
 
-// Bessel J1 approximation
+// Bessel J1 approximation (Numerical Recipes)
 function besselJ1(x) {
   if (x === 0) return 0.5;
   let ax = abs(x);
-  if (ax < 4) {
+
+  if (ax < 4.0) {
+    // Small x: Maclaurin series J1(x) = x/2 * sum((-x²/4)^k / (k!*(k+1)!))
     let y = x * x;
-    let ans1 = x * (72362614232.0 + y * (-7895059235.0 + y * (242396853.1 + y * (-2972611.439 + y * 15704.482)))));
-    let ans2 = 144725228442.0 + y * (2300535178.0 + y * (18583304.74 + y * (99447.43394 + y * (376.999139 + y * 1))));
-    return ans1 / ans2;
+    let sum = 1.0;
+    let term = 1.0;
+    for (let k = 1; k <= 12; k++) {
+      term *= -y / (4.0 * k * (k + 1));
+      sum += term;
+      if (abs(term) < abs(sum) * 1e-15) break;
+    }
+    return (x / 2.0) * sum;
   } else {
+    // Large x: Hankel asymptotic expansion
     let z = 8.0 / ax;
     let y = z * z;
     let xx = ax - 2.356194491;
-    let ans1 = 1 + y * (0.183105e-2 + y * (-0.3516396496e-4 + y * (0.2457520174e-5 + y * (-0.240337019e-6))));
-    let ans2 = 0.04687499995 + y * (-0.2002690873 + y * (0.8449199096 + y * (-0.693059624 + y * (0.353844555 + y * (-0.10128023))))));
+    // P(y) and Q(y) polynomials
+    let ans1 = 1.0 + y * (-0.3516396496e-4 + y * (0.2457520174e-5 + y * (-0.240337019e-6)));
+    let ans2 = 0.04687499995 + y * (-0.2002690873 + y * (0.8449199096 + y * (-0.693059624 + y * (0.353844555 + y * (-0.10128023)))));
     let ans = sqrt(0.636619772 / ax) * (cos(xx) * ans1 - z * sin(xx) * ans2);
     return x < 0 ? -ans : ans;
   }
