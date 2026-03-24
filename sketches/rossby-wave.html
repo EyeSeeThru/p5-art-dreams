@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Rossby Waves</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #04080f; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Rossby Waves — planetary scale atmospheric waves
+// Propagation westward due to variation of Coriolis parameter with latitude
+// Phase speed: c = -βλ² / (λ² + K²) where λ is deformation radius
+let t = 0;
+let particles = [];
+const NUM_PARTICLES = 280;
+const GRID_RES = 60;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noFill();
+
+  // Initialize particles spread across the domain
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      hue: random(360),
+      speed: random(0.3, 1.0),
+      trail: []
+    });
+  }
+}
+
+function draw() {
+  background(4, 12, 10);
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  // Deformation radius (scales with sqrt(gH)/f)
+  let lambda = 220 + 60 * sin(t * 0.2);
+
+  // Draw latitude bands as subtle horizontal guides
+  noStroke();
+  for (let lat = -80; lat <= 80; lat += 20) {
+    let y = map(lat, -90, 90, height, 0);
+    fill(200, 20, 15, 12);
+    rect(0, y - 1, width, 2);
+  }
+
+  // Wavenumber — slowly increasing (long waves → short waves over time)
+  let k = 2 + 3 * (0.5 + 0.5 * sin(t * 0.07));
+
+  // Beta parameter drives westward propagation
+  let beta = 1.0;
+  // Phase speed c = -beta * lambda² / (lambda² + k²)
+  let c = -beta * lambda * lambda / (lambda * lambda + k * k);
+
+  // Draw height contours (stream function proxy)
+  let numContours = 18;
+  for (let ci = 0; ci < numContours; ci++) {
+    let psiNorm = (ci / numContours) * 2 - 1; // -1 to 1
+    let hue = map(ci, 0, numContours, 180, 280); // blue-green to purple
+    let bright = map(abs(psiNorm), 0, 1, 90, 40);
+    stroke(hue, 50, bright, 45);
+    strokeWeight(1.0);
+
+    beginShape();
+    for (let xi = 0; xi <= width; xi += 3) {
+      let lat = map(y, 0, height, 90, -90);
+      // y reference for latitude calculation
+      let yCoord = 0;
+      // But we want the latitude based on y itself, so:
+      let latY = map(xi, 0, width, 90, -90); // latitude proxy along x
+
+      // Rossby wave stream function: ψ = -βy²/2 + A*cos(kx - omega*t) * sech(y/L)
+      // Simplified: latitude effect on amplitude
+      let latFactor = exp(-pow((xi - width/2) / height * 2, 2) * 2);
+
+      // Phase: westward propagation (decreases x effective position over time)
+      let phase = k * xi - abs(k) * c * t * 15;
+      let amp = 80 * latFactor;
+      let yContour = height/2 + amp * cos(phase) * cos(xi / height * PI);
+      let yFinal = map(yContour, height*0.2, height*0.8, 0, height);
+      vertex(xi, constrain(yFinal, 0, height));
+    }
+    endShape();
+  }
+
+  // Draw jet stream axis (strongest wind region)
+  let jetY = height * 0.45 + 20 * sin(t * 0.15);
+  noStroke();
+  for (let w = 0; w < 40; w += 1) {
+    let wa = map(w, 0, 40, 25, 0);
+    fill(200, 60, 80, wa);
+    rect(0, jetY - w/2, width, 1);
+  }
+
+  // Particle advection following the flow
+  noStroke();
+  for (let p of particles) {
+    // Flow field: mostly zonal (east-west) with meridional deflection from Rossby waves
+    let xi = p.x;
+    let yNorm = (p.y - height/2) / (height/2);
+
+    let phase = k * xi - abs(k) * c * t * 15;
+    let dPsiDy = -amp * cos(phase) * PI / height * sin(xi / height * PI);
+    let u = c * 12; // zonal wind from wave
+    let v = dPsiDy * 8; // meridional from gradient
+
+    // Add some turbulence
+    u += 0.8 * sin(p.y * 0.02 + t * 0.5);
+    v += 0.4 * cos(p.x * 0.015 + t * 0.3);
+
+    // Update particle position
+    p.x += u * p.speed;
+    p.y += v * p.speed;
+
+    // Wrap around
+    if (p.x > width + 10) p.x = -10;
+    if (p.x < -10) p.x = width + 10;
+    if (p.y > height + 10) p.y = -10;
+    if (p.y < -10) p.y = height + 10;
+
+    // Trail
+    p.trail.push({x: p.x, y: p.y});
+    if (p.trail.length > 20) p.trail.shift();
+
+    // Draw trail
+    noFill();
+    stroke(p.hue, 55, 80, 20);
+    strokeWeight(0.5);
+    beginShape();
+    for (let pt of p.trail) vertex(pt.x, pt.y);
+    endShape();
+
+    // Draw particle
+    fill(p.hue, 60, 90, 70);
+    noStroke();
+    ellipse(p.x, p.y, 2.5, 2.5);
+  }
+
+  // Labels
+  noStroke();
+  fill(255, 0, 60, 60);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Rossby Waves — planetary atmospheric waves propagating westward due to potential vorticity gradient', 20, 18);
+
+  fill(200, 40, 70, 60);
+  text(`Phase speed c ≈ ${c.toFixed(2)} (westward)   Wavenumber k ≈ ${k.toFixed(1)}   Deformation radius λ ≈ ${lambda.toFixed(0)}`, 20, 34);
+
+  // Latitude labels
+  textSize(9);
+  fill(255, 0, 40, 35);
+  for (let lat of [-60, -40, -20, 0, 20, 40, 60]) {
+    let yL = map(lat, 90, -90, 0, height);
+    text(`${lat}°`, 8, yL - 5);
+  }
+
+  t += deltaTime() * 0.001;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>

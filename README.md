@@ -181,6 +181,7 @@ The project cycles through different technique categories to ensure variety:
 - **plasma-turbulence** — GLSL shader-based plasma turbulence with FBM noise layers and swirling color gradients
 - **mandelbulb** — 3D Mandelbulb fractal raymarching with rotating animation and HSV color mapping
 - **poincare-disc** — Hyperbolic Poincaré disc model with Möbius transformations, geodesic flows, and conformal grid visualization
+- **rossby-wave** — Planetary Rossby wave atmospheric dynamics — large-scale meanders in the jet stream propagating westward due to potential vorticity gradient, with stream function contours, jet stream axis, and particle advection following the wave flow field
 - **rossler-attractor** — Rössler attractor chaotic dynamics with rotating 3D projection and color cycling
 - **wavefront** — Wavefront reconstruction visualization with holographic interference patterns and flowing particles
 - **percolation** — Percolation threshold simulation with cluster visualization and connectivity emergence
