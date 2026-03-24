@@ -240,7 +240,7 @@ The project cycles through different technique categories to ensure variety:
 
 - **langtons-ant** — Langton's Ant cellular automaton with emergent highway patterns from simple turn rules
 - **lorenz-96** — Lorenz 96 simplified atmospheric climate model with oscillating variables and flowing particle visualization
-
+- **lotka-volterra** — Spatial Lotka-Volterra competition: three species in cyclic dominance (A eats B, B eats C, C eats A — rock-paper-scissors dynamics) on a grid. Species form spiral waves and spatial patterns. Cyan=A, Magenta=B, Yellow=C, Dark=empty. Predation + death + regrowth + mutation.
 - **plasma-arc** — Electrical discharge simulation with branching lightning and spark particles
 
 - **synaptic-burst** — Neural network visualization with propagating signals and bursting synapses

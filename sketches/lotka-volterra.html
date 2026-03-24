@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Lotka-Volterra Spatial Dynamics</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #040608; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Lotka-Volterra Spatial Competition — cyclic dominance (rock-paper-scissors)
+// Three species A, B, C: A eats B, B eats C, C eats A
+// Each cell: {A=0, B=1, C=2, empty=-1}
+// Update rules applied simultaneously per timestep
+const SCALE = 5;
+let COLS, ROWS;
+let grid, nextGrid;
+let mutationRate = 0.0015;
+let regrowthRate = 0.025;
+let deathRate = 0.15;
+let species = [
+  { r: 0.08, name: 'A', col: [60, 80, 95],   label: 'Cyan' },    // A: cyan
+  { r: 0.06, name: 'B', col: [340, 80, 95],  label: 'Magenta' }, // B: magenta
+  { r: 0.10, name: 'C', col: [190, 80, 95],  label: 'Yellow' }  // C: yellow
+];
+let t = 0;
+let frameN = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  noStroke();
+  COLS = floor(width / SCALE);
+  ROWS = floor(height / SCALE);
+  grid = [];
+  nextGrid = [];
+
+  for (let y = 0; y < ROWS; y++) {
+    grid[y] = [];
+    nextGrid[y] = [];
+    for (let x = 0; x < COLS; x++) {
+      // Initial condition: random with slight spatial structure
+      let noise = noise(x * 0.08, y * 0.08) * 3;
+      if (noise < 0.5) grid[y][x] = 0;       // A
+      else if (noise < 1.0) grid[y][x] = 1; // B
+      else if (noise < 1.5) grid[y][x] = 2; // C
+      else grid[y][x] = -1;                   // empty
+    }
+  }
+
+  // Seed small patches of each species
+  for (let k = 0; k < 3; k++) {
+    let cx = floor(COLS * (0.25 + k * 0.25));
+    let cy = floor(ROWS * 0.5);
+    for (let dy = -4; dy <= 4; dy++) {
+      for (let dx = -4; dx <= 4; dx++) {
+        let nx = (cx + dx + COLS) % COLS;
+        let ny = (cy + dy + ROWS) % ROWS;
+        if (dx*dx + dy*dy < 16) grid[ny][nx] = k;
+      }
+    }
+  }
+}
+
+function countNeighbors(g, x, y) {
+  let counts = [-1, 0, 0, 0]; // [-1, A, B, C]
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      let nx = (x + dx + COLS) % COLS;
+      let ny = (y + dy + ROWS) % ROWS;
+      let v = g[ny][nx];
+      counts[v + 1]++;
+    }
+  }
+  return counts; // [empty, A, B, C]
+}
+
+function updateGrid() {
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      let current = grid[y][x];
+      let cnts = countNeighbors(grid, x, y);
+
+      // Predation: A eats B, B eats C, C eats A
+      // If predator species is surrounded by prey, convert one prey to predator
+      // A eats B → if current is A and neighbor has B
+      let next = current;
+
+      if (current === 0) { // A — can die (becomes empty)
+        if (Math.random() < deathRate) {
+          next = -1;
+        }
+      } else if (current === 1) { // B — can die or be eaten by C
+        if (Math.random() < deathRate) {
+          next = -1;
+        } else if (cnts[3] > 0 && Math.random() < species[1].r * cnts[3]) {
+          // C eats B
+          next = 2;
+        }
+      } else if (current === 2) { // C — can die or be eaten by A
+        if (Math.random() < deathRate) {
+          next = -1;
+        } else if (cnts[1] > 0 && Math.random() < species[2].r * cnts[1]) {
+          // A eats C
+          next = 0;
+        }
+      } else if (current === -1) { // empty — can be colonized
+        if (cnts[0] > 0 && Math.random() < regrowthRate * cnts[0]) {
+          next = 0;
+        } else if (cnts[2] > 0 && Math.random() < regrowthRate * cnts[2]) {
+          next = 2;
+        } else if (cnts[3] > 0 && Math.random() < regrowthRate * cnts[3]) {
+          next = 1;
+        }
+      }
+
+      // A→B predation: A converts adjacent B to A
+      // Check neighbors for prey of my type
+      if (current === 0 && cnts[2] > 0) { // A, neighbors have B
+        if (Math.random() < species[0].r * cnts[2]) {
+          // Find a B neighbor and convert it
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              let nx = (x + dx + COLS) % COLS;
+              let ny = (y + dy + ROWS) % ROWS;
+              if (grid[ny][nx] === 2 && Math.random() < 0.3) {
+                nextGrid[ny][nx] = 0; // convert this B to A
+              }
+            }
+          }
+        }
+      }
+
+      // B→C predation
+      if (current === 1 && cnts[3] > 0) { // B, neighbors have C
+        if (Math.random() < species[1].r * cnts[3]) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              let nx = (x + dx + COLS) % COLS;
+              let ny = (y + dy + ROWS) % ROWS;
+              if (grid[ny][nx] === 2 && Math.random() < 0.3) {
+                nextGrid[ny][nx] = 1;
+              }
+            }
+          }
+        }
+      }
+
+      // C→A predation
+      if (current === 2 && cnts[1] > 0) { // C, neighbors have A
+        if (Math.random() < species[2].r * cnts[1]) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              let nx = (x + dx + COLS) % COLS;
+              let ny = (y + dy + ROWS) % ROWS;
+              if (grid[ny][nx] === 0 && Math.random() < 0.3) {
+                nextGrid[ny][nx] = 2;
+              }
+            }
+          }
+        }
+      }
+
+      // Mutation
+      if (next >= 0 && Math.random() < mutationRate) {
+        next = floor(random(3));
+      }
+
+      nextGrid[y][x] = next;
+    }
+  }
+
+  // Swap
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      grid[y][x] = nextGrid[y][x];
+    }
+  }
+}
+
+function draw() {
+  // Multiple steps per frame for faster dynamics
+  for (let s = 0; s < 4; s++) {
+    updateGrid();
+  }
+
+  // Render
+  background(4, 8, 6);
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      let v = grid[y][x];
+      let px = x * SCALE;
+      let py = y * SCALE;
+
+      if (v === -1) {
+        fill(15, 20, 12);
+      } else {
+        let sp = species[v];
+        let col = sp.col;
+        fill(col[0], col[1], col[2], 92);
+        // Add slight shading based on neighbor diversity
+        let cnts = countNeighbors(grid, x, y);
+        let diversity = (cnts[0] + cnts[1] + cnts[2] + cnts[3]) / 8;
+        let bri = map(diversity, 0, 3, col[2] - 10, col[2]);
+        fill(col[0], col[1] - 10, bri, 88);
+      }
+      rect(px, py, SCALE, SCALE);
+    }
+  }
+
+  // Title
+  noStroke();
+  fill(200, 20, 70, 80);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Lotka-Volterra Spatial Competition — Cyclic dominance: A▸B▸C▸A', 14, 16);
+  fill(160, 20, 60, 60);
+  text('Rock-paper-scissors dynamics on a grid: species form spiral waves and spatial patterns', 14, 32);
+  fill(130, 20, 55, 50);
+  text('Cyan=A  Magenta=B  Yellow=C  Dark=empty  |  Predation + death + regrowth + mutation', 14, 48);
+
+  // Legend
+  let lx = width - 140;
+  let ly = 18;
+  textAlign(LEFT, TOP);
+  for (let k = 0; k < 3; k++) {
+    let col = species[k].col;
+    fill(col[0], col[1], col[2], 85);
+    rect(lx, ly + k * 20, 12, 12);
+    fill(200, 20, 65, 60);
+    text(species[k].name, lx + 16, ly + k * 20);
+  }
+  fill(15, 20, 30, 50);
+  rect(lx, ly + 60, 12, 12);
+  fill(160, 20, 55, 55);
+  text('Empty', lx + 16, ly + 60);
+
+  // Population counters (top right)
+  let counts = [0, 0, 0, 0];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      counts[grid[y][x] + 1]++;
+    }
+  }
+  let total = COLS * ROWS;
+  textAlign(RIGHT, TOP);
+  for (let k = 0; k < 3; k++) {
+    let pct = (counts[k] / total * 100).toFixed(1);
+    let col = species[k].col;
+    fill(col[0], col[1], col[2], 70);
+    text(species[k].name + ': ' + pct + '%', width - 14, 18 + k * 18);
+  }
+
+  t += 1;
+  frameN++;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  COLS = floor(width / SCALE);
+  ROWS = floor(height / SCALE);
+}
+</script>
+</body>
+</html>
