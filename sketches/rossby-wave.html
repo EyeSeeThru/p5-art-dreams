@@ -73,20 +73,14 @@ function draw() {
 
     beginShape();
     for (let xi = 0; xi <= width; xi += 3) {
-      let lat = map(y, 0, height, 90, -90);
-      // y reference for latitude calculation
-      let yCoord = 0;
-      // But we want the latitude based on y itself, so:
-      let latY = map(xi, 0, width, 90, -90); // latitude proxy along x
-
       // Rossby wave stream function: ψ = -βy²/2 + A*cos(kx - omega*t) * sech(y/L)
       // Simplified: latitude effect on amplitude
       let latFactor = exp(-pow((xi - width/2) / height * 2, 2) * 2);
 
       // Phase: westward propagation (decreases x effective position over time)
-      let phase = k * xi - abs(k) * c * t * 15;
+      let ph = k * xi - abs(k) * c * t * 15;
       let amp = 80 * latFactor;
-      let yContour = height/2 + amp * cos(phase) * cos(xi / height * PI);
+      let yContour = height/2 + amp * cos(ph) * cos(xi / height * PI);
       let yFinal = map(yContour, height*0.2, height*0.8, 0, height);
       vertex(xi, constrain(yFinal, 0, height));
     }
@@ -109,8 +103,10 @@ function draw() {
     let xi = p.x;
     let yNorm = (p.y - height/2) / (height/2);
 
-    let phase = k * xi - abs(k) * c * t * 15;
-    let dPsiDy = -amp * cos(phase) * PI / height * sin(xi / height * PI);
+    let ph = k * xi - abs(k) * c * t * 15;
+    let latFactor = exp(-pow((xi - width/2) / height * 2, 2) * 2);
+    let amp = 80 * latFactor;
+    let dPsiDy = -amp * cos(ph) * PI / height * sin(xi / height * PI);
     let u = c * 12; // zonal wind from wave
     let v = dPsiDy * 8; // meridional from gradient
 
@@ -164,7 +160,7 @@ function draw() {
     text(`${lat}°`, 8, yL - 5);
   }
 
-  t += deltaTime() * 0.001;
+  t += deltaTime * 0.001;
 }
 
 function windowResized() {
