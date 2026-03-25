@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cobweb Attractor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #060810; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Cobweb Attractor — visualizing discrete dynamical systems
+// The "cobweb" diagram: plot y=f(x) and the diagonal y=x,
+// then trace x, f(x), f(f(x)), ... by bouncing between the curve and diagonal
+// Shows convergence to fixed points, period-doubling, and chaos
+let time = 0;
+let rSeed = 0;
+const NUM_FUNCTIONS = 6;
+let currentFunc = 0;
+let trajectories = [];
+
+const FUNCTIONS = [
+  // logistic map: f(x) = r*x*(1-x)
+  { name: 'Logistic Map', fn: (x, p) => p[0] * x * (1 - x), param: 3.85, domain: [0, 1], color: [45, 90, 95], paramRange: [2.5, 4.0] },
+  // tent map: f(x) = r*min(x, 1-x)
+  { name: 'Tent Map', fn: (x, p) => p[0] * Math.min(x, 1 - x), param: 1.95, domain: [0, 1], color: [200, 80, 90], paramRange: [0.5, 2.0] },
+  // quadratic map: f(x) = x^2 + c (for -1.5 < c < 0.25)
+  { name: 'Quadratic Map', fn: (x, p) => x * x + p[0], param: -0.7, domain: [-2, 2], color: [300, 75, 92], paramRange: [-1.5, 0.25] },
+  // exponential map: f(x) = r * x * exp(-x)
+  { name: 'Exponential Map', fn: (x, p) => p[0] * x * Math.exp(-x), param: 2.8, domain: [0, 6], color: [135, 70, 88], paramRange: [1.5, 4.0] },
+  // sine map: f(x) = r * sin(pi * x)
+  { name: 'Sine Map', fn: (x, p) => p[0] * Math.sin(Math.PI * x), param: 0.95, domain: [0, 1], color: [20, 85, 98], paramRange: [0.5, 1.0] },
+  // gaussian map: f(x) = r * exp(-x^2)
+  { name: 'Gaussian Map', fn: (x, p) => p[0] * Math.exp(-x * x), param: 2.0, domain: [-3, 3], color: [280, 65, 88], paramRange: [0.5, 3.0] },
+];
+
+class Trajectory {
+  constructor(x0, domain, fn, param, hue, iterationCount) {
+    this.x0 = x0;
+    this.domain = domain;
+    this.fn = fn;
+    this.param = param;
+    this.hue = hue;
+    this.points = [];
+    this.iterations = iterationCount;
+    this.compute();
+  }
+
+  compute() {
+    let x = this.x0;
+    for (let i = 0; i < this.iterations; i++) {
+      let y = this.fn(x, [this.param]);
+      this.points.push({ x, y });
+      x = y;
+    }
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  rSeed = random(10000);
+  randomSeed(rSeed);
+  noStroke();
+
+  buildTrajectories();
+}
+
+function buildTrajectories() {
+  trajectories = [];
+  let f = FUNCTIONS[currentFunc];
+  let [dmin, dmax] = f.domain;
+  let numICs = 8;
+  for (let i = 0; i < numICs; i++) {
+    let x0 = dmin + (dmax - dmin) * (i + 0.5) / numICs;
+    let hue = f.color[0] + i * 15;
+    trajectories.push(new Trajectory(x0, f.domain, f.fn, f.param, hue, 80));
+  }
+}
+
+function draw() {
+  background(230, 30, 5);
+
+  let pad = 80;
+  let plotW = width - pad * 2;
+  let plotH = height - pad * 2;
+  let [dmin, dmax] = FUNCTIONS[currentFunc].domain;
+
+  // Map functions
+  let mapX = (x) => map(x, dmin, dmax, pad, pad + plotW);
+  let mapY = (y) => map(y, dmin, dmax, pad + plotH, pad);
+
+  // Dark background
+  fill(230, 30, 8);
+  noStroke();
+  rect(pad - 5, pad - 5, plotW + 10, plotH + 10);
+
+  // Grid
+  stroke(230, 20, 25, 20);
+  strokeWeight(0.5);
+  for (let i = 0; i <= 10; i++) {
+    let v = dmin + (dmax - dmin) * i / 10;
+    line(mapX(v), pad, mapX(v), pad + plotH);
+    line(pad, mapY(v), pad + plotW, mapY(v));
+  }
+
+  // Diagonal line y=x
+  stroke(0, 0, 70, 50);
+  strokeWeight(1.5);
+  line(mapX(dmin), mapY(dmin), mapX(dmax), mapY(dmax));
+
+  // Draw f(x) curve (many line segments)
+  let f = FUNCTIONS[currentFunc];
+  stroke(f.color[0], f.color[1], f.color[2] * 0.7, 70);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let i = 0; i <= 200; i++) {
+    let x = dmin + (dmax - dmin) * i / 200;
+    let y = f.fn(x, [f.param]);
+    y = constrain(y, dmin - (dmax - dmin), dmax + (dmax - dmin));
+    vertex(mapX(x), mapY(y));
+  }
+  endShape();
+
+  // Draw trajectories (cobweb paths)
+  noFill();
+  strokeWeight(1.2);
+
+  let animFrames = (time * 0.8) % 100;
+  for (let t of trajectories) {
+    let maxStep = floor(map(animFrames, 0, 100, 0, t.points.length));
+    for (let i = 0; i < maxStep - 1; i++) {
+      let p = t.points[i];
+      let alpha = map(i, 0, t.points.length, 30, 90);
+      let hueShift = map(i, 0, t.points.length, 0, 20);
+      stroke((t.hue + hueShift) % 360, 70, 85, alpha);
+
+      // Vertical to curve
+      let cx = mapX(p.x);
+      let cy = mapY(p.y);
+      line(cx, cy, cx, mapY(t.fn(p.x, [f.param])));
+
+      // Horizontal to diagonal
+      let ny = t.fn(p.x, [f.param]);
+      line(cx, mapY(ny), mapX(ny), mapY(ny));
+    }
+  }
+
+  // Axes
+  stroke(0, 0, 60, 60);
+  strokeWeight(1.5);
+  line(mapX(dmin), pad, mapX(dmin), pad + plotH);  // y-axis
+  line(pad, mapY(dmin), pad + plotW, mapY(dmin));  // x-axis
+
+  // Labels
+  fill(0, 0, 75, 85);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('f(x) = ' + getFuncStr(currentFunc), pad + 8, pad + 8);
+  text('Parameter r = ' + nf(FUNCTIONS[currentFunc].param, 1, 3), pad + 8, pad + 26);
+
+  // Title and instructions
+  noStroke();
+  fill(200, 15, 70, 80);
+  textAlign(LEFT, TOP);
+  text('Cobweb Attractor — ' + FUNCTIONS[currentFunc].name, 16, 16);
+  fill(160, 12, 55, 65);
+  text('Diagonal (gray): y=x. Curve: y=f(x). Trajectories bounce between them showing long-term behavior.', 16, 36);
+  fill(160, 10, 50, 50);
+  text('Left-click or press SPACE to cycle function. Up/down arrows adjust parameter r.', 16, 52);
+
+  // Time-varying: slowly change parameter toward chaos
+  let tParam = FUNCTIONS[currentFunc].paramRange;
+  let oscillate = sin(time * 0.003) * 0.5 + 0.5;
+  let newParam = tParam[0] + oscillate * (tParam[1] - tParam[0]);
+  FUNCTIONS[currentFunc].param = newParam;
+  buildTrajectories();
+
+  time++;
+}
+
+function getFuncStr(idx) {
+  let s = FUNCTIONS[idx].name;
+  return s;
+}
+
+function mousePressed() {
+  currentFunc = (currentFunc + 1) % FUNCTIONS.length;
+  buildTrajectories();
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    currentFunc = (currentFunc + 1) % FUNCTIONS.length;
+    buildTrajectories();
+  }
+  let f = FUNCTIONS[currentFunc];
+  let [lo, hi] = f.paramRange;
+  if (keyCode === UP_ARROW) {
+    f.param = min(hi, f.param + (hi - lo) * 0.02);
+    buildTrajectories();
+  }
+  if (keyCode === DOWN_ARROW) {
+    f.param = max(lo, f.param - (hi - lo) * 0.02);
+    buildTrajectories();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
