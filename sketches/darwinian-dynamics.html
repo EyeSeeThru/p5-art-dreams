@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Darwinian Dynamics</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020408; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Darwinian Dynamics — Evolutionary game theory and replicator dynamics
+// Spatial population with strategy competition
+// Hawk-Dove (or Hawk-Dove-Bourgeois) game on a grid
+let grid = [];
+let GRID_W = 80;
+let CELL = 0;
+let time = 0;
+let payoffs = { V: 8, C: 3, E: 0.5 }; // V=value, C=cost of fighting, E=energy
+let generations = 0;
+let strategyHistory = [];
+
+const HAWK = 0, DOVE = 1, BOURGEOIS = 2;
+let hawkColor, doveColor, bourgeoisColor;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  CELL = floor(width / GRID_W);
+  GRID_W = floor(width / CELL);
+  let rows = floor(height / CELL);
+
+  hawkColor = color(0, 85, 95);    // Red = Hawk
+  doveColor = color(200, 75, 90);  // Cyan = Dove
+  bourgeoisColor = color(50, 80, 95); // Yellow = Bourgeois
+
+  // Initialize grid with mixed strategies
+  for (let y = 0; y < rows; y++) {
+    grid[y] = [];
+    for (let x = 0; x < GRID_W; x++) {
+      let r = random();
+      if (r < 0.33) grid[y][x] = HAWK;
+      else if (r < 0.66) grid[y][x] = DOVE;
+      else grid[y][x] = BOURGEOIS;
+    }
+  }
+
+  noStroke();
+  textSize(11);
+}
+
+function draw() {
+  background(220, 30, 3);
+
+  // Update every few frames
+  if (frameCount % 2 === 0) {
+    updateGrid();
+    generations++;
+    recordHistory();
+  }
+
+  // Draw grid
+  let rows = grid.length;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      let s = grid[y][x];
+      if (s === HAWK) fill(hawkColor);
+      else if (s === DOVE) fill(doveColor);
+      else fill(bourgeoisColor);
+
+      rect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+    }
+  }
+
+  // Draw payoff landscape (subtle background)
+  drawPayoffLandscape();
+
+  // Draw strategy legend and stats
+  drawInfo();
+
+  time += 0.01;
+}
+
+function updateGrid() {
+  let rows = grid.length;
+  let nextGrid = [];
+  for (let y = 0; y < rows; y++) {
+    nextGrid[y] = [];
+    for (let x = 0; x < GRID_W; x++) {
+      // Count payoffs from neighbors (including self)
+      let hawkPay = getPayoff(x, y, HAWK);
+      let dovePay = getPayoff(x, y, DOVE);
+      let bourgeoisPay = getPayoff(x, y, BOURGEOIS);
+
+      // Replicator dynamics: imitate the best performer among random neighbor
+      let neighbors = getNeighborCoords(x, y, rows);
+      let rival = neighbors[floor(random(neighbors.length))];
+      let rivalStrategy = grid[rival.y][rival.x];
+      let rivalPayoff;
+      if (rivalStrategy === HAWK) rivalPayoff = hawkPay;
+      else if (rivalStrategy === DOVE) rivalPayoff = dovePay;
+      else rivalPayoff = bourgeoisPay;
+
+      let myPayoff;
+      let myStrategy = grid[y][x];
+      if (myStrategy === HAWK) myPayoff = hawkPay;
+      else if (myStrategy === DOVE) myPayoff = dovePay;
+      else myPayoff = bourgeoisPay;
+
+      // Imitate with probability proportional to payoff advantage
+      if (rivalPayoff > myPayoff + 0.1) {
+        let probImitate = (rivalPayoff - myPayoff) / (2 * payoffs.V + 0.1);
+        if (random() < probImitate * 0.3) {
+          nextGrid[y][x] = rivalStrategy;
+        } else {
+          nextGrid[y][x] = myStrategy;
+        }
+      } else {
+        nextGrid[y][x] = myStrategy;
+      }
+
+      // Rare mutation
+      if (random() < 0.001) {
+        nextGrid[y][x] = floor(random(3));
+      }
+    }
+  }
+  grid = nextGrid;
+}
+
+function getPayoff(x, y, strategy) {
+  let rows = grid.length;
+  let payoff = 0;
+  // Self
+  payoff += gameValue(strategy, grid[y][x]);
+  // 8 neighbors
+  let neighbors = [
+    [(x-1+GRID_W)%GRID_W, (y-1+rows)%rows],
+    [x, (y-1+rows)%rows],
+    [(x+1)%GRID_W, (y-1+rows)%rows],
+    [(x-1+GRID_W)%GRID_W, y],
+    [(x+1)%GRID_W, y],
+    [(x-1+GRID_W)%GRID_W, (y+1)%rows],
+    [x, (y+1)%rows],
+    [(x+1)%GRID_W, (y+1)%rows]
+  ];
+  for (let n of neighbors) {
+    payoff += gameValue(strategy, grid[n[1]][n[0]]);
+  }
+  return payoff / 9.0;
+}
+
+function gameValue(myStrat, oppStrat) {
+  // Hawk-Dove game payoff matrix
+  // Hawk: V if opponent is Dove, 0 if both Hawks (due to cost), (V-C)/2 if both Hawks
+  // Dove: 0 if opponent is Hawk, V/2 if both Doves, V/2 if opponent is Bourgeois
+  // Bourgeois: V/2 vs Dove, (V-C)/2 vs Hawk, V/2 vs Bourgeois
+  if (myStrat === HAWK && oppStrat === DOVE) return payoffs.V;
+  if (myStrat === HAWK && oppStrat === HAWK) return (payoffs.V - payoffs.C) / 2;
+  if (myStrat === HAWK && oppStrat === BOURGEOIS) return (payoffs.V - payoffs.C) / 2;
+  if (myStrat === DOVE && oppStrat === HAWK) return 0;
+  if (myStrat === DOVE && oppStrat === DOVE) return payoffs.V / 2;
+  if (myStrat === DOVE && oppStrat === BOURGEOIS) return payoffs.V / 2;
+  if (myStrat === BOURGEOIS && oppStrat === HAWK) return (payoffs.V - payoffs.C) / 2;
+  if (myStrat === BOURGEOIS && oppStrat === DOVE) return payoffs.V / 2;
+  if (myStrat === BOURGEOIS && oppStrat === BOURGEOIS) return payoffs.V / 2;
+  return 0;
+}
+
+function getNeighborCoords(x, y, rows) {
+  return [
+    {x: (x-1+GRID_W)%GRID_W, y: (y-1+rows)%rows},
+    {x: x, y: (y-1+rows)%rows},
+    {x: (x+1)%GRID_W, y: (y-1+rows)%rows},
+    {x: (x-1+GRID_W)%GRID_W, y: y},
+    {x: (x+1)%GRID_W, y: y},
+    {x: (x-1+GRID_W)%GRID_W, y: (y+1)%rows},
+    {x: x, y: (y+1)%rows},
+    {x: (x+1)%GRID_W, y: (y+1)%rows}
+  ];
+}
+
+function recordHistory() {
+  if (generations % 5 !== 0) return;
+  let rows = grid.length;
+  let h = 0, d = 0, b = 0;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] === HAWK) h++;
+      else if (grid[y][x] === DOVE) d++;
+      else b++;
+    }
+  }
+  let total = h + d + b;
+  strategyHistory.push({ gen: generations, hawk: h/total, dove: d/total, bourgeois: b/total });
+  if (strategyHistory.length > 400) strategyHistory.shift();
+}
+
+function drawPayoffLandscape() {
+  // Draw very subtle payoff gradient
+  let rows = grid.length;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      let payoff = getPayoff(x, y, grid[y][x]);
+      let alpha = map(payoff, -2, payoffs.V, 5, 30);
+      fill(60, 60, 100, alpha);
+      rect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+    }
+  }
+}
+
+function drawInfo() {
+  // Legend
+  let legendX = 12;
+  let legendY = 12;
+  fill(hawkColor);
+  rect(legendX, legendY, 10, 10);
+  fill(0, 0, 90, 90);
+  textAlign(LEFT, TOP);
+  text('Hawk', legendX + 14, legendY);
+
+  fill(doveColor);
+  rect(legendX + 70, legendY, 10, 10);
+  fill(0, 0, 90, 90);
+  text('Dove', legendX + 84, legendY);
+
+  fill(bourgeoisColor);
+  rect(legendX + 140, legendY, 10, 10);
+  fill(0, 0, 90, 90);
+  text('Bourgeois', legendX + 154, legendY);
+
+  // Stats
+  fill(0, 0, 70, 80);
+  text('Gen: ' + generations, legendX, legendY + 18);
+
+  // Strategy frequency graph
+  let graphX = width - 220;
+  let graphY = 12;
+  let graphW = 200;
+  let graphH = 80;
+
+  fill(0, 0, 10, 60);
+  rect(graphX, graphY, graphW, graphH, 4);
+
+  if (strategyHistory.length > 1) {
+    // Hawk line
+    stroke(hawkColor);
+    strokeWeight(1.5);
+    noFill();
+    beginShape();
+    for (let i = 0; i < strategyHistory.length; i++) {
+      let x = graphX + map(i, 0, strategyHistory.length - 1, 0, graphW);
+      let y = graphY + graphH - strategyHistory[i].hawk * graphH;
+      vertex(x, y);
+    }
+    endShape();
+
+    // Dove line
+    stroke(doveColor);
+    beginShape();
+    for (let i = 0; i < strategyHistory.length; i++) {
+      let x = graphX + map(i, 0, strategyHistory.length - 1, 0, graphW);
+      let y = graphY + graphH - strategyHistory[i].dove * graphH;
+      vertex(x, y);
+    }
+    endShape();
+
+    // Bourgeois line
+    stroke(bourgeoisColor);
+    beginShape();
+    for (let i = 0; i < strategyHistory.length; i++) {
+      let x = graphX + map(i, 0, strategyHistory.length - 1, 0, graphW);
+      let y = graphY + graphH - strategyHistory[i].bourgeois * graphH;
+      vertex(x, y);
+    }
+    endShape();
+  }
+
+  // Current frequencies
+  if (strategyHistory.length > 0) {
+    let last = strategyHistory[strategyHistory.length - 1];
+    fill(0, 0, 60, 65);
+    textSize(9);
+    textAlign(RIGHT, TOP);
+    text('H:' + (last.hawk*100).toFixed(0) + '%  D:' + (last.dove*100).toFixed(0) + '%  B:' + (last.bourgeois*100).toFixed(0) + '%', graphX + graphW, graphY + graphH + 6);
+  }
+
+  // Title
+  fill(195, 15, 75, 80);
+  textSize(10);
+  textAlign(LEFT, TOP);
+  text('Hawk-Dove-Bourgeois Evolutionary Game — spatial replicator dynamics', 12, height - 26);
+  fill(165, 12, 60, 65);
+  text('Strategies compete on grid. Higher payoff = reproduce. Rare mutations introduce variety.', 12, height - 14);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  CELL = floor(width / GRID_W);
+}
+</script>
+</body>
+</html>

@@ -137,6 +137,7 @@ The project cycles through different technique categories to ensure variety:
 - **arnolds-cat** — Arnold's cat map visualization showing chaotic stretching and folding dynamics on a torus
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
+- **darwinian-dynamics** — Spatial evolutionary game theory: Hawk-Dove-Bourgeois game on a grid with replicator dynamics. Strategies compete for territory, higher payoff leads to reproduction, rare mutations introduce variety. Real-time strategy frequency graph shows population dynamics converging toward equilibrium or cycling.
 - **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **dendritic-flow** — Perlin noise-driven flow field with branching particle trails and warm amber palette
