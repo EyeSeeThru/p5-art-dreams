@@ -16,6 +16,7 @@
 // λ = h/p = h/(mv) — de Broglie wavelength
 // Wave-packet: superposition of plane waves with Gaussian envelope
 // Shows wave-particle duality: localized packet spreading over time (dispersion)
+const HBAR = 1.0;
 let time = 0;
 let packetData = [];
 const N_POINTS = 400;
@@ -59,8 +60,7 @@ function drawWavePacket(x0, y0, w, h) {
   // Wave number k and omega
   let k0 = 0.18;        // central wave number
   let m = 1.0;          // mass (normalized)
-  let hbar = 1.0;
-  let omega0 = hbar * k0 * k0 / (2 * m); // dispersion: ω = ℏk²/2m
+  let omega0 = HBAR * k0 * k0 / (2 * m); // dispersion: ω = ℏk²/2m
 
   // Gaussian envelope width
   let sigma = 25.0;
@@ -97,10 +97,10 @@ function drawWavePacket(x0, y0, w, h) {
 
     // Wave packet: integral of exp(ikx) * exp(-(k-k0)²/2σ_k²) * exp(-iω(k)t)
     // Approximated as: envelope(x,t) * sin(k0*x - omega0*t)
-    let envelope = exp(-x * x / (2 * sigma * sigma + 2 * i * t * hbar / m));
-    let k_eff = k0 * (1 + t * t * hbar / (4 * m * sigma * sigma));
-    let phase = k_eff * x - omega0 * (1 - t * t * hbar / (4 * m * sigma * sigma)) * t;
-    let realPart = envelope * cos(phase) + sin(k0 * x - omega0 * t) * exp(-x*x/(2*sigma*sigma));
+    let envelope = Math.exp(-x * x / (2 * sigma * sigma + 2 * i * t * HBAR / m));
+    let k_eff = k0 * (1 + t * t * HBAR / (4 * m * sigma * sigma));
+    let phase = k_eff * x - omega0 * (1 - t * t * HBAR / (4 * m * sigma * sigma)) * t;
+    let realPart = envelope * cos(phase) + sin(k0 * x - omega0 * t) * Math.exp(-x*x/(2*sigma*sigma));
 
     let y = midY + amp * 0.4 * realPart;
     vertex(px, y);
@@ -115,7 +115,7 @@ function drawWavePacket(x0, y0, w, h) {
   for (let i = 0; i < N_POINTS; i++) {
     let px = x0 + (i / N_POINTS) * w;
     let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
-    let envelope = exp(-x * x / (2 * sigma * sigma));
+    let envelope = Math.exp(-x * x / (2 * sigma * sigma));
     let imagPart = envelope * sin(k0 * x - omega0 * t);
     let y = midY + amp * 0.4 * imagPart;
     vertex(px, y);
@@ -131,7 +131,7 @@ function drawWavePacket(x0, y0, w, h) {
   for (let i = 0; i < N_POINTS; i++) {
     let px = x0 + (i / N_POINTS) * w;
     let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
-    let env = exp(-x * x / (2 * sigma * sigma));
+    let env = Math.exp(-x * x / (2 * sigma * sigma));
     let y = midY + amp * 0.4 * env;
     vertex(px, y);
   }
@@ -140,7 +140,7 @@ function drawWavePacket(x0, y0, w, h) {
   for (let i = 0; i < N_POINTS; i++) {
     let px = x0 + (i / N_POINTS) * w;
     let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
-    let env = exp(-x * x / (2 * sigma * sigma));
+    let env = Math.exp(-x * x / (2 * sigma * sigma));
     let y = midY - amp * 0.4 * env;
     vertex(px, y);
   }
@@ -155,7 +155,7 @@ function drawWavePacket(x0, y0, w, h) {
   for (let i = 0; i < N_POINTS; i++) {
     let px = x0 + (i / N_POINTS) * w;
     let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
-    let env = exp(-x * x / (2 * sigma * sigma));
+    let env = Math.exp(-x * x / (2 * sigma * sigma));
     let psi_sq = env * env;
     let y = midY + amp * 0.7 * psi_sq;
     vertex(px, y);
@@ -163,7 +163,7 @@ function drawWavePacket(x0, y0, w, h) {
   for (let i = N_POINTS - 1; i >= 0; i--) {
     let px = x0 + (i / N_POINTS) * w;
     let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
-    let env = exp(-x * x / (2 * sigma * sigma));
+    let env = Math.exp(-x * x / (2 * sigma * sigma));
     let psi_sq = env * env;
     let y = midY - amp * 0.7 * psi_sq;
     vertex(px, y);
@@ -202,11 +202,11 @@ function drawPhaseVsGroup(x0, y0, w, h) {
   // Actually for de Broglie: E = pc²... hmm let me use proper relativistic
   // For non-relativistic: ω = ℏk²/2m, vp = ω/k = ℏk/2m = v/2
   // But more commonly discussed: for matter waves ω = E/ℏ, k = p/ℏ, so vp = E/p
-  let omega = hbar * k * k / (2 * m);
+  let omega = HBAR * k * k / (2 * m);
   let vp = omega / k;
 
   // Group velocity: vg = dω/dk = ℏk/m = v (particle velocity)
-  let vg = hbar * 2 * k / (2 * m);
+  let vg = HBAR * 2 * k / (2 * m);
 
   // Plot k on x-axis (varying particle momentum)
   let kRange = [0.05, 0.35];
@@ -219,7 +219,7 @@ function drawPhaseVsGroup(x0, y0, w, h) {
   beginShape();
   for (let i = 0; i <= N_POINTS; i++) {
     let k_i = map(i, 0, N_POINTS, kRange[0], kRange[1]);
-    let vp_i = hbar * k_i / (2 * m);
+    let vp_i = HBAR * k_i / (2 * m);
     let px = map(i, 0, N_POINTS, x0, x0 + w);
     let py = midY - map(vp_i, 0, vRange[1], 0, amp * 2);
     vertex(px, py);
@@ -232,7 +232,7 @@ function drawPhaseVsGroup(x0, y0, w, h) {
   beginShape();
   for (let i = 0; i <= N_POINTS; i++) {
     let k_i = map(i, 0, N_POINTS, kRange[0], kRange[1]);
-    let vg_i = hbar * k_i / m;
+    let vg_i = HBAR * k_i / m;
     let px = map(i, 0, N_POINTS, x0, x0 + w);
     let py = midY - map(vg_i, 0, vRange[1], 0, amp * 2);
     vertex(px, py);
@@ -258,10 +258,6 @@ function drawPhaseVsGroup(x0, y0, w, h) {
   textAlign(LEFT, TOP);
   text('vp = phase velocity (dashed blue). vg = dω/dk = particle velocity (solid red). Note: vp = v/2 for free particle.', 16, y0 + 4);
   text('For relativistic matter: vp → c²/v which can exceed c (but information still travels at ≤ c)', 16, y0 + 18);
-}
-
-function exp(x) {
-  return Math.exp(x);
 }
 
 function windowResized() {
