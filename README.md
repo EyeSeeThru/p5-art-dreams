@@ -138,6 +138,7 @@ The project cycles through different technique categories to ensure variety:
 - **spherical-harmonics** — Spherical harmonic functions visualized on layered rotating spheres with animated displacement
 - **golden-ratio-bloom** — Phyllotaxis-inspired bloom with golden ratio spirals and pulsing center glow
 - **darwinian-dynamics** — Spatial evolutionary game theory: Hawk-Dove-Bourgeois game on a grid with replicator dynamics. Strategies compete for territory, higher payoff leads to reproduction, rare mutations introduce variety. Real-time strategy frequency graph shows population dynamics converging toward equilibrium or cycling.
+- **de-broglie-waves** — Matter wave visualization: λ = h/p, Gaussian wave packet spreading over time (dispersion: ΔxΔp ≥ ℏ/2). Shows wave-particle duality — localized packet that spreads. Top: |ψ|² probability density, real (solid) and imaginary (dashed) parts. Bottom: phase velocity vp = ω/k = ℏk/2m = v/2 vs group velocity vg = dω/dk = ℏk/m = v (classical particle velocity).
 - **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **dendritic-flow** — Perlin noise-driven flow field with branching particle trails and warm amber palette

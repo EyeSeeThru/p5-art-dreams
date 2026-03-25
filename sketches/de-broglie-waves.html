@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>de Broglie Waves</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020410; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// de Broglie Waves — Matter wave visualization
+// λ = h/p = h/(mv) — de Broglie wavelength
+// Wave-packet: superposition of plane waves with Gaussian envelope
+// Shows wave-particle duality: localized packet spreading over time (dispersion)
+let time = 0;
+let packetData = [];
+const N_POINTS = 400;
+const PACKET_STEPS = 300;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  textSize(10);
+}
+
+function draw() {
+  background(220, 30, 4);
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  // Draw quantum wave packet in central panel
+  drawWavePacket(cx, cy - height * 0.05, width * 0.85, height * 0.5);
+
+  // Draw phase velocity vs group velocity demonstration
+  drawPhaseVsGroup(cx, cy + height * 0.28, width * 0.85, height * 0.2);
+
+  // Labels
+  fill(195, 15, 80, 90);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('de Broglie Wave — matter wave λ = h/p, wave-packet spreading (dispersion)', 16, 16);
+  fill(165, 12, 65, 70);
+  text('Top: Gaussian wave packet (solid = real, dashed = imaginary). Packet spreads over time: ΔxΔp ≥ ℏ/2.', 16, 34);
+  text('Bottom: blue = phase velocity vp = ω/k = E/p = pc²/E = c²/v. Red = group velocity vg = dω/dk = dk²/2m = v (classical).', 16, 52);
+
+  time += 0.8;
+}
+
+function drawWavePacket(x0, y0, w, h) {
+  let midY = y0 + h * 0.5;
+  let amp = h * 0.35;
+
+  // Wave number k and omega
+  let k0 = 0.18;        // central wave number
+  let m = 1.0;          // mass (normalized)
+  let hbar = 1.0;
+  let omega0 = hbar * k0 * k0 / (2 * m); // dispersion: ω = ℏk²/2m
+
+  // Gaussian envelope width
+  let sigma = 25.0;
+  let sigma_k = 1.0 / sigma; // momentum space width
+
+  // Background
+  fill(0, 0, 6, 60);
+  rect(x0, y0, w, h);
+
+  // Grid
+  stroke(210, 20, 15, 20);
+  strokeWeight(0.5);
+  for (let x = x0; x <= x0 + w; x += 40) {
+    line(x, y0, x, y0 + h);
+  }
+  line(x0, midY, x0 + w, midY);
+
+  // Axis label
+  fill(165, 10, 55, 55);
+  textAlign(CENTER, TOP);
+  text('x', x0 + w + 8, midY - 5);
+
+  // Draw wave packet at current time
+  let t = time * 0.8;
+
+  // Real part
+  stroke(180, 70, 90, 85);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let i = 0; i < N_POINTS; i++) {
+    let px = x0 + (i / N_POINTS) * w;
+    let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
+
+    // Wave packet: integral of exp(ikx) * exp(-(k-k0)²/2σ_k²) * exp(-iω(k)t)
+    // Approximated as: envelope(x,t) * sin(k0*x - omega0*t)
+    let envelope = exp(-x * x / (2 * sigma * sigma + 2 * i * t * hbar / m));
+    let k_eff = k0 * (1 + t * t * hbar / (4 * m * sigma * sigma));
+    let phase = k_eff * x - omega0 * (1 - t * t * hbar / (4 * m * sigma * sigma)) * t;
+    let realPart = envelope * cos(phase) + sin(k0 * x - omega0 * t) * exp(-x*x/(2*sigma*sigma));
+
+    let y = midY + amp * 0.4 * realPart;
+    vertex(px, y);
+  }
+  endShape();
+
+  // Imaginary part
+  stroke(40, 80, 90, 65);
+  strokeWeight(1.5);
+  drawingContext.setLineDash([5, 6]);
+  beginShape();
+  for (let i = 0; i < N_POINTS; i++) {
+    let px = x0 + (i / N_POINTS) * w;
+    let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
+    let envelope = exp(-x * x / (2 * sigma * sigma));
+    let imagPart = envelope * sin(k0 * x - omega0 * t);
+    let y = midY + amp * 0.4 * imagPart;
+    vertex(px, y);
+  }
+  endShape();
+  drawingContext.setLineDash([]);
+
+  // Envelope
+  stroke(0, 0, 70, 35);
+  strokeWeight(1);
+  drawingContext.setLineDash([8, 8]);
+  beginShape();
+  for (let i = 0; i < N_POINTS; i++) {
+    let px = x0 + (i / N_POINTS) * w;
+    let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
+    let env = exp(-x * x / (2 * sigma * sigma));
+    let y = midY + amp * 0.4 * env;
+    vertex(px, y);
+  }
+  endShape();
+  beginShape();
+  for (let i = 0; i < N_POINTS; i++) {
+    let px = x0 + (i / N_POINTS) * w;
+    let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
+    let env = exp(-x * x / (2 * sigma * sigma));
+    let y = midY - amp * 0.4 * env;
+    vertex(px, y);
+  }
+  endShape();
+  drawingContext.setLineDash([]);
+
+  // Probability density |ψ|²
+  stroke(120, 60, 80, 50);
+  strokeWeight(2);
+  fill(120, 30, 20, 25);
+  beginShape();
+  for (let i = 0; i < N_POINTS; i++) {
+    let px = x0 + (i / N_POINTS) * w;
+    let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
+    let env = exp(-x * x / (2 * sigma * sigma));
+    let psi_sq = env * env;
+    let y = midY + amp * 0.7 * psi_sq;
+    vertex(px, y);
+  }
+  for (let i = N_POINTS - 1; i >= 0; i--) {
+    let px = x0 + (i / N_POINTS) * w;
+    let x = map(i, 0, N_POINTS, -w * 0.5, w * 0.5);
+    let env = exp(-x * x / (2 * sigma * sigma));
+    let psi_sq = env * env;
+    let y = midY - amp * 0.7 * psi_sq;
+    vertex(px, y);
+  }
+  endShape();
+
+  // Labels
+  fill(0, 0, 80, 70);
+  textAlign(LEFT, CENTER);
+  text('|ψ|²', x0 + w + 5, midY);
+  text('Re(ψ)', x0 + w + 5, midY - amp * 0.3);
+  text('Im(ψ)', x0 + w + 5, midY + amp * 0.1);
+  text('Envelope', x0 + w + 5, midY - amp * 0.6);
+}
+
+function drawPhaseVsGroup(x0, y0, w, h) {
+  // Compare phase velocity and group velocity
+  // vp = ω/k = E/p = mc²/v (for matter waves, this exceeds c!)
+  // vg = dω/dk = v (classical particle velocity)
+  let midY = y0 + h * 0.5;
+  let amp = h * 0.35;
+
+  fill(0, 0, 6, 50);
+  rect(x0, y0, w, h);
+
+  stroke(210, 15, 20, 15);
+  strokeWeight(0.5);
+  line(x0, midY, x0 + w, midY);
+
+  let c = 1.0; // speed of light (normalized)
+  let v = 0.4 + 0.3 * sin(time * 0.05); // particle velocity (varies)
+  let m = 1.0;
+  let k = 0.15; // wave number
+
+  // Phase velocity: vp = ω/k = ℏk/2m for free particle with ω = ℏk²/2m
+  // Actually for de Broglie: E = pc²... hmm let me use proper relativistic
+  // For non-relativistic: ω = ℏk²/2m, vp = ω/k = ℏk/2m = v/2
+  // But more commonly discussed: for matter waves ω = E/ℏ, k = p/ℏ, so vp = E/p
+  let omega = hbar * k * k / (2 * m);
+  let vp = omega / k;
+
+  // Group velocity: vg = dω/dk = ℏk/m = v (particle velocity)
+  let vg = hbar * 2 * k / (2 * m);
+
+  // Plot k on x-axis (varying particle momentum)
+  let kRange = [0.05, 0.35];
+  let vRange = [0, 1.2];
+
+  // Draw phase velocity curve: vp = ℏk/2m = v/2
+  stroke(200, 80, 90, 80);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let i = 0; i <= N_POINTS; i++) {
+    let k_i = map(i, 0, N_POINTS, kRange[0], kRange[1]);
+    let vp_i = hbar * k_i / (2 * m);
+    let px = map(i, 0, N_POINTS, x0, x0 + w);
+    let py = midY - map(vp_i, 0, vRange[1], 0, amp * 2);
+    vertex(px, py);
+  }
+  endShape();
+
+  // Draw group velocity curve: vg = ℏk/m = 2*vp
+  stroke(10, 80, 95, 80);
+  strokeWeight(2);
+  beginShape();
+  for (let i = 0; i <= N_POINTS; i++) {
+    let k_i = map(i, 0, N_POINTS, kRange[0], kRange[1]);
+    let vg_i = hbar * k_i / m;
+    let px = map(i, 0, N_POINTS, x0, x0 + w);
+    let py = midY - map(vg_i, 0, vRange[1], 0, amp * 2);
+    vertex(px, py);
+  }
+  endShape();
+
+  // Mark current k
+  let kx = map(k, kRange[0], kRange[1], x0, x0 + w);
+  stroke(0, 0, 70, 50);
+  strokeWeight(1);
+  drawingContext.setLineDash([3, 3]);
+  line(kx, y0, kx, y0 + h);
+  drawingContext.setLineDash([]);
+
+  // Labels
+  fill(200, 80, 90, 80);
+  textSize(10);
+  textAlign(CENTER, TOP);
+  text('vp = ℏk/2m', kx, y0 + 6);
+  fill(10, 80, 95, 80);
+  text('vg = ℏk/m = 2vp', kx, y0 + h - 14);
+  fill(165, 10, 60, 60);
+  textAlign(LEFT, TOP);
+  text('vp = phase velocity (dashed blue). vg = dω/dk = particle velocity (solid red). Note: vp = v/2 for free particle.', 16, y0 + 4);
+  text('For relativistic matter: vp → c²/v which can exceed c (but information still travels at ≤ c)', 16, y0 + 18);
+}
+
+function exp(x) {
+  return Math.exp(x);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
