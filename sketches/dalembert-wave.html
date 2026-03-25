@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>D'Alembert Wave</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #060810; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// D'Alembert Wave — solutions to the 1D wave equation
+// D'Alembert's solution: y(x,t) = (f(x-ct) + f(x+ct)) / 2
+// Standing waves from interfering traveling waves
+// Multiple modes with different wave speeds and amplitudes
+let time = 0;
+let rSeed = 0;
+const NUM_MODES = 8;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  rSeed = random(10000);
+  randomSeed(rSeed);
+  noStroke();
+}
+
+function draw() {
+  background(210, 30, 5);
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  // Draw multiple wave modes
+  drawWaveModes();
+
+  // Draw the string/medium at equilibrium
+  drawString();
+
+  // Show D'Alembert decomposition: f(x-ct) and f(x+ct) separately
+  drawTravellingComponents();
+
+  // Labels
+  fill(195, 15, 75, 80);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("D'Alembert Wave — y(x,t) = [f(x-ct) + f(x+ct)] / 2", 16, 16);
+  fill(165, 12, 60, 65);
+  text('Standing wave from interference of left- and right-propagating traveling waves', 16, 34);
+  fill(165, 10, 50, 55);
+  text('Top: composite standing wave. Bottom: red=forward wave f(x-ct), blue=backward wave f(x+ct).', 16, 50);
+  text('Multiple harmonic modes with varying wave speeds create complex interference.', 16, 66);
+
+  time += 0.8;
+}
+
+function drawWaveModes() {
+  // Draw the composite standing wave at center of canvas
+  let centerY = height * 0.38;
+  let amp = height * 0.18;
+
+  noFill();
+  // Draw multiple horizontal slices for different modes
+  for (let mode = 1; mode <= NUM_MODES; mode++) {
+    let modeAmp = amp / mode * (1 + 0.5 * sin(mode * 0.5));
+    let k = mode * PI / width * 2;
+    let omega = mode * 0.025;
+    let phase = omega * time;
+
+    // Slight vertical offset for each mode
+    let yOffset = (mode - NUM_MODES / 2) * 6;
+
+    // Draw mode with hue based on mode number
+    stroke((mode - 1) * 45, 70, 80, 40);
+    strokeWeight(1);
+    beginShape();
+    for (let x = 0; x <= width; x += 3) {
+      let xn = x / width * 4 * PI; // normalized position
+      let y = yOffset + modeAmp * sin(k * x - phase) * cos(omega * time * 0.3);
+      vertex(x, centerY + y);
+    }
+    endShape();
+  }
+
+  // Main composite wave (thicker)
+  stroke(180, 50, 90, 80);
+  strokeWeight(2.5);
+  noFill();
+  beginShape();
+  for (let x = 0; x <= width; x += 2) {
+    let y = 0;
+    for (let mode = 1; mode <= NUM_MODES; mode++) {
+      let modeAmp = amp / mode;
+      let k = mode * PI / width * 2;
+      let omega = mode * 0.025;
+      y += modeAmp * sin(k * x - omega * time);
+    }
+    vertex(x, centerY + y);
+  }
+  endShape();
+
+  // Equilibrium line
+  stroke(0, 0, 50, 25);
+  strokeWeight(1);
+  line(0, centerY, width, centerY);
+
+  // Envelope (dashed)
+  stroke(40, 60, 80, 30);
+  strokeWeight(1);
+  drawingContext.setLineDash([5, 8]);
+  for (let mode = 1; mode <= NUM_MODES; mode++) {
+    let modeAmp = amp / mode;
+    let k = mode * PI / width * 2;
+    beginShape();
+    for (let x = 0; x <= width; x += 4) {
+      let envelope = 0;
+      for (let m = 1; m <= mode; m++) {
+        envelope += (amp / m) * sin(m * k * x);
+      }
+      vertex(x, centerY + envelope);
+    }
+    endShape();
+    beginShape();
+    for (let x = 0; x <= width; x += 4) {
+      let envelope = 0;
+      for (let m = 1; m <= mode; m++) {
+        envelope -= (amp / m) * sin(m * k * x);
+      }
+      vertex(x, centerY + envelope);
+    }
+    endShape();
+  }
+  drawingContext.setLineDash([]);
+}
+
+function drawString() {
+  // Draw the vibrating string at the bottom third
+  let stringY = height * 0.7;
+  let amp = height * 0.1;
+
+  // Background band
+  fill(210, 20, 8, 80);
+  noStroke();
+  rect(0, stringY - amp - 15, width, amp * 2 + 30);
+
+  // Grid lines
+  stroke(210, 20, 20, 15);
+  strokeWeight(0.5);
+  for (let y = -amp; y <= amp; y += 20) {
+    line(0, stringY + y, width, stringY + y);
+  }
+
+  // String boundary (fixed ends)
+  stroke(0, 0, 60, 60);
+  strokeWeight(2);
+  line(0, stringY - amp - 5, 0, stringY + amp + 5);
+  line(width, stringY - amp - 5, width, stringY + amp + 5);
+
+  // Draw string shape
+  stroke(60, 70, 90, 90);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let x = 0; x <= width; x += 2) {
+    let y = 0;
+    let k = PI / width;
+    for (let mode = 1; mode <= NUM_MODES; mode++) {
+      let modeAmp = amp / mode;
+      let km = mode * k;
+      let omega = mode * 0.025;
+      y += modeAmp * sin(km * x) * cos(omega * time);
+    }
+    vertex(x, stringY + y);
+  }
+  endShape();
+}
+
+function drawTravellingComponents() {
+  // Draw the two traveling wave components: f(x-ct) and f(x+ct)
+  let topY = height * 0.2;
+  let bottomY = height * 0.55;
+  let amp = height * 0.07;
+
+  // Forward wave: f(x - ct)
+  stroke(10, 85, 95, 75);
+  strokeWeight(1.5);
+  noFill();
+  beginShape();
+  for (let x = 0; x <= width; x += 2) {
+    let c = 150; // wave speed
+    let xArg = (x - c * time * 0.5) / width * 6 * PI;
+    let y = amp * triangularWave(xArg);
+    vertex(x, topY + y);
+  }
+  endShape();
+
+  // Backward wave: f(x + ct)
+  stroke(200, 85, 95, 75);
+  strokeWeight(1.5);
+  noFill();
+  beginShape();
+  for (let x = 0; x <= width; x += 2) {
+    let c = 150;
+    let xArg = (x + c * time * 0.5) / width * 6 * PI;
+    let y = amp * triangularWave(xArg);
+    vertex(x, bottomY + y);
+  }
+  endShape();
+
+  // Labels
+  fill(10, 80, 90, 70);
+  textSize(9);
+  textAlign(RIGHT, CENTER);
+  text('f(x−ct)', width - 16, topY);
+  fill(200, 80, 90, 70);
+  text('f(x+ct)', width - 16, bottomY);
+}
+
+function triangularWave(x) {
+  // Triangular wave function (odd symmetry, period 2π)
+  x = x % (2 * PI);
+  if (x < 0) x += 2 * PI;
+  if (x < PI) {
+    return 2 * x / PI - 1;
+  } else {
+    return 3 - 2 * x / PI;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
