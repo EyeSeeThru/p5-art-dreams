@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Deformable Tessellation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020208; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Deformable Tessellation — Voronoi mesh with physics-based deformation
+// Cells exert spring forces on their edges, respond to mouse, and relax over time
+// Inspired by foam physics and biological tissues (cortical columns, epithelial cells)
+let particles = [];
+const N_CELLS = 80;
+let time = 0;
+let voronoi = [];
+let mouseForce = { x: 0, y: 0 };
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  initParticles();
+  noStroke();
+  textSize(10);
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < N_CELLS; i++) {
+    let angle = random(TWO_PI);
+    let r = random(30, min(width, height) * 0.4);
+    let cx = width / 2;
+    let cy = height / 2;
+    particles.push({
+      x: cx + cos(angle) * r,
+      y: cy + sin(angle) * r,
+      vx: random(-0.3, 0.3),
+      vy: random(-0.3, 0.3),
+      fx: 0,
+      fy: 0,
+      hue: random(360),
+      targetX: cx + cos(angle) * r,
+      targetY: cy + sin(angle) * r,
+      sz: random(0.6, 1.0),
+      stress: 0
+    });
+  }
+}
+
+function draw() {
+  // Deep fade for trails
+  background(240, 30, 2, 12);
+
+  // Apply forces
+  applySpringForces();
+  applyMouseForce();
+  applyNoiseForce();
+  updateParticles();
+  computeVoronoi();
+
+  // Draw layers
+  drawVoronoiCells();
+  drawCellEdges();
+  drawCellCenters();
+  drawStressMap();
+
+  // Labels
+  fill(195, 15, 80, 85);
+  textAlign(LEFT, TOP);
+  text('Deformable Tessellation — Voronoi foam with edge tension, cell stress, and mouse interaction', 16, 16);
+  fill(165, 12, 60, 70);
+  text('Cells are Voronoi seeds. Each edge exerts spring force (Hooke\\'s law) on neighboring cells.', 16, 34);
+  text('Mouse pushes cells away. Blue edges = low stress. Red edges = high stress (over-stretched).', 16, 52);
+
+  time += 0.01;
+}
+
+function applySpringForces() {
+  // Reset forces
+  for (let p of particles) {
+    p.fx = 0;
+    p.fy = 0;
+    p.stress = 0;
+  }
+
+  // Build neighbor relationships via Voronoi
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      let p1 = particles[i];
+      let p2 = particles[j];
+      let d = dist(p1.x, p1.y, p2.x, p2.y);
+
+      // Ideal edge length based on cell size
+      let idealD = min(width, height) * 0.15;
+
+      // Spring force: F = -k*(d - idealD)
+      let k = 0.015;
+      let force = k * (d - idealD);
+
+      let dx = p2.x - p1.x;
+      let dy = p2.y - p1.y;
+
+      if (d > 0) {
+        let fx = (force * dx / d);
+        let fy = (force * dy / d);
+
+        p1.fx += fx;
+        p1.fy += fy;
+        p2.fx -= fx;
+        p2.fy -= fy;
+
+        // Stress proportional to deviation
+        let stretch = abs(d - idealD) / idealD;
+        p1.stress = max(p1.stress, stretch);
+        p2.stress = max(p2.stress, stretch);
+      }
+    }
+  }
+}
+
+function applyMouseForce() {
+  // Mouse repulsion
+  if (mouseIsPressed || true) { // Always active, mouse position matters
+    let mx = mouseX;
+    let my = mouseY;
+    let radius = 150;
+
+    for (let p of particles) {
+      let d = dist(mx, my, p.x, p.y);
+      if (d < radius && d > 0) {
+        let strength = map(d, 0, radius, 2.5, 0);
+        let fx = ((p.x - mx) / d) * strength;
+        let fy = ((p.y - my) / d) * strength;
+        p.fx += fx;
+        p.fy += fy;
+      }
+    }
+  }
+}
+
+function applyNoiseForce() {
+  // Perlin noise force field — gentle swirling
+  let noiseScale = 0.003;
+  let noiseStrength = 0.08;
+
+  for (let p of particles) {
+    let n1 = noise(p.x * noiseScale, p.y * noiseScale, time * 0.5);
+    let n2 = noise(p.x * noiseScale + 100, p.y * noiseScale + 100, time * 0.5);
+    p.fx += (n1 - 0.5) * noiseStrength;
+    p.fy += (n2 - 0.5) * noiseStrength;
+  }
+}
+
+function updateParticles() {
+  let cx = width / 2;
+  let cy = height / 2;
+  let boundaryForce = 0.08;
+  let damping = 0.92;
+
+  for (let p of particles) {
+    // Apply forces
+    p.vx += p.fx;
+    p.vy += p.fy;
+
+    // Centering tendency (weak)
+    let toCenterX = (cx - p.x) * 0.0005;
+    let toCenterY = (cy - p.y) * 0.0005;
+    p.vx += toCenterX;
+    p.vy += toCenterY;
+
+    // Boundary soft repulsion
+    let margin = 60;
+    if (p.x < margin) p.vx += (margin - p.x) * 0.02;
+    if (p.x > width - margin) p.vx -= (p.x - (width - margin)) * 0.02;
+    if (p.y < margin) p.vy += (margin - p.y) * 0.02;
+    if (p.y > height - margin) p.vy -= (p.y - (height - margin)) * 0.02;
+
+    // Damping
+    p.vx *= damping;
+    p.vy *= damping;
+
+    // Speed limit
+    let speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    if (speed > 4) {
+      p.vx = (p.vx / speed) * 4;
+      p.vy = (p.vy / speed) * 4;
+    }
+
+    // Update position
+    p.x += p.vx;
+    p.y += p.vy;
+  }
+}
+
+function computeVoronoi() {
+  // Simple Voronoi: for each particle, find its cell boundary points
+  // We'll approximate by computing Delaunay-like neighbors
+  voronoi = [];
+  for (let i = 0; i < particles.length; i++) {
+    voronoi.push({ idx: i, neighbors: [] });
+  }
+
+  // Find nearest neighbors for each particle
+  for (let i = 0; i < particles.length; i++) {
+    let p1 = particles[i];
+    let distances = [];
+    for (let j = 0; j < particles.length; j++) {
+      if (i !== j) {
+        let d = dist(p1.x, p1.y, particles[j].x, particles[j].y);
+        distances.push({ idx: j, d: d });
+      }
+    }
+    distances.sort((a, b) => a.d - b.d);
+    voronoi[i].neighbors = distances.slice(0, 8).map(x => x.idx);
+    voronoi[i].distances = distances.slice(0, 8).map(x => x.d);
+  }
+}
+
+function drawVoronoiCells() {
+  // Draw cell fill for each particle
+  for (let i = 0; i < particles.length; i++) {
+    let p = particles[i];
+    let neighbors = voronoi[i].neighbors;
+    let d_i = voronoi[i].distances;
+
+    if (neighbors.length < 3) continue;
+
+    // Compute Voronoi cell vertices (bisectors between particle and neighbors)
+    let vertices = [];
+    for (let n = 0; n < neighbors.length; n++) {
+      let j = neighbors[n];
+      let p2 = particles[j];
+      let d = d_i[n];
+
+      // Find perpendicular bisector midpoint
+      let mx = (p.x + p2.x) / 2;
+      let my = (p.y + p2.y) / 2;
+
+      // Direction from particle toward neighbor
+      let dx = p2.x - p.x;
+      let dy = p2.y - p.y;
+
+      // Perpendicular direction
+      let px = -dy;
+      let py = dx;
+
+      // How far to extend the bisector: proportional to half the distance
+      let extend = d * 0.6;
+
+      vertices.push({
+        x: mx + px / d * extend,
+        y: my + py / d * extend
+      });
+    }
+
+    // Sort vertices by angle from particle center
+    vertices.sort((a, b) => {
+      return atan2(a.y - p.y, a.x - p.x) - atan2(b.y - p.y, b.x - p.x);
+    });
+
+    // Draw cell polygon with clipping to canvas
+    let cx = width / 2;
+    let cy = height / 2;
+
+    // Cell fill
+    fill(0, 0, 100, 12);
+    stroke(0, 0, 0, 0);
+    beginShape();
+    for (let v of vertices) {
+      // Clip vertices to canvas
+      let vx = constrain(v.x, 0, width);
+      let vy = constrain(v.y, 0, height);
+      vertex(vx, vy);
+    }
+    endShape(CLOSE);
+  }
+}
+
+function drawCellEdges() {
+  // Draw edges between neighboring cells (shared Voronoi walls)
+  let drawn = new Set();
+
+  for (let i = 0; i < particles.length; i++) {
+    let p1 = particles[i];
+    let neighbors = voronoi[i].neighbors;
+
+    for (let n = 0; n < neighbors.length; n++) {
+      let j = neighbors[n];
+      if (i >= j) continue;
+
+      let key = `${min(i,j)}_${max(i,j)}`;
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+
+      let p2 = particles[j];
+
+      // Edge is the perpendicular bisector between p1 and p2
+      let mx = (p1.x + p2.x) / 2;
+      let my = (p1.y + p2.y) / 2;
+
+      let dx = p2.x - p1.x;
+      let dy = p2.y - p1.y;
+      let d = sqrt(dx * dx + dy * dy);
+
+      // Perpendicular
+      let px = -dy / d;
+      let py = dx / d;
+
+      // Edge length
+      let len = d * 0.6;
+
+      let x1 = mx - px * len;
+      let y1 = my - py * len;
+      let x2 = mx + px * len;
+      let y2 = my + py * len;
+
+      // Stress-based color
+      let s1 = p1.stress;
+      let s2 = p2.stress;
+      let avgStress = (s1 + s2) / 2;
+      let stressColor = lerpColor(
+        color(220, 80, 90, 70), // Low stress = blue
+        color(0, 80, 90, 70),    // High stress = red
+        constrain(avgStress * 3, 0, 1)
+      );
+
+      stroke(stressColor);
+      strokeWeight(1.2);
+      line(x1, y1, x2, y2);
+    }
+  }
+}
+
+function drawCellCenters() {
+  // Draw particle centers with glow
+  for (let i = 0; i < particles.length; i++) {
+    let p = particles[i];
+
+    // Hue based on velocity (fast = warmer)
+    let speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    let hue = (p.hue + speed * 15) % 360;
+
+    // Outer glow
+    let glowAlpha = map(speed, 0, 3, 20, 50);
+    fill(p.hue, 60, 90, glowAlpha);
+    ellipse(p.x, p.y, p.sz * 12, p.sz * 12);
+
+    // Inner core
+    fill(p.hue, 50, 95, 80);
+    ellipse(p.x, p.y, p.sz * 5, p.sz * 5);
+  }
+}
+
+function drawStressMap() {
+  // Draw stress legend
+  let legendX = width - 110;
+  let legendY = height - 80;
+  let legendW = 80;
+  let legendH = 10;
+
+  // Gradient bar
+  for (let x = 0; x < legendW; x++) {
+    let t = x / legendW;
+    let c = lerpColor(color(220, 80, 90, 60), color(0, 80, 90, 60), t);
+    stroke(c);
+    line(legendX + x, legendY, legendX + x, legendY + legendH);
+  }
+  noStroke();
+
+  // Border
+  stroke(200, 15, 40, 40);
+  strokeWeight(1);
+  noFill();
+  rect(legendX, legendY, legendW, legendH, 2);
+  noStroke();
+
+  // Labels
+  fill(165, 10, 55, 60);
+  textSize(9);
+  textAlign(LEFT, TOP);
+  text('Low Stress', legendX, legendY + legendH + 3);
+  textAlign(RIGHT, TOP);
+  text('High', legendX + legendW, legendY + legendH + 3);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
