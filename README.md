@@ -148,6 +148,7 @@ The project cycles through different technique categories to ensure variety:
 - **barber-pole** — Rotating spiral stripe optical illusion. Stacked horizontal bands drawn with perspective give 3D cylinder look; depth-based shading makes middle brighter; wobble adds life. Classic barber pole effect where sequential diagonal bands create apparent upward motion along cylinder axis.
 - **belousov-reactant** — Belousov-Zhabotinsky reaction simulation with spiral wave patterns using Oregonator model
 - **cahn-hilliard** — Phase separation simulation using the Cahn-Hilliard equation with spinodal decomposition and colorful phase boundaries
+- **caustics-wave** — Light refraction patterns through a wavy water surface. Multiple overlapping sinusoidal wave grids create interference where bright caustic lines form — the envelope of focused light rays. Golden particles (light motes) drift upward and accumulate at caustic focal points, mimicking phototropism. Dark water background with subtle grid, ripple overlay.
 - **bezier-weave** — Parametric Bezier curves with animated control points creating woven tapestry patterns with glow effects
 - **benard-convection** — Thermal convection patterns with rising warm plumes and sinking cool fluid creating Rayleigh-Bénard cells
 - **bloch-sphere** — Bloch sphere visualization for quantum qubit state representation with rotating 3D projection and animated state vectors
