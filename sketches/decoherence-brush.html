@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Decoherence Brush</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020108; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Decoherence Brush — Quantum decoherence visualization
+// Quantum superposition decays into classical mixed state via environment interaction
+// |ψ⟩ = α|0⟩ + β|1⟩ → ρ = |α|²|0⟩⟨0| + |β|²|1⟩⟨1| (off-diagonals vanish)
+let time = 0;
+let particles = [];
+const N_PARTICLES = 120;
+let envAtoms = [];
+const N_ENV = 60;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  initParticles();
+  initEnvironment();
+  noStroke();
+  textSize(10);
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < N_PARTICLES; i++) {
+    particles.push({
+      x: random(width),
+      y: height * 0.35 + random(-height * 0.15, height * 0.15),
+      vx: random(-0.5, 0.5),
+      vy: random(-0.5, 0.5),
+      alpha: random(60, 100), // coherence phase (0=classical, 100=fully quantum)
+      alpha_target: 80,
+      phase: random(TWO_PI),
+      hue: 180 + random(-30, 30),
+      sz: random(3, 6)
+    });
+  }
+}
+
+function initEnvironment() {
+  envAtoms = [];
+  for (let i = 0; i < N_ENV; i++) {
+    envAtoms.push({
+      x: random(width),
+      y: height * 0.75 + random(-height * 0.1, height * 0.1),
+      vx: random(-1, 1),
+      vy: random(-0.3, 0.3),
+      hue: random(30, 60),
+      phase: random(TWO_PI),
+      sz: random(2, 4)
+    });
+  }
+}
+
+function draw() {
+  background(260, 40, 3, 25);
+  // Trail effect with partial clear
+
+  // Draw system region label
+  fill(180, 20, 60, 50);
+  textAlign(CENTER, TOP);
+  text('SYSTEM (QUANTUM)', width / 2, height * 0.05);
+
+  fill(30, 30, 60, 50);
+  text('ENVIRONMENT (CLASSICAL)', width / 2, height * 0.62);
+
+  // Draw separator
+  stroke(200, 15, 20, 30);
+  strokeWeight(1);
+  drawingContext.setLineDash([8, 6]);
+  line(width * 0.1, height * 0.55, width * 0.9, height * 0.55);
+  drawingContext.setLineDash([]);
+  noStroke();
+
+  // Update and draw environment atoms
+  updateEnvironment();
+  drawEnvironment();
+
+  // Update and draw quantum particles
+  updateParticles();
+  drawParticles();
+
+  // Draw coherence meter
+  drawCoherenceMeter();
+
+  // Labels
+  fill(195, 15, 75, 85);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text('Decoherence Brush — quantum superposition collapses via environment interaction', 16, 16);
+  fill(165, 12, 60, 70);
+  text('Particles start in quantum superposition (colorful phase). Environment atoms (bottom) scatter off particles,', 16, 34);
+  text('destroying phase coherence → classical mixed state (faded white). Off-diagonal density matrix elements → 0.', 16, 52);
+
+  time += 0.01;
+}
+
+function updateParticles() {
+  let globalCoherence = 0.8 + 0.2 * sin(time * 0.3); // global decoherence rate varies
+
+  for (let p of particles) {
+    // Move particle
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Wrap around
+    if (p.x < 0) p.x += width;
+    if (p.x > width) p.x -= width;
+    if (p.y < height * 0.2) { p.vy += 0.02; }
+    if (p.y > height * 0.5) { p.vy -= 0.02; }
+    p.vy += random(-0.02, 0.02);
+
+    // Quantum evolution
+    p.phase += 0.03;
+
+    // Check proximity to environment atoms — decoherence event
+    for (let env of envAtoms) {
+      let d = dist(p.x, p.y, env.x, env.y);
+      if (d < 30) {
+        // Decoherence: reduce coherence
+        p.alpha_target = max(5, p.alpha_target - 8);
+        // Shift hue toward white (classical)
+        p.hue = lerp(p.hue, 30, 0.1);
+      }
+    }
+
+    // Coherence decays toward target
+    p.alpha += (p.alpha_target - p.alpha) * 0.02;
+
+    // Slowly recover coherence (unitary evolution restores superposition in isolation)
+    p.alpha_target = min(100, p.alpha_target + 0.05);
+
+    // Global decoherence trend
+    p.alpha_target *= globalCoherence;
+  }
+}
+
+function drawParticles() {
+  for (let p of particles) {
+    // Hue based on quantum phase
+    let hue = (p.hue + sin(p.phase) * 20) % 360;
+    let sat = map(p.alpha, 0, 100, 20, 80);
+    let bri = map(p.alpha, 0, 100, 40, 95);
+
+    // Glow
+    fill(hue, sat * 0.7, bri, p.alpha * 0.2);
+    ellipse(p.x, p.y, p.sz * 4, p.sz * 4);
+
+    // Core
+    fill(hue, sat, bri, p.alpha * 0.9);
+    ellipse(p.x, p.y, p.sz, p.sz);
+
+    // Quantum phase indicator (ring)
+    if (p.alpha > 30) {
+      noFill();
+      stroke(hue, 60, 90, p.alpha * 0.4);
+      strokeWeight(0.8);
+      let ringPhase = (sin(p.phase) + 1) / 2;
+      let ringSz = p.sz * (1.5 + ringPhase * 1.5);
+      ellipse(p.x, p.y, ringSz, ringSz);
+      noStroke();
+    }
+  }
+}
+
+function updateEnvironment() {
+  for (let env of envAtoms) {
+    env.x += env.vx;
+    env.y += env.vy;
+    env.phase += 0.05;
+
+    // Bounce horizontally
+    if (env.x < 0 || env.x > width) env.vx *= -1;
+    // Bounce within environment region
+    if (env.y < height * 0.58) env.vy += 0.05;
+    if (env.y > height * 0.88) env.vy -= 0.05;
+
+    // Occasional random kick
+    if (random() < 0.01) {
+      env.vx += random(-0.3, 0.3);
+      env.vy += random(-0.2, 0.2);
+    }
+
+    // Damping
+    env.vx *= 0.99;
+    env.vy *= 0.99;
+  }
+}
+
+function drawEnvironment() {
+  for (let env of envAtoms) {
+    let brightness = 60 + sin(env.phase) * 20;
+
+    // Glow
+    fill(env.hue, 50, brightness, 15);
+    ellipse(env.x, env.y, env.sz * 5, env.sz * 5);
+
+    // Atom
+    fill(env.hue, 40, brightness + 20, 70);
+    ellipse(env.x, env.y, env.sz, env.sz);
+
+    // Orbiting electron indicator
+    let orbitAngle = env.phase * 2;
+    let orbitR = env.sz * 1.8;
+    fill(env.hue, 70, brightness + 30, 50);
+    ellipse(
+      env.x + cos(orbitAngle) * orbitR,
+      env.y + sin(orbitAngle) * orbitR * 0.5,
+      env.sz * 0.5, env.sz * 0.5
+    );
+  }
+}
+
+function drawCoherenceMeter() {
+  // Calculate average coherence
+  let avgAlpha = particles.reduce((s, p) => s + p.alpha, 0) / particles.length;
+
+  let meterX = width - 130;
+  let meterY = 20;
+  let meterW = 100;
+  let meterH = 12;
+
+  // Background
+  fill(0, 0, 15, 60);
+  rect(meterX, meterY, meterW, meterH, 3);
+
+  // Fill
+  let fillW = map(avgAlpha, 0, 100, 0, meterW);
+  let fillColor;
+  if (avgAlpha > 60) {
+    fillColor = color(180, 70, 90, 80); // Quantum = cyan
+  } else if (avgAlpha > 20) {
+    fillColor = color(50, 70, 90, 80); // Mixed = yellow
+  } else {
+    fillColor = color(0, 20, 70, 80); // Classical = red
+  }
+  fill(fillColor);
+  rect(meterX, meterY, fillW, meterH, 3);
+
+  // Border
+  noFill();
+  stroke(200, 15, 40, 40);
+  strokeWeight(1);
+  rect(meterX, meterY, meterW, meterH, 3);
+  noStroke();
+
+  // Labels
+  fill(165, 10, 60, 70);
+  textSize(9);
+  textAlign(LEFT, BOTTOM);
+  text('Coherence', meterX, meterY - 3);
+  textAlign(RIGHT, BOTTOM);
+  text('Quantum', meterX - 4, meterY - 3);
+  textAlign(LEFT, TOP);
+  text('Classical', meterX, meterY + meterH + 3);
+
+  // Value
+  fill(0, 0, 90, 90);
+  textSize(10);
+  textAlign(RIGHT, TOP);
+  text((avgAlpha).toFixed(0) + '%', meterX + meterW, meterY + meterH + 3);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  initParticles();
+  initEnvironment();
+}
+</script>
+</body>
+</html>
