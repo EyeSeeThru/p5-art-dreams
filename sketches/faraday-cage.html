@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Faraday Cage</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a12; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Faraday Cage — Electric Field Shielding
+// Demonstrates how a conductive cage blocks external electric fields
+// Field lines terminate on conductor surface (charges induced)
+// Interior field is zero (equipotential)
+
+let charges = [];
+let cage = { x: 0, y: 0, w: 0, h: 0, mesh: [] };
+let particles = [];
+let fieldLines = [];
+let showMode = 0; // 0 = external field, 1 = cage detail, 2 = shielding demo
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  frameRate(30);
+
+  // External charge (can be moved with mouse)
+  charges.push({ x: width * 0.7, y: height * 0.5, q: 1, isExternal: true });
+
+  // Cage setup
+  cage.x = width * 0.4;
+  cage.y = height * 0.5;
+  cage.w = min(width, height) * 0.35;
+  cage.h = min(width, height) * 0.35;
+
+  // Cage mesh (grid of wire points)
+  let meshStep = 20;
+  for (let x = -cage.w / 2; x <= cage.w / 2; x += meshStep) {
+    for (let y = -cage.h / 2; y <= cage.h / 2; y += meshStep) {
+      // Only perimeter points (cage wires)
+      if (abs(x) >= cage.w / 2 - meshStep || abs(y) >= cage.h / 2 - meshStep) {
+        cage.mesh.push({ 
+          lx: x, ly: y, // local coords
+          gx: cage.x + x, gy: cage.y + y  // global coords
+        });
+      }
+    }
+  }
+
+  // Field line particles
+  for (let i = 0; i < 150; i++) {
+    particles.push(createParticle());
+  }
+
+  textSize(11);
+}
+
+function createParticle() {
+  let angle = random(TWO_PI);
+  let r = random(50, min(width, height) * 0.45);
+  return {
+    x: width / 2 + cos(angle) * r,
+    y: height / 2 + sin(angle) * r,
+    hue: random(180, 260),
+    life: random(100, 200),
+    maxLife: 0,
+    vx: 0, vy: 0
+  };
+}
+
+function draw() {
+  // Background fade
+  background(240, 40, 5, 20);
+
+  // Move external charge with mouse
+  if (mouseIsPressed && mouseX > cage.x + cage.w / 2 + 20) {
+    charges[0].x = mouseX;
+    charges[0].y = mouseY;
+  }
+
+  // Draw field lines
+  drawFieldLines();
+
+  // Draw cage
+  drawCage();
+
+  // Draw external charge
+  drawCharges();
+
+  // Draw particles inside cage (should be zero field)
+  drawParticles();
+
+  // Draw info
+  drawInfo();
+
+  time += 0.016;
+}
+
+function getElectricField(px, py) {
+  let Ex = 0, Ey = 0;
+  let ke = 8.99e9; // Coulomb constant (scaled for viz)
+
+  // Contribution from external charges
+  for (let c of charges) {
+    let dx = px - c.x;
+    let dy = py - c.y;
+    let r2 = dx * dx + dy * dy;
+    let r = sqrt(r2);
+    if (r > 20) {
+      let E = ke * c.q / r2;
+      Ex += E * dx / r;
+      Ey += E * dy / r;
+    }
+  }
+
+  // Induced charges on cage surface (method of images approximation)
+  // For a point charge outside a conducting box, induced charges appear on surface
+  // Simplified: image charges inside cage
+  let c = charges[0];
+  if (c.q > 0) {
+    // Image charge approximation - place opposite charge inside cage
+    let imgX = cage.x;
+    let imgY = cage.y;
+    let dx = px - imgX;
+    let dy = py - imgY;
+    let r2 = dx * dx + dy * dy;
+    let r = sqrt(r2);
+    if (r > 30) {
+      // Check if inside cage bounds
+      let localX = px - cage.x;
+      let localY = py - cage.y;
+      if (abs(localX) < cage.w / 2 - 15 && abs(localY) < cage.h / 2 - 15) {
+        // Inside cage - zero field (conductor)
+        return { Ex: 0, Ey: 0, inside: true };
+      }
+      // Near cage edge - add image charge effect
+      let E = ke * c.q * 0.7 / r2;
+      Ex -= E * dx / r;
+      Ey -= E * dy / r;
+    }
+  }
+
+  return { Ex, Ey, inside: false };
+}
+
+function drawFieldLines() {
+  // Draw electric field lines
+  strokeWeight(1);
+  noFill();
+
+  let numLines = 24;
+  let c = charges[0];
+
+  for (let i = 0; i < numLines; i++) {
+    let angle = (i / numLines) * TWO_PI;
+    let startR = 60;
+    let sx = c.x + cos(angle) * startR;
+    let sy = c.y + sin(angle) * startR;
+
+    // Trace field line
+    let hue = (c.q > 0) ? 200 : 0; // Cyan for positive, red for negative
+    stroke(hue, 70, 80, 50);
+
+    beginShape();
+    let px = sx, py = sy;
+    for (let step = 0; step < 80; step++) {
+      let field = getElectricField(px, py);
+      if (field.inside) break; // Stop inside cage
+
+      let mag = sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
+      if (mag < 1e-6) break;
+
+      // Normalize and step
+      let ds = 8;
+      px += (field.Ex / mag) * ds;
+      py += (field.Ey / mag) * ds;
+
+      // Stop if outside canvas or too close to edge
+      if (px < 0 || px > width || py < 0 || py > height) break;
+
+      // Stop if inside cage
+      let localX = px - cage.x;
+      let localY = py - cage.y;
+      if (abs(localX) < cage.w / 2 && abs(localY) < cage.h / 2) break;
+
+      vertex(px, py);
+    }
+    endShape();
+  }
+}
+
+function drawCage() {
+  // Cage body (hollow rectangle)
+  strokeWeight(3);
+  stroke(40, 20, 70, 80);
+  noFill();
+  rectMode(CENTER);
+  rect(cage.x, cage.y, cage.w, cage.h, 4);
+
+  // Cage mesh (wire grid)
+  strokeWeight(1.5);
+  stroke(40, 30, 60, 60);
+
+  // Vertical wires
+  let stepX = cage.w / 8;
+  for (let x = -cage.w / 2 + stepX; x < cage.w / 2; x += stepX) {
+    line(cage.x + x, cage.y - cage.h / 2, cage.x + x, cage.y + cage.h / 2);
+  }
+
+  // Horizontal wires
+  let stepY = cage.h / 6;
+  for (let y = -cage.h / 2 + stepY; y < cage.h / 2; y += stepY) {
+    line(cage.x - cage.w / 2, cage.y + y, cage.x + cage.w / 2, cage.y + y);
+  }
+
+  // Corner nodes
+  noStroke();
+  fill(40, 40, 80, 80);
+  let corners = [
+    [-cage.w/2, -cage.h/2], [cage.w/2, -cage.h/2],
+    [-cage.w/2, cage.h/2], [cage.w/2, cage.h/2]
+  ];
+  for (let c of corners) {
+    ellipse(cage.x + c[0], cage.y + c[1], 8, 8);
+  }
+
+  // Label
+  fill(40, 20, 70, 70);
+  textAlign(CENTER);
+  textSize(10);
+  text('Conductive Cage', cage.x, cage.y - cage.h / 2 - 15);
+
+  // Interior indicator (zero field zone)
+  noFill();
+  strokeWeight(1);
+  stroke(120, 40, 50, 30);
+  rect(cage.x, cage.y, cage.w - 40, cage.h - 40);
+
+  fill(120, 30, 50, 40);
+  textAlign(CENTER);
+  text('E = 0', cage.x, cage.y);
+  textAlign(LEFT);
+}
+
+function drawCharges() {
+  let c = charges[0];
+
+  // Charge glow
+  noStroke();
+  for (let r = 40; r > 0; r -= 5) {
+    let alpha = map(r, 40, 0, 0, 30);
+    let hue = c.q > 0 ? 200 : 0;
+    fill(hue, 80, 90, alpha);
+    ellipse(c.x, c.y, r * 2, r * 2);
+  }
+
+  // Charge symbol
+  strokeWeight(3);
+  stroke(c.q > 0 ? 200 : 0, 90, 100);
+  noFill();
+  let sz = 24;
+  line(c.x - sz/2, c.y, c.x + sz/2, c.y);
+  if (c.q > 0) {
+    line(c.x, c.y - sz/2, c.x, c.y + sz/2);
+  }
+
+  // Label
+  fill(c.q > 0 ? 200 : 0, 80, 90, 80);
+  textAlign(CENTER);
+  textSize(11);
+  text('+' + (c.q > 0 ? '' : '') + 'Q', c.x, c.y - 35);
+  textSize(9);
+  fill(200, 20, 60, 60);
+  text('(drag to move)', c.x, c.y + 45);
+  textAlign(LEFT);
+}
+
+function drawParticles() {
+  noStroke();
+  let c = charges[0];
+
+  for (let p of particles) {
+    // Update particle
+    let field = getElectricField(p.x, p.y);
+
+    if (!field.inside) {
+      let mag = sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
+      if (mag > 1e-8) {
+        let speed = 2;
+        p.vx = (field.Ex / mag) * speed;
+        p.vy = (field.Ey / mag) * speed;
+      }
+
+      p.x += p.vx;
+      p.y += p.vy;
+    } else {
+      // Inside cage - random motion (no field)
+      p.vx *= 0.95;
+      p.vy *= 0.95;
+      p.x += random(-0.5, 0.5);
+      p.y += random(-0.5, 0.5);
+
+      // Contain inside cage
+      let localX = p.x - cage.x;
+      let localY = p.y - cage.y;
+      if (abs(localX) > cage.w / 2 - 20) p.x = cage.x + constrain(localX, -(cage.w/2 - 20), cage.w/2 - 20);
+      if (abs(localY) > cage.h / 2 - 20) p.y = cage.y + constrain(localY, -(cage.h/2 - 20), cage.h/2 - 20);
+    }
+
+    p.life--;
+
+    // Reset if dead or outside
+    let localX = p.x - cage.x;
+    let localY = p.y - cage.y;
+    if (p.life <= 0 || p.x < 0 || p.x > width || p.y < 0 || p.y > height
+        || (abs(localX) > cage.w/2 && abs(localY) > cage.h/2)) {
+      let newP = createParticle();
+      p.x = newP.x;
+      p.y = newP.y;
+      p.life = newP.maxLife;
+      p.hue = newP.hue;
+      p.vx = 0; p.vy = 0;
+    }
+
+    // Draw particle
+    let alpha = map(p.life, 0, 150, 0, 80);
+    let insideAlpha = field.inside ? 40 : 80;
+    fill(p.hue, 60, 90, insideAlpha);
+    ellipse(p.x, p.y, 4, 4);
+  }
+}
+
+function drawInfo() {
+  fill(195, 10, 90, 90);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Faraday Cage — Electric Field Shielding', 16, 16);
+  fill(165, 8, 70, 80);
+  textSize(10);
+  text('Conductive cage blocks external electric field. Charges induce on surface, creating zero interior field.', 16, 38);
+  text('Field lines terminate on conductor. Interior (E=0) is shielded from external fields.', 16, 52);
+  text('Drag charge outside cage | Click to cycle modes | Field lines: cyan=positive', 16, 66);
+  textAlign(LEFT, BASELINE);
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    showMode = (showMode + 1) % 3;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cage.x = width * 0.4;
+  cage.y = height * 0.5;
+  cage.w = min(width, height) * 0.35;
+  cage.h = min(width, height) * 0.35;
+}
+</script>
+</body>
+</html>
