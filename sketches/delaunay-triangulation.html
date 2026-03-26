@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Delaunay Triangulation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020208; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Delaunay Triangulation — Bowyer-Watson algorithm
+// Points connected such that no point is inside any triangle's circumcircle
+// Equivalently: maximizes minimum angle — avoids skinny triangles
+
+let points = [];
+let triangles = [];
+let edges = [];
+let time = 0;
+let showCircumcircles = false;
+let showSuperTriangle = false;
+let dragging = -1;
+let autoAdd = true;
+
+const NUM_POINTS = 45;
+const POINT_DRIFT = 0.3;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  initPoints();
+  triangulate();
+}
+
+function initPoints() {
+  points = [];
+  let margin = 80;
+  for (let i = 0; i < NUM_POINTS; i++) {
+    points.push({
+      x: random(margin, width - margin),
+      y: random(margin, height - margin),
+      vx: random(-POINT_DRIFT, POINT_DRIFT),
+      vy: random(-POINT_DRIFT, POINT_DRIFT),
+      hue: random(360)
+    });
+  }
+}
+
+function triangulate() {
+  triangles = [];
+  edges = [];
+
+  // Create super triangle that contains all points
+  let margin = max(width, height) * 2;
+  let p1 = { x: -margin, y: -margin, super: true };
+  let p2 = { x: width / 2, y: -margin, super: true };
+  let p3 = { x: width + margin, y: -margin, super: true };
+  // Actually make it a proper big triangle
+  p1 = { x: width * 0.5, y: -margin, super: true };
+  p2 = { x: -margin, y: height + margin, super: true };
+  p3 = { x: width + margin, y: height + margin, super: true };
+
+  triangles.push([p1, p2, p3]);
+
+  // Add each point one by one
+  for (let pt of points) {
+    addPoint(pt);
+  }
+
+  // Remove triangles with super triangle vertices
+  triangles = triangles.filter(t =>
+    !t.some(p => p.super)
+  );
+
+  // Collect unique edges
+  let edgeSet = new Map();
+  for (let tri of triangles) {
+    let pairs = [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]];
+    for (let [a, b] of pairs) {
+      let key = edgeKey(a, b);
+      if (edgeSet.has(key)) {
+        edgeSet.delete(key);
+      } else {
+        edgeSet.set(key, [a, b]);
+      }
+    }
+  }
+  edges = Array.from(edgeSet.values());
+}
+
+function addPoint(pt) {
+  let badTriangles = [];
+
+  // Find all triangles whose circumcircle contains the new point
+  for (let tri of triangles) {
+    if (pointInCircumcircle(pt, tri)) {
+      badTriangles.push(tri);
+    }
+  }
+
+  // Find the boundary of the polygonal hole
+  let boundary = [];
+  for (let tri of badTriangles) {
+    let pairs = [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]];
+    for (let [a, b] of pairs) {
+      let shared = badTriangles.some(other =>
+        other !== tri && other.includes(a) && other.includes(b)
+      );
+      if (!shared) {
+        boundary.push([a, b]);
+      }
+    }
+  }
+
+  // Remove bad triangles from triangulation
+  triangles = triangles.filter(t => !badTriangles.includes(t));
+
+  // Re-triangulate the hole
+  for (let [a, b] of boundary) {
+    triangles.push([a, b, pt]);
+  }
+}
+
+function pointInCircumcircle(p, tri) {
+  let [ax, ay] = [tri[0].x, tri[0].y];
+  let [bx, by] = [tri[1].x, tri[1].y];
+  let [cx, cy] = [tri[2].x, tri[2].y];
+
+  let det = (ax * ax + ay * ay) * (bx * cy - cx * by)
+           - (bx * bx + by * by) * (ax * cy - cx * ay)
+           + (cx * cx + cy * cy) * (ax * by - bx * ay);
+
+  let sign = det > 0 ? 1 : -1;
+
+  let axx = ax - p.x, ayy = ay - p.y;
+  let bxx = bx - p.x, byy = by - p.y;
+  let cxx = cx - p.x, cyy = cy - p.y;
+
+  let det2 = (axx * axx + ayy * ayy) * (bxx * cyy - cxx * byy)
+           - (bxx * bxx + byy * byy) * (axx * cyy - cxx * ayy)
+           + (cxx * cxx + cyy * cyy) * (axx * byy - bxx * ayy);
+
+  return sign * det2 > 0;
+}
+
+function edgeKey(a, b) {
+  let [ax, ay, bx, by] = [a.x, a.y, b.x, b.y];
+  if (ax > bx || (ax === bx && ay > by)) {
+    [ax, ay, bx, by] = [bx, by, ax, ay];
+  }
+  return ax.toFixed(3) + ',' + ay.toFixed(3) + '-' + bx.toFixed(3) + ',' + by.toFixed(3);
+}
+
+function circumcenter(tri) {
+  let [ax, ay] = [tri[0].x, tri[0].y];
+  let [bx, by] = [tri[1].x, tri[1].y];
+  let [cx, cy] = [tri[2].x, tri[2].y];
+
+  let d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (abs(d) < 1e-10) return null;
+
+  let ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
+  let uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
+  return { x: ux, y: uy };
+}
+
+function circumradius(tri, cc) {
+  if (!cc) return 0;
+  let dx = tri[0].x - cc.x, dy = tri[0].y - cc.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function draw() {
+  background(240, 20, 4);
+
+  time += 0.015;
+
+  // Update points
+  for (let pt of points) {
+    if (dragging < 0 || pt !== points[dragging]) {
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      if (pt.x < 60 || pt.x > width - 60) pt.vx *= -1;
+      if (pt.y < 60 || pt.y > height - 60) pt.vy *= -1;
+    }
+  }
+
+  // Auto-add point periodically
+  if (autoAdd && frameCount % 60 === 0 && points.length < 80) {
+    let pt = {
+      x: random(80, width - 80),
+      y: random(80, height - 80),
+      vx: random(-POINT_DRIFT, POINT_DRIFT),
+      vy: random(-POINT_DRIFT, POINT_DRIFT),
+      hue: random(360)
+    };
+    points.push(pt);
+    addPoint(pt);
+  }
+
+  // Mouse interaction
+  if (mouseIsPressed && dragging < 0) {
+    for (let i = 0; i < points.length; i++) {
+      let pt = points[i];
+      if (dist(mouseX, mouseY, pt.x, pt.y) < 25) {
+        dragging = i;
+        break;
+      }
+    }
+  }
+  if (dragging >= 0 && !mouseIsPressed) {
+    dragging = -1;
+    triangulate();
+  }
+  if (dragging >= 0) {
+    points[dragging].x = mouseX;
+    points[dragging].y = mouseY;
+    triangulate();
+  }
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  // Draw circumcircles (subtle)
+  if (showCircumcircles) {
+    noFill();
+    stroke(210, 20, 25, 20);
+    strokeWeight(1);
+    for (let tri of triangles) {
+      let cc = circumcenter(tri);
+      let r = circumradius(tri, cc);
+      if (cc && r < 2000) {
+        ellipse(cc.x, cc.y, r * 2, r * 2);
+      }
+    }
+  }
+
+  // Draw triangles with gradient fill based on area
+  noStroke();
+  for (let tri of triangles) {
+    let area = triangleArea(tri[0], tri[1], tri[2]);
+    let hue = map(constrain(area, 500, 8000), 500, 8000, 200, 300) % 360;
+    fill(hue, 50, 40, 12);
+    beginShape();
+    vertex(tri[0].x, tri[0].y);
+    vertex(tri[1].x, tri[1].y);
+    vertex(tri[2].x, tri[2].y);
+    endShape(CLOSE);
+  }
+
+  // Draw edges
+  stroke(180, 30, 70, 60);
+  strokeWeight(1);
+  for (let [a, b] of edges) {
+    line(a.x, a.y, b.x, b.y);
+  }
+
+  // Draw triangle edges (sharper)
+  stroke(210, 40, 85, 50);
+  strokeWeight(1.5);
+  for (let tri of triangles) {
+    line(tri[0].x, tri[0].y, tri[1].x, tri[1].y);
+    line(tri[1].x, tri[1].y, tri[2].x, tri[2].y);
+    line(tri[2].x, tri[2].y, tri[0].x, tri[0].y);
+  }
+
+  // Draw circumcenters (tiny dots)
+  if (showCircumcircles) {
+    fill(300, 60, 90, 50);
+    noStroke();
+    for (let tri of triangles) {
+      let cc = circumcenter(tri);
+      let r = circumradius(tri, cc);
+      if (cc && r < 2000) {
+        ellipse(cc.x, cc.y, 4, 4);
+      }
+    }
+  }
+
+  // Draw points
+  for (let i = 0; i < points.length; i++) {
+    let pt = points[i];
+    let pulse = sin(time * 3 + pt.x * 0.01 + pt.y * 0.01) * 2;
+
+    // Glow
+    fill(pt.hue, 70, 90, 20);
+    noStroke();
+    ellipse(pt.x, pt.y, 20 + pulse * 2, 20 + pulse * 2);
+
+    // Point
+    fill(pt.hue, 60, 95, 90);
+    ellipse(pt.x, pt.y, 8 + pulse * 0.5, 8 + pulse * 0.5);
+
+    // Center dot
+    fill(pt.hue, 20, 100, 95);
+    ellipse(pt.x, pt.y, 3, 3);
+  }
+
+  // Labels
+  fill(195, 10, 80, 85);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Delaunay Triangulation — Bowyer-Watson algorithm', 16, 16);
+  fill(165, 10, 65, 75);
+  textSize(11);
+  text('Points connected so no point lies inside any triangle\'s circumcircle.', 16, 38);
+  text('Effect: maximizes minimum angle — avoids skinny triangles. Equivalent to Dirichlet/Voronoi dual.', 16, 54);
+  text('Click + drag points. New points added automatically. Press SPACE to re-triangulate.', 16, 70);
+
+  // Stats
+  fill(0, 0, 70, 60);
+  textSize(10);
+  text('Points: ' + points.length + '  |  Triangles: ' + triangles.length + '  |  Edges: ' + edges.length, 16, height - 20);
+
+  // Key insight box
+  drawInsightBox(cx - 280, height - 90, 560, 70);
+}
+
+function drawInsightBox(x, y, w, h) {
+  fill(0, 0, 8, 60);
+  stroke(210, 20, 20, 30);
+  strokeWeight(1);
+  rect(x, y, w, h, 8);
+
+  fill(165, 10, 70, 80);
+  textSize(10);
+  textAlign(CENTER, CENTER);
+  text('Key insight: Delaunay triangulation is the DIRECTOR of nature\'s packing.', x + w/2, y + h * 0.3);
+  text('From soap films to geological formations, it emerges wherever efficiency is favored.', x + w/2, y + h * 0.6);
+}
+
+function triangleArea(a, b, c) {
+  return abs((a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)) / 2);
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    triangulate();
+  }
+  if (key === 'c') {
+    showCircumcircles = !showCircumcircles;
+  }
+  if (key === 'a') {
+    autoAdd = !autoAdd;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
