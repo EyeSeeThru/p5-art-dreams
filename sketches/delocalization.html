@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Delocalization</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020208; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Delocalization — Electron cloud visualization in aromatic systems
+// Benzene: 6 carbon atoms in hexagonal ring, each C has one pz orbital
+// pz orbitals above/below ring plane combine to form delocalized pi molecular orbitals
+// Hückel molecular orbital theory: each MO ψₖ = Σ cⱼk φⱼ
+
+let time = 0;
+const N_ATOMS = 6;
+const RING_RADIUS = 120;
+const ORBITAL_HEIGHT = 60;
+const N_ELECTRONS = 6;
+
+let molecules = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Benzene
+  molecules.push({
+    name: 'Benzene (C₆H₆)',
+    subtitle: 'Aromatic — 6 π electrons in delocalized ring',
+    ringRadius: RING_RADIUS,
+    nAtoms: 6,
+    nElectrons: 6,
+    phase: 0
+  });
+
+  // Naphthalene (2 rings)
+  molecules.push({
+    name: 'Naphthalene (C₁₀H₈)',
+    subtitle: 'Polycyclic aromatic — 10 π electrons across 2 rings',
+    ringRadius: RING_RADIUS * 0.65,
+    nAtoms: 10,
+    nElectrons: 10,
+    phase: PI / 3
+  });
+
+  // Cyclobutadiene (antiaromatic)
+  molecules.push({
+    name: 'Cyclobutadiene',
+    subtitle: 'Antiaromatic — 4 π electrons, rectangular distortion',
+    ringRadius: RING_RADIUS * 0.85,
+    nAtoms: 4,
+    nElectrons: 4,
+    phase: PI / 4
+  });
+
+  // Cyclopropenyl cation (aromatic 2π)
+  molecules.push({
+    name: 'Cyclopropenyl Cation',
+    subtitle: 'Aromatic — 2 π electrons in 3-membered ring (Hückel 4n+2, n=0)',
+    ringRadius: RING_RADIUS * 0.9,
+    nAtoms: 3,
+    nElectrons: 2,
+    phase: PI / 6
+  });
+
+  textSize(12);
+}
+
+function draw() {
+  background(240, 25, 3);
+  time += 0.025;
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  // Show all 4 molecules in a 2x2 grid
+  let spacingX = width * 0.46;
+  let spacingY = height * 0.44;
+
+  for (let mi = 0; mi < molecules.length; mi++) {
+    let mol = molecules[mi];
+    let mx = (mi % 2 === 0) ? cx - spacingX / 2 : cx + spacingX / 2;
+    let my = (mi < 2) ? cy - spacingY / 2 + 20 : cy + spacingY / 2 + 20;
+
+    drawMolecule(mol, mx, my);
+  }
+
+  // Title
+  fill(195, 10, 80, 85);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Delocalization — π-electron clouds in aromatic systems', 16, 16);
+  fill(165, 10, 65, 75);
+  textSize(11);
+  text('Each atom contributes one pz orbital (lobe above/below plane). MOs formed by linear combination (Hückel theory).', 16, 38);
+  text('Aromatic: delocalized ring current, magnetic field induced perpendicular to ring. Antiaromatic: paratropic ring current.', 16, 54);
+  fill(165, 8, 55, 60);
+  text('Lobe color: blue = positive phase, magenta = negative phase. Electron density ∝ |ψ|².', 16, 70);
+  text('4n+2 rule (Hückel): 2, 6, 10, 14... π electrons → aromatic (stable). 4n → antiaromatic (unstable).', 16, 86);
+}
+
+function drawMolecule(mol, cx, cy) {
+  let n = mol.nAtoms;
+  let R = mol.ringRadius;
+  let elec = mol.nElectrons;
+
+  // Draw ring skeleton
+  stroke(210, 20, 60, 40);
+  strokeWeight(3);
+  noFill();
+  beginShape();
+  for (let i = 0; i < n; i++) {
+    let angle = TWO_PI * i / n - PI / 2 + mol.phase;
+    vertex(cx + R * cos(angle), cy + R * sin(angle));
+  }
+  endShape(CLOSE);
+
+  // Draw alternating single/double bonds for benzene
+  if (n === 6) {
+    // Just draw a circle to represent aromatic bond
+    stroke(180, 30, 70, 25);
+    strokeWeight(6);
+    noFill();
+    ellipse(cx, cy, R * 1.7, R * 1.7);
+  }
+
+  // Determine if aromatic
+  let isAromatic = isHuckelAromatic(elec, n);
+  let ringHue = isAromatic ? 180 : (elec === 4 ? 0 : 200); // green if aromatic, red if antiaromatic, blue otherwise
+
+  // Draw atoms and pz orbitals
+  for (let i = 0; i < n; i++) {
+    let angle = TWO_PI * i / n - PI / 2 + mol.phase;
+    let ax = cx + R * cos(angle);
+    let ay = cy + R * sin(angle);
+
+    // Draw bonds to adjacent atoms
+    let nextI = (i + 1) % n;
+    let nextAngle = TWO_PI * nextI / n - PI / 2 + mol.phase;
+    let nextX = cx + R * cos(nextAngle);
+    let nextY = cy + R * sin(nextAngle);
+
+    // Bond
+    stroke(ringHue, 40, 70, 30);
+    strokeWeight(2);
+    line(ax, ay, nextX, nextY);
+
+    // Atom dot
+    fill(60, 20, 90, 80);
+    noStroke();
+    ellipse(ax, ay, 10, 10);
+
+    // Draw pz orbital lobes
+    drawPzOrbital(ax, ay, angle + PI / 2, i, n, mol);
+  }
+
+  // Draw induced ring current (aromatic = diatropic = counterclockwise; antiaromatic = paratropic = clockwise)
+  if (isAromatic || elec === 4) {
+    let currentDir = isAromatic ? -1 : 1; // -1 = CCW for aromatic (Hückel rule)
+    let arrowCount = 3;
+    let arrowR = R * 1.85;
+    for (let k = 0; k < arrowCount; k++) {
+      let aOffset = (time * currentDir + k * TWO_PI / arrowCount) % TWO_PI;
+      let ax1 = cx + arrowR * cos(aOffset);
+      let ay1 = cy + arrowR * sin(aOffset);
+      let ax2 = cx + arrowR * cos(aOffset + 0.25);
+      let ay2 = cy + arrowR * sin(aOffset + 0.25);
+
+      let alpha = map(sin(time * 2 + k), -1, 1, 30, 70);
+      stroke(ringHue, 70, 90, alpha);
+      strokeWeight(1.5);
+      line(ax1, ay1, ax2, ay2);
+      // Arrowhead
+      let dir = currentDir * 1;
+      let tipAngle = aOffset + 0.2 * dir;
+      line(ax2, ay2, ax2 - 8 * cos(tipAngle - 0.4), ay2 - 8 * sin(tipAngle - 0.4));
+      line(ax2, ay2, ax2 - 8 * cos(tipAngle + 0.4), ay2 - 8 * sin(tipAngle + 0.4));
+    }
+  }
+
+  // Electron density cloud overlay
+  drawElectronCloud(cx, cy, R, n, elec);
+
+  // Label
+  fill(195, 15, 80, 85);
+  textSize(12);
+  textAlign(CENTER, TOP);
+  text(mol.name, cx, cy + R + 35);
+  fill(165, 10, 60, 65);
+  textSize(9);
+  text(mol.subtitle, cx, cy + R + 52);
+
+  // Huckel status
+  let statusText = isAromatic ? 'AROMATIC ✓' : (elec === 4 ? 'ANTIAROMATIC ✗' : 'NON-AROMATIC');
+  let statusHue = isAromatic ? 120 : (elec === 4 ? 0 : 210);
+  fill(statusHue, 70, 80, 80);
+  textSize(10);
+  text(statusText, cx, cy + R + 68);
+}
+
+function drawPzOrbital(ax, ay, normalAngle, atomIdx, nAtoms, mol) {
+  // Draw orbital lobes above and below the ring plane
+  let lobeSize = ORBITAL_HEIGHT;
+
+  // Phase of this orbital at this atom for different MOs
+  // Hückel: energy levels E_k = α + 2β cos(2πk/n), MO ψ_k = Σ φ_j exp(i*2π*k*j/n)
+  // For visualization, show superposition of occupied MOs
+
+  let nElec = mol.nElectrons;
+  let nOcc = Math.floor(nElec / 2); // pairs of electrons
+
+  let totalPhase = 0;
+  for (let k = 0; k < nOcc; k++) {
+    // MO k has phase exp(i * 2π * k * atomIdx / nAtoms) at atom atomIdx
+    totalPhase += sin(TWO_PI * k * atomIdx / nAtoms);
+  }
+  let avgPhase = totalPhase / nOcc;
+
+  // Draw both lobes
+  let lobeAlpha = 35;
+
+  // Top lobe (+ phase)
+  let topHue = avgPhase > 0 ? 200 : 300; // blue if positive, magenta if negative
+  fill(topHue, 60, 80, lobeAlpha);
+  noStroke();
+  ellipse(ax + cos(normalAngle) * lobeSize * 0.5,
+          ay + sin(normalAngle) * lobeSize * 0.5,
+          lobeSize * 0.8, lobeSize * 0.8);
+
+  // Bottom lobe (- phase = opposite color)
+  let botHue = avgPhase > 0 ? 300 : 200;
+  fill(botHue, 60, 80, lobeAlpha);
+  ellipse(ax - cos(normalAngle) * lobeSize * 0.5,
+          ay - sin(normalAngle) * lobeSize * 0.5,
+          lobeSize * 0.8, lobeSize * 0.8);
+
+  // Draw orbital outline
+  stroke(topHue, 50, 80, 40);
+  strokeWeight(0.8);
+  noFill();
+  ellipse(ax + cos(normalAngle) * lobeSize * 0.5,
+          ay + sin(normalAngle) * lobeSize * 0.5,
+          lobeSize * 0.8, lobeSize * 0.8);
+  stroke(botHue, 50, 80, 40);
+  ellipse(ax - cos(normalAngle) * lobeSize * 0.5,
+          ay - sin(normalAngle) * lobeSize * 0.5,
+          lobeSize * 0.8, lobeSize * 0.8);
+
+  // Draw pz orbital sign (+/-) at each atom
+  let signAlpha = map(sin(time * 2), -1, 1, 50, 90);
+  fill(topHue, 40, 100, signAlpha);
+  noStroke();
+  textSize(8);
+  textAlign(CENTER, CENTER);
+  text('+', ax + cos(normalAngle) * lobeSize * 0.3, ay + sin(normalAngle) * lobeSize * 0.3);
+  fill(botHue, 40, 100, signAlpha);
+  text('−', ax - cos(normalAngle) * lobeSize * 0.3, ay - sin(normalAngle) * lobeSize * 0.3);
+}
+
+function drawElectronCloud(cx, cy, R, nAtoms, nElec) {
+  // Draw delocalized electron density as a glowing cloud
+  noStroke();
+  for (let r = R * 0.3; r < R * 1.6; r += 2) {
+    let alpha = map(r, R * 0.3, R * 1.6, 8, 0);
+    let hue = 180;
+    fill(hue, 50, 80, alpha);
+    ellipse(cx, cy, r * 2 * sqrt(nAtoms / 6), r * 2 * sqrt(nAtoms / 6)); // scale by sqrt(nAtoms/6)
+  }
+
+  // Animated electrons
+  let nElectrons = min(nElec, 6);
+  for (let e = 0; e < nElectrons; e++) {
+    let angle = time * (0.5 + e * 0.1) + e * TWO_PI / nElectrons;
+    let er = R * (0.6 + 0.2 * sin(time * 2 + e));
+    let ex = cx + er * cos(angle);
+    let ey = cy + er * sin(angle);
+
+    // Electron glow
+    fill(120, 80, 100, 20);
+    ellipse(ex, ey, 20, 20);
+    fill(120, 30, 100, 90);
+    ellipse(ex, ey, 6, 6);
+    fill(120, 20, 100, 100);
+    ellipse(ex, ey, 3, 3);
+  }
+}
+
+function isHuckelAromatic(nElectrons, nAtoms) {
+  // Hückel 4n+2 rule: aromatic if (4n+2) π electrons
+  // But also need planarity and conjugation
+  // For these ring systems, just check 4n+2
+  let remainder = nElectrons % 4;
+  return remainder === 2;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
