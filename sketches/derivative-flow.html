@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Derivative Flow</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020208; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Derivative Flow — Function and Derivative Visualization
+// Shows y = f(x) and its derivative y' = f'(x) as slope field
+// dy/dx at each point visualized as tangent line segments
+// Multiple functions: polynomial, trigonometric, exponential, etc.
+
+let time = 0;
+const GRID = 20;
+let mode = 'slopes'; // 'slopes', 'tangents', 'both'
+
+// Current function index
+let funcIdx = 0;
+let functions = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Define functions and their derivatives
+  functions = [
+    { name: 'f(x) = sin(x)', f: x => sin(x), df: x => cos(x), xRange: [-PI * 2, PI * 2], yRange: [-2, 2] },
+    { name: 'f(x) = x²', f: x => x * x, df: x => 2 * x, xRange: [-3, 3], yRange: [-1, 9] },
+    { name: 'f(x) = eˣ', f: x => exp(x), df: x => exp(x), xRange: [-3, 3], yRange: [-2, 20] },
+    { name: 'f(x) = ln(x)', f: x => x > 0 ? log(x) : NaN, df: x => 1 / x, xRange: [0.1, 5], yRange: [-4, 2] },
+    { name: 'f(x) = |x|', f: x => abs(x), df: x => x < 0 ? -1 : (x > 0 ? 1 : NaN), xRange: [-3, 3], yRange: [-1, 4] },
+    { name: 'f(x) = tan(x)', f: x => tan(x), df: x => 1 / (cos(x) * cos(x)), xRange: [-PI / 2 + 0.2, PI / 2 - 0.2], yRange: [-6, 6] },
+    { name: 'f(x) = x³ - 2x', f: x => x * x * x - 2 * x, df: x => 3 * x * x - 2, xRange: [-3, 3], yRange: [-4, 4] },
+    { name: 'f(x) = sin(x)·e^{-x²}', f: x => sin(x) * exp(-x * x), df: x => cos(x) * exp(-x * x) - 2 * x * sin(x) * exp(-x * x), xRange: [-4, 4], yRange: [-1, 1] },
+  ];
+
+  textSize(11);
+}
+
+function draw() {
+  background(240, 25, 3);
+  time += 0.015;
+
+  let cx = width / 2;
+  let cy = height / 2;
+  let plotW = width * 0.75;
+  let plotH = height * 0.65;
+  let plotX = cx - plotW / 2;
+  let plotY = cy - plotH / 2;
+
+  let fn = functions[funcIdx];
+  let xMin = fn.xRange[0], xMax = fn.xRange[1];
+  let yMin = fn.yRange[0], yMax = fn.yRange[1];
+
+  // Animate function parameter
+  let animX = sin(time * 0.5) * 0.5;
+  let fnAnim = (x) => fn.f(x + animX);
+  let dfnAnim = (x) => fn.df(x + animX);
+
+  // Draw coordinate axes
+  drawAxes(plotX, plotY, plotW, plotH, xMin, xMax, yMin, yMax);
+
+  // Draw based on mode
+  if (mode === 'slopes' || mode === 'both') {
+    drawSlopeField(plotX, plotY, plotW, plotH, xMin, xMax, yMin, yMax, dfnAnim, fnAnim);
+  }
+
+  if (mode === 'tangents' || mode === 'both') {
+    drawFunction(plotX, plotY, plotW, plotH, xMin, xMax, yMin, yMax, fnAnim, 0);
+    drawDerivative(plotX, plotY, plotW, plotH, xMin, xMax, yMin, yMax, dfnAnim, 1);
+  }
+
+  // Title and legend
+  drawInfo(fn, plotX, plotY, plotW, plotH);
+
+  // Auto-cycle functions
+  if (frameCount % 300 === 0) {
+    funcIdx = (funcIdx + 1) % functions.length;
+  }
+}
+
+function drawAxes(px, py, pw, ph, xMin, xMax, yMin, yMax) {
+  let cx = px + pw / 2;
+  let cy = py + ph / 2;
+
+  // X axis
+  stroke(210, 15, 35, 50);
+  strokeWeight(1);
+  let y0 = map(0, yMin, yMax, py + ph, py);
+  if (y0 >= py && y0 <= py + ph) {
+    line(px, y0, px + pw, y0);
+  }
+
+  // Y axis
+  let x0 = map(0, xMin, xMax, px, px + pw);
+  if (x0 >= px && x0 <= px + pw) {
+    line(x0, py, x0, py + ph);
+  }
+
+  // Grid lines
+  stroke(210, 10, 20, 20);
+  strokeWeight(0.5);
+  let xStep = (xMax - xMin) / 10;
+  let yStep = (yMax - yMin) / 8;
+  for (let x = xMin; x <= xMax; x += xStep) {
+    let sx = map(x, xMin, xMax, px, px + pw);
+    line(sx, py, sx, py + ph);
+  }
+  for (let y = yMin; y <= yMax; y += yStep) {
+    let sy = map(y, yMin, yMax, py + ph, py);
+    line(px, sy, px + pw, sy);
+  }
+}
+
+function drawSlopeField(px, py, pw, ph, xMin, xMax, yMin, yMax, df, f) {
+  let cols = floor(pw / GRID);
+  let rows = floor(ph / GRID);
+
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let sx = px + (i + 0.5) * pw / cols;
+      let sy = py + (j + 0.5) * ph / rows;
+
+      let x = map(sx, px, px + pw, xMin, xMax);
+      let y = map(sy, py + ph, py, yMin, yMax);
+
+      let slope = df(x);
+      if (isNaN(slope) || !isFinite(slope)) continue;
+
+      // Clamp slope for visualization
+      slope = constrain(slope, -10, 10);
+
+      // Angle of tangent line
+      let angle = atan(slope);
+      let len = GRID * 0.4;
+
+      // Color by slope magnitude
+      let hue = map(abs(slope), 0, 5, 180, (slope > 0 ? 0 : 280));
+      let alpha = map(min(abs(slope), 5), 0, 5, 40, 80);
+
+      stroke(hue, 70, 85, alpha);
+      strokeWeight(1);
+      line(sx - cos(angle) * len / 2, sy - sin(angle) * len / 2,
+           sx + cos(angle) * len / 2, sy + sin(angle) * len / 2);
+
+      // Point at center
+      noStroke();
+      fill(hue, 50, 80, 30);
+      ellipse(sx, sy, 3, 3);
+    }
+  }
+}
+
+function drawFunction(px, py, pw, ph, xMin, xMax, yMin, yMax, f, colorIdx) {
+  let hues = [50, 200]; // yellow for f, cyan for f'
+  let yOffsets = [0, -ph * 0.35]; // f at center, f' offset below
+
+  let hue = hues[colorIdx];
+  let yOff = yOffsets[colorIdx];
+
+  stroke(hue, 75, 90, 90);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let i = 0; i <= pw; i += 2) {
+    let x = map(i, 0, pw, xMin, xMax);
+    let yVal = f(x);
+    if (isNaN(yVal) || !isFinite(yVal)) {
+      beginShape();
+      continue;
+    }
+    let y = map(yVal, yMin, yMax, py + ph / 2 + yOff + ph * 0.3, py + ph / 2 + yOff - ph * 0.3);
+    if (y < py - 10 || y > py + ph + 10) {
+      beginShape();
+      continue;
+    }
+    vertex(px + i, y);
+  }
+  endShape();
+
+  // Glow effect
+  stroke(hue, 60, 100, 30);
+  strokeWeight(6);
+  beginShape();
+  for (let i = 0; i <= pw; i += 2) {
+    let x = map(i, 0, pw, xMin, xMax);
+    let yVal = f(x);
+    if (isNaN(yVal) || !isFinite(yVal)) {
+      beginShape();
+      continue;
+    }
+    let y = map(yVal, yMin, yMax, py + ph / 2 + yOff + ph * 0.3, py + ph / 2 + yOff - ph * 0.3);
+    if (y < py - 10 || y > py + ph + 10) {
+      beginShape();
+      continue;
+    }
+    vertex(px + i, y);
+  }
+  endShape();
+}
+
+function drawDerivative(px, py, pw, ph, xMin, xMax, yMin, yMax, df, colorIdx) {
+  // Draw derivative as a second curve below
+  drawFunction(px, py, pw, ph, xMin, xMax, yMin, yMax, df, colorIdx);
+}
+
+function drawInfo(fn, px, py, pw, ph) {
+  fill(195, 10, 80, 85);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Derivative Flow — dy/dx Visualization', 16, 16);
+  fill(165, 8, 65, 75);
+  textSize(10);
+  text('Slope field: arrow hue = slope sign (yellow=positive, magenta=negative), brightness = |slope|. Size = 1.', 16, 38);
+  text('Top curve: f(x). Bottom curve: f\'(x). Click to cycle functions. SPACE for modes.', 16, 52);
+
+  // Function name
+  fill(195, 15, 85, 90);
+  textSize(13);
+  text(fn.name, 16, 70);
+
+  // Legend
+  let legendY = py + ph + 20;
+  fill(50, 80, 90, 85);
+  textSize(11);
+  text('f(x):', 16, legendY);
+  fill(200, 80, 90, 85);
+  text('f\'(x):', 16, legendY + 18);
+
+  // Mode
+  fill(165, 10, 70, 80);
+  textAlign(RIGHT, TOP);
+  text('Mode: ' + mode.toUpperCase() + ' (SPACE)', width - 16, 16);
+  text('Function ' + (funcIdx + 1) + '/' + functions.length + ' (click to cycle)', width - 16, 36);
+
+  // Derivative formula (static)
+  let dfStrs = [
+    'f\'(x) = cos(x)',
+    'f\'(x) = 2x',
+    'f\'(x) = eˣ',
+    'f\'(x) = 1/x',
+    'f\'(x) = ±1',
+    'f\'(x) = sec²(x)',
+    'f\'(x) = 3x² − 2',
+    'f\'(x) = e^{-x²}cos(x) − 2xe^{-x²}sin(x)'
+  ];
+  fill(165, 8, 60, 70);
+  textSize(11);
+  textAlign(RIGHT, TOP);
+  text(dfStrs[funcIdx], width - 16, 56);
+}
+
+function mousePressed() {
+  funcIdx = (funcIdx + 1) % functions.length;
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    let modes = ['slopes', 'tangents', 'both'];
+    let idx = modes.indexOf(mode);
+    mode = modes[(idx + 1) % modes.length];
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
