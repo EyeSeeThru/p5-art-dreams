@@ -47,10 +47,10 @@ function torusPoint(u, v) {
   return { x, y, z };
 }
 
-function torusFlow(u, v, time) {
+function torusFlow(u, v, t) {
   // Custom flow field on torus surface
-  let du = sin(v * 3 + time * 0.5) * 0.5 + cos(v * 2 - time * 0.3) * 0.3;
-  let dv = cos(u * 2 + v + time * 0.4) * 0.6 + sin(u - v * 2 + time * 0.2) * 0.4;
+  let du = sin(v * 3 + t * 0.5) * 0.5 + cos(v * 2 - t * 0.3) * 0.3;
+  let dv = cos(u * 2 + v + t * 0.4) * 0.6 + sin(u - v * 2 + t * 0.2) * 0.4;
   return { du, dv };
 }
 
@@ -70,20 +70,20 @@ function draw() {
   fill(5, 10);
   rect(0, 0, width, height);
   
-  let time = millis() * 0.001;
+  let t = millis() * 0.001;
   
   // Camera rotation
-  let camAngle = time * 0.15;
-  let camTilt = sin(time * 0.1) * 0.3;
+  let camAngle = t * 0.15;
+  let camTilt = sin(t * 0.1) * 0.3;
+  let cosA = cos(camAngle);
+  let sinA = sin(camAngle);
+  let cosT = cos(camTilt);
+  let sinT = sin(camTilt);
   
-  // Draw torus wireframe
-  push();
-  translate(width / 2, height / 2);
-  rotateZ(camAngle);
-  rotateX(camTilt);
-  
+  // Draw torus wireframe with manual rotation
   stroke(30, 20, 40, 0.3);
   strokeWeight(0.5);
+  noFill();
   
   for (let i = 0; i < 32; i++) {
     let u1 = (i / 32) * TWO_PI;
@@ -96,15 +96,37 @@ function draw() {
       let p2 = torusPoint(u2, v);
       let p3 = torusPoint(u1, v + 0.26);
       
-      line(p1.x, p1.y, p2.x, p2.y);
-      line(p1.x, p1.y, p3.x, p3.y);
+      // Rotate around Z then X (same as camera)
+      let r1x = p1.x * cosA - p1.y * sinA;
+      let r1y = p1.x * sinA + p1.y * cosA;
+      let r1z = p1.z;
+      let r1y2 = r1y * cosT - r1z * sinT;
+      let r1z2 = r1y * sinT + r1z * cosT;
+      
+      let r2x = p2.x * cosA - p2.y * sinA;
+      let r2y = p2.x * sinA + p2.y * cosA;
+      let r2z = p2.z;
+      let r2y2 = r2y * cosT - r2z * sinT;
+      let r2z2 = r2y * sinT + r2z * cosT;
+      
+      let r3x = p3.x * cosA - p3.y * sinA;
+      let r3y = p3.x * sinA + p3.y * cosA;
+      let r3z = p3.z;
+      let r3y2 = r3y * cosT - r3z * sinT;
+      let r3z2 = r3y * sinT + r3z * cosT;
+      
+      let proj1 = project(r1x, r1y2, r1z2, 500);
+      let proj2 = project(r2x, r2y2, r2z2, 500);
+      let proj3 = project(r3x, r3y2, r3z2, 500);
+      
+      line(proj1.x, proj1.y, proj2.x, proj2.y);
+      line(proj1.x, proj1.y, proj3.x, proj3.y);
     }
   }
-  pop();
   
   // Update and draw particles
   for (let p of particles) {
-    let flow = torusFlow(p.u, p.v, time);
+    let flow = torusFlow(p.u, p.v, t);
     
     p.u += flow.du * p.speed;
     p.v += flow.dv * p.speed;
@@ -142,7 +164,7 @@ function draw() {
     for (let i = 1; i < p.trail.length; i++) {
       let alpha = (i / p.trail.length) * 0.6;
       let size = p.size * p.trail[i].s * (i / p.trail.length);
-      let hue = (p.hue + time * 20) % 360;
+      let hue = (p.hue + t * 20) % 360;
       
       noStroke();
       fill(hue, 70, 90, alpha);
