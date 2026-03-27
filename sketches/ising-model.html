@@ -1,159 +1,229 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ising Model — 2D Ferromagnet</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <meta charset="utf-8">
+  <title>Ising Model</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      background: #0a0a0f; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      min-height: 100vh;
-      font-family: 'Courier New', monospace;
-      overflow: hidden;
-    }
+    body { background: #08080c; overflow: hidden; }
     canvas { display: block; }
   </style>
 </head>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script>
-const N = 80;
-const SPIN_UP = 1;
-const SPIN_DOWN = -1;
+// 2D Ising Model — Ferromagnetism Simulation
+// spins on lattice, each spin ±1 (up/down)
+// Energy E = -J Σ s_i·s_j - H Σ s_i (J=coupling, H=external field)
+// Metropolis algorithm: flip spin if energy decreases or exp(-ΔE/kT) > random
+// Phase transition at critical temperature Tc ≈ 2.269J/k (for J=k=1, Tc ≈ 2.269)
+
+let latticeSize = 80;
+let cellSize;
 let spins = [];
-let tempSlider, jSlider;
-let temperature = 2.27;
-let coupling = 1;
-let running = true;
+let temperature = 2.5; // Below Tc ≈ 2.269 = ordered phase, Above = disordered
+let J = 1.0; // Coupling constant
+let H = 0.0; // External field
+let time = 0;
+let magnetization = 0;
+let energy = 0;
+let acceptanceRate = 0;
+let totalFlips = 0;
+let acceptedFlips = 0;
 
 function setup() {
-  createCanvas(600, 700);
-  pixelDensity(1);
-  noSmooth();
-  
-  for (let i = 0; i < N; i++) {
-    spins[i] = [];
-    for (let j = 0; j < N; j++) {
-      spins[i][j] = random() > 0.5 ? SPIN_UP : SPIN_DOWN;
-    }
-  }
-  
-  let controls = createDiv('');
-  controls.style('position', 'absolute');
-  controls.style('top', '10px');
-  controls.style('left', '10px');
-  controls.style('color', '#88a');
-  controls.style('font-size', '12px');
-  
-  let tempLabel = createDiv('Temperature: ' + temperature.toFixed(2));
-  tempLabel.parent(controls);
-  tempSlider = createSlider(0.1, 5, temperature, 0.01);
-  tempSlider.parent(controls);
-  tempSlider.style('width', '150px');
-  tempSlider.input(() => {
-    temperature = tempSlider.value();
-    tempLabel.html('Temperature: ' + temperature.toFixed(2));
-  });
-  
-  let infoLabel = createDiv('Critical Temp: ~2.27');
-  infoLabel.parent(controls);
-  infoLabel.style('margin-top', '5px');
-  infoLabel.style('color', '#667');
-  
-  let btn = createButton('Reset');
-  btn.parent(controls);
-  btn.style('margin-left', '10px');
-  btn.mousePressed(resetSpins);
-}
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
 
-function resetSpins() {
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
-      spins[i][j] = random() > 0.5 ? SPIN_UP : SPIN_DOWN;
+  cellSize = min(width, height - 100) / latticeSize;
+
+  // Initialize random spins
+  spins = [];
+  for (let i = 0; i < latticeSize; i++) {
+    spins[i] = [];
+    for (let j = 0; j < latticeSize; j++) {
+      spins[i][j] = random() > 0.5 ? 1 : -1;
     }
   }
+
+  textFont('monospace');
+  frameRate(60);
 }
 
 function draw() {
-  background(10, 10, 15);
-  
-  for (let k = 0; k < N * N / 4; k++) {
-    metropolisStep();
+  background(0, 0, 5);
+
+  // Metropolis sweeps
+  let sweepsPerFrame = 10;
+  for (let s = 0; s < sweepsPerFrame; s++) {
+    for (let i = 0; i < latticeSize; i++) {
+      for (let j = 0; j < latticeSize; j++) {
+        metropolisStep(i, j);
+      }
+    }
   }
-  
-  drawSpins();
-  
-  let mag = calculateMagnetization();
-  fill(150, 170, 200);
+
+  // Draw lattice
   noStroke();
+  for (let i = 0; i < latticeSize; i++) {
+    for (let j = 0; j < latticeSize; j++) {
+      let x = (width - latticeSize * cellSize) / 2 + i * cellSize;
+      let y = 10 + j * cellSize;
+
+      if (spins[i][j] > 0) {
+        // Spin up - cyan
+        fill(180, 70, 90, 90);
+      } else {
+        // Spin down - orange
+        fill(30, 70, 90, 90);
+      }
+
+      let padding = 1;
+      rect(x + padding, y + padding, cellSize - padding * 2, cellSize - padding * 2);
+    }
+  }
+
+  // Calculate and display magnetization and energy
+  calculateMetrics();
+
+  // Draw metrics panel
+  drawMetrics();
+
+  // Draw info
+  drawInfo();
+
+  time++;
+}
+
+function metropolisStep(i, j) {
+  // Calculate energy change if we flip spin at (i, j)
+  let s = spins[i][j];
+
+  // Neighbors (periodic boundary conditions)
+  let left = spins[(i - 1 + latticeSize) % latticeSize][j];
+  let right = spins[(i + 1) % latticeSize][j];
+  let up = spins[i][(j - 1 + latticeSize) % latticeSize];
+  let down = spins[i][(j + 1) % latticeSize];
+
+  // Energy change: ΔE = 2s(J(sum of neighbors) + H)
+  let deltaE = 2 * s * (J * (left + right + up + down) + H);
+
+  totalFlips++;
+
+  // Accept or reject
+  if (deltaE <= 0) {
+    spins[i][j] *= -1;
+    acceptedFlips++;
+  } else {
+    let prob = exp(-deltaE / temperature);
+    if (random() < prob) {
+      spins[i][j] *= -1;
+      acceptedFlips++;
+    }
+  }
+
+  acceptanceRate = acceptedFlips / totalFlips;
+}
+
+function calculateMetrics() {
+  // Magnetization (average spin)
+  let sum = 0;
+  let e = 0;
+
+  for (let i = 0; i < latticeSize; i++) {
+    for (let j = 0; j < latticeSize; j++) {
+      sum += spins[i][j];
+
+      // Energy per spin (nearest neighbor only)
+      let right = spins[(i + 1) % latticeSize][j];
+      let down = spins[i][(j + 1) % latticeSize];
+      e -= J * spins[i][j] * (right + down);
+    }
+  }
+
+  magnetization = sum / (latticeSize * latticeSize);
+  energy = e / (latticeSize * latticeSize); // Normalize
+}
+
+function drawMetrics() {
+  let panelX = 20;
+  let panelY = height - 90;
+
+  // Background panel
+  fill(0, 0, 0, 60);
+  noStroke();
+  rect(panelX - 5, panelY - 5, 280, 85, 3);
+
+  fill(40, 10, 90, 90);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text('Ising Model — 2D Ferromagnet', panelX, panelY);
+
+  textSize(10);
+  fill(30, 10, 70, 80);
+
+  // Temperature indicator
+  let tc = 2.269;
+  let phase = temperature < tc ? 'Ordered (T < Tc)' : 'Disordered (T > Tc)';
+  let phaseColor = temperature < tc ? color(180, 70, 90) : color(30, 70, 90);
+
+  text('T = ' + nf(temperature, 1, 3) + ' | Tc ≈ 2.269', panelX, panelY + 20);
+  text('Phase: ', panelX, panelY + 34);
+  fill(phaseColor);
+  text(phase, panelX + 45, panelY + 34);
+
+  fill(30, 10, 70, 80);
+  text('M = ' + nf(abs(magnetization), 1, 3) + ' | E = ' + nf(energy, 1, 2), panelX, panelY + 48);
+  text('Accept rate: ' + nf(acceptanceRate * 100, 1, 1) + '%', panelX, panelY + 62);
+}
+
+function drawInfo() {
+  fill(40, 10, 90, 90);
   textSize(14);
   textAlign(LEFT, TOP);
-  text('Magnetization: ' + mag.toFixed(3), 10, 90);
-  
-  if (mag > 0.9) {
-    fill(100, 255, 150);
-    text('★ Ordered (Ferromagnetic)', 10, 110);
-  } else if (mag < -0.9) {
-    fill(255, 100, 100);
-    text('★ Ordered (Ferromagnetic)', 10, 110);
-  } else if (temperature < 2.27) {
-    fill(255, 200, 100);
-    text('⚡ Near Criticality', 10, 110);
-  } else {
-    fill(150, 150, 180);
-    text('○ Disordered (Paramagnetic)', 10, 110);
-  }
+  text('Ising Model — Statistical Mechanics', 16, 16);
+  fill(30, 10, 70, 80);
+  textSize(10);
+  text('Metropolis algorithm on 80×80 lattice | J=1.0, H=0', 16, 38);
+  text('+ / - : Temperature | R : Randomize | S : Slow motion', 16, 52);
+  text('↓ M = magnetization | E = energy per spin', 16, 66);
+  textAlign(LEFT, BASELINE);
 }
 
-function metropolisStep() {
-  let i = floor(random(N));
-  let j = floor(random(N));
-  
-  let energy = 0;
-  if (i > 0) energy -= coupling * spins[i][j] * spins[i-1][j];
-  if (i < N-1) energy -= coupling * spins[i][j] * spins[i+1][j];
-  if (j > 0) energy -= coupling * spins[i][j] * spins[i][j-1];
-  if (j < N-1) energy -= coupling * spins[i][j] * spins[i][j+1];
-  
-  let deltaE = 2 * energy;
-  
-  if (deltaE <= 0 || random() < exp(-deltaE / temperature)) {
-    spins[i][j] *= -1;
+function keyPressed() {
+  if (key === '+' || key === '=') {
+    temperature = min(temperature + 0.1, 5.0);
+    resetCounters();
   }
-}
-
-function calculateMagnetization() {
-  let sum = 0;
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
-      sum += spins[i][j];
-    }
+  if (key === '-' || key === '_') {
+    temperature = max(temperature - 0.1, 0.1);
+    resetCounters();
   }
-  return sum / (N * N);
-}
-
-function drawSpins() {
-  let cellW = width / N;
-  let cellH = (height - 100) / N;
-  
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
-      let x = i * cellW;
-      let y = j * cellH + 130;
-      
-      if (spins[i][j] === SPIN_UP) {
-        fill(60, 180, 255);
-      } else {
-        fill(255, 80, 120);
+  if (key === 'r' || key === 'R') {
+    for (let i = 0; i < latticeSize; i++) {
+      for (let j = 0; j < latticeSize; j++) {
+        spins[i][j] = random() > 0.5 ? 1 : -1;
       }
-      noStroke();
-      rect(x, y, cellW, cellH);
     }
+    resetCounters();
   }
+  if (key === 's' || key === 'S') {
+    // Slow motion - single sweep per frame
+    frameRate(5);
+  } else {
+    frameRate(60);
+  }
+}
+
+function resetCounters() {
+  totalFlips = 0;
+  acceptedFlips = 0;
+  acceptanceRate = 0;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cellSize = min(width, height - 100) / latticeSize;
 }
 </script>
 </body>
