@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fibonacci Garden</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d1208; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Fibonacci Garden — Phyllotaxis Spiral Patterns
+// The golden angle (137.5°) creates optimal seed/leaf packing
+// Achieved by rotating each new element by 137.5° and scaling
+// Results in spiral patterns following Fibonacci numbers
+// 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89...
+
+let time = 0;
+let goldenAngle = 137.50776405003785; // degrees
+let maxElements = 500;
+let elements = [];
+let showMode = 0; // 0=seeds, 1=leaves, 2=both, 3=stems
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  frameRate(30);
+
+  // Initialize elements
+  for (let i = 0; i < maxElements; i++) {
+    elements.push(createElement(i));
+  }
+
+  textSize(11);
+}
+
+function createElement(index) {
+  let angle = index * goldenAngle;
+  let r = sqrt(index) * 8; // Spiral spacing
+  let x = width / 2 + cos(radians(angle)) * r;
+  let y = height / 2 + sin(radians(angle)) * r;
+  let size = map(sqrt(index), 0, sqrt(maxElements), 3, 18);
+  let hue = map(index, 0, maxElements, 40, 180); // Green to warm
+
+  return {
+    angle: angle,
+    r: r,
+    x: x,
+    y: y,
+    size: size,
+    hue: hue,
+    index: index,
+    birth: index * 5 // Staggered appearance
+  };
+}
+
+function draw() {
+  // Dark garden background
+  background(30, 50, 8, 40);
+
+  // Draw subtle grid of existing spirals
+  drawBackgroundSpirals();
+
+  // Draw elements with staggered reveal
+  let revealedCount = min(floor(time * 15), maxElements);
+
+  if (showMode === 0 || showMode === 2) {
+    drawSeeds(revealedCount);
+  }
+
+  if (showMode === 1 || showMode === 2) {
+    drawLeaves(revealedCount);
+  }
+
+  if (showMode === 3) {
+    drawStems(revealedCount);
+  }
+
+  // Draw center (apex/meristem)
+  drawMeristem();
+
+  // Draw info
+  drawInfo();
+
+  // Instructions
+  drawInstructions();
+
+  time += 0.02;
+}
+
+function drawBackgroundSpirals() {
+  // Very faint spiral guidelines
+  strokeWeight(1);
+  noFill();
+  for (let s = 0; s < 8; s++) {
+    stroke(40, 30, 20, 10);
+    beginShape();
+    for (let t = 0; t < 200; t++) {
+      let angle = t * 5 + s * 45;
+      let r = t * 2;
+      vertex(width/2 + cos(radians(angle)) * r, height/2 + sin(radians(angle)) * r);
+    }
+    endShape();
+  }
+}
+
+function drawMeristem() {
+  // Growing tip (apex where new elements emerge)
+  let pulse = sin(time * 2) * 5;
+
+  // Glow
+  noStroke();
+  for (let r = 30; r > 0; r -= 3) {
+    fill(80, 80, 70, map(r, 30, 0, 0, 40));
+    ellipse(width/2, height/2, r * 2 + pulse, r * 2 + pulse);
+  }
+
+  // Core
+  fill(100, 90, 90, 90);
+  ellipse(width/2, height/2, 12 + pulse/2, 12 + pulse/2);
+  fill(60, 100, 100);
+  ellipse(width/2, height/2, 6, 6);
+}
+
+function drawSeeds(count) {
+  noStroke();
+
+  for (let i = 0; i < count && i < elements.length; i++) {
+    let e = elements[i];
+    let age = max(0, time * 15 - e.birth);
+    let alpha = map(age, 0, 30, 0, 100);
+    let size = e.size * (0.5 + min(age / 20, 0.5));
+
+    // Seed shadow
+    fill(e.hue, 60, 20, alpha * 0.3);
+    ellipse(e.x + 2, e.y + 2, size * 1.2, size * 1.2);
+
+    // Seed body
+    fill(e.hue, 70, 80, alpha);
+    ellipse(e.x, e.y, size, size);
+
+    // Seed highlight
+    fill(e.hue, 40, 100, alpha * 0.7);
+    ellipse(e.x - size * 0.2, e.y - size * 0.2, size * 0.4, size * 0.4);
+  }
+}
+
+function drawLeaves(count) {
+  for (let i = 0; i < count && i < elements.length; i++) {
+    let e = elements[i];
+    let age = max(0, time * 15 - e.birth - 20); // Leaves appear after seeds
+    if (age <= 0) continue;
+
+    let alpha = map(age, 0, 40, 0, 85);
+    let leafSize = e.size * 1.8 * (0.5 + min(age / 30, 0.5));
+
+    push();
+    translate(e.x, e.y);
+    rotate(radians(e.angle + 90));
+
+    // Leaf shape
+    noStroke();
+    fill(100 + e.hue * 0.3, 70, 60, alpha);
+
+    // Two lobes (simple leaf shape)
+    beginShape();
+    vertex(0, 0);
+    bezierVertex(leafSize * 0.3, -leafSize * 0.2, leafSize * 0.8, -leafSize * 0.1, leafSize, 0);
+    bezierVertex(leafSize * 0.8, leafSize * 0.1, leafSize * 0.3, leafSize * 0.2, 0, 0);
+    endShape(CLOSE);
+
+    // Leaf vein
+    stroke(100 + e.hue * 0.3, 50, 50, alpha * 0.5);
+    strokeWeight(0.5);
+    line(0, 0, leafSize * 0.7, 0);
+
+    pop();
+  }
+}
+
+function drawStems(count) {
+  // Draw stems from center outward
+  for (let i = 0; i < min(count, 50); i++) {
+    let e = elements[i];
+    let age = max(0, time * 15 - e.birth);
+    let alpha = map(age, 0, 50, 0, 60);
+    let stemLen = map(i, 0, 50, 0, min(width, height) * 0.4);
+
+    let angle = radians(e.angle - 90);
+    let endX = width/2 + cos(angle) * stemLen;
+    let endY = height/2 + sin(angle) * stemLen;
+
+    // Curved stem
+    noFill();
+    strokeWeight(map(i, 0, 50, 0.5, 2.5));
+    stroke(100, 60, 50, alpha);
+
+    beginShape();
+    for (let t = 0; t <= 1; t += 0.1) {
+      let curl = sin(t * PI) * 20 * (i % 2 === 0 ? 1 : -1);
+      let sx = lerp(width/2, endX, t) + cos(angle + PI/2) * curl;
+      let sy = lerp(height/2, endY, t) + sin(angle + PI/2) * curl;
+      vertex(sx, sy);
+    }
+    endShape();
+  }
+}
+
+function drawInfo() {
+  fill(40, 20, 90, 90);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Fibonacci Garden — Phyllotaxis', 16, 16);
+  fill(30, 15, 70, 80);
+  textSize(10);
+  text('Golden angle ' + goldenAngle.toFixed(2) + '° creates optimal seed packing via Fibonacci spirals.', 16, 38);
+  text('Seeds appear at positions: r = ' + goldenAngle.toFixed(2) + ' × n, a = n × ' + goldenAngle.toFixed(2) + '°', 16, 52);
+
+  // Show Fibonacci numbers
+  let fibs = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+  text('Fibonacci: ' + fibs.join(', ') + '...', 16, 66);
+
+  // Stats
+  let visible = min(floor(time * 15), maxElements);
+  text('Elements: ' + visible + ' / ' + maxElements + ' | Mode: ' + getModeName(), 16, 80);
+  textAlign(LEFT, BASELINE);
+}
+
+function getModeName() {
+  if (showMode === 0) return 'Seeds';
+  if (showMode === 1) return 'Leaves';
+  if (showMode === 2) return 'Seeds + Leaves';
+  if (showMode === 3) return 'Stems';
+  return '';
+}
+
+function drawInstructions() {
+  fill(40, 15, 60, 60);
+  textAlign(CENTER, BASELINE);
+  textSize(10);
+  text('SPACE to cycle modes | R to reset growth', width/2, height - 20);
+  textAlign(LEFT, BASELINE);
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    showMode = (showMode + 1) % 4;
+  }
+  if (key === 'r' || key === 'R') {
+    time = 0;
+    // Reset element births
+    for (let i = 0; i < elements.length; i++) {
+      elements[i].birth = i * 5;
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Recalculate element positions
+  for (let i = 0; i < elements.length; i++) {
+    let angle = elements[i].angle;
+    let r = elements[i].r;
+    elements[i].x = width / 2 + cos(radians(angle)) * r;
+    elements[i].y = height / 2 + sin(radians(angle)) * r;
+  }
+}
+</script>
+</body>
+</html>
