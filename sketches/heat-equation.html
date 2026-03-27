@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Heat Equation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #08060a; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Heat Equation — Diffusion of Temperature
+// ∂u/∂t = α∇²u (in 1D: ∂u/∂t = α·∂²u/∂x²)
+// Heat diffuses from hot regions to cold regions
+// Shows Gaussian smoothing over time from initial heat pulses
+
+let cols, rows;
+let resolution = 4; // pixels per cell
+let u = []; // temperature field
+let uNext = [];
+let alpha = 0.2; // diffusion coefficient
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  cols = floor(width / resolution);
+  rows = floor(height / resolution);
+
+  // Initialize temperature field
+  u = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+  uNext = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+
+  // Initial heat sources - Gaussian blobs
+  addHeatSource(cols * 0.3, rows * 0.4, 40, 100); // Hot
+  addHeatSource(cols * 0.7, rows * 0.6, 35, 80);  // Warm
+  addHeatSource(cols * 0.5, rows * 0.3, 25, 60);  // Medium
+  addHeatSource(cols * 0.2, rows * 0.7, 20, 50);  // Cool
+  addHeatSource(cols * 0.8, rows * 0.25, 15, 40); // Dim
+
+  textFont('monospace');
+}
+
+function addHeatSource(cx, cy, radius, temp) {
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let d = dist(i, j, cx, cy);
+      if (d < radius) {
+        let intensity = cos(d / radius * PI / 2); // Cosine falloff
+        u[i][j] = max(u[i][j], temp * intensity * intensity);
+      }
+    }
+  }
+}
+
+function draw() {
+  // Discrete Laplacian: ∇²u ≈ u[i+1] + u[i-1] + u[j+1] + u[j-1] - 4*u[i,j]
+  // Update rule: u_next = u + alpha * dt * ∇²u
+
+  let dt = 0.2;
+
+  for (let i = 1; i < cols - 1; i++) {
+    for (let j = 1; j < rows - 1; j++) {
+      let laplacian = (
+        u[i + 1][j] + u[i - 1][j] +
+        u[i][j + 1] + u[i][j - 1] -
+        4 * u[i][j]
+      );
+      uNext[i][j] = u[i][j] + alpha * dt * laplacian;
+
+      // Clamp to valid temperature range
+      uNext[i][j] = constrain(uNext[i][j], 0, 100);
+    }
+  }
+
+  // Handle boundaries (Neumann: ∂u/∂n = 0, no heat flux)
+  for (let i = 0; i < cols; i++) {
+    uNext[i][0] = uNext[i][1];
+    uNext[i][rows - 1] = uNext[i][rows - 2];
+  }
+  for (let j = 0; j < rows; j++) {
+    uNext[0][j] = uNext[1][j];
+    uNext[cols - 1][j] = uNext[cols - 2][j];
+  }
+
+  // Swap buffers
+  [u, uNext] = [uNext, u];
+
+  // Draw temperature field
+  noStroke();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let temp = u[i][j];
+      if (temp > 0.5) { // Only draw if visible
+        let hue = map(temp, 0, 100, 260, 0); // Blue(cool) → Red(hot)
+        let sat = map(temp, 0, 60, 0, 90);
+        let bri = map(temp, 0, 100, 15, 95);
+        fill(hue, sat, bri);
+        rect(i * resolution, j * resolution, resolution, resolution);
+      }
+    }
+  }
+
+  // Draw temperature scale
+  drawScale();
+
+  // Draw info
+  drawInfo();
+
+  time += dt;
+}
+
+function drawScale() {
+  let scaleX = 20;
+  let scaleY = height - 200;
+  let scaleH = 150;
+  let scaleW = 20;
+
+  // Background
+  fill(0, 0, 0, 60);
+  noStroke();
+  rect(scaleX - 5, scaleY - 5, scaleW + 60, scaleH + 30, 3);
+
+  // Gradient
+  for (let y = 0; y < scaleH; y++) {
+    let temp = map(y, 0, scaleH, 100, 0);
+    let hue = map(temp, 0, 100, 260, 0);
+    stroke(hue, 80, 90);
+    line(scaleX, scaleY + y, scaleX + scaleW, scaleY + y);
+  }
+
+  // Labels
+  noStroke();
+  fill(0, 0, 90, 90);
+  textSize(10);
+  textAlign(RIGHT, CENTER);
+  text('100°', scaleX - 5, scaleY);
+  text('50°', scaleX - 5, scaleY + scaleH / 2);
+  text('0°', scaleX - 5, scaleY + scaleH);
+
+  textAlign(LEFT, CENTER);
+  text('T', scaleX + scaleW + 5, scaleY + scaleH / 2);
+}
+
+function drawInfo() {
+  fill(40, 10, 90, 90);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Heat Equation — Thermal Diffusion', 16, 16);
+  fill(30, 10, 70, 80);
+  textSize(10);
+  text('∂u/∂t = α∇²u — Heat diffuses from hot to cold regions', 16, 38);
+  text('Gaussian smoothing of initial temperature distribution', 16, 52);
+  text('Time: ' + nf(time, 1, 1) + 's | α = ' + alpha, 16, 66);
+  text('Click to add heat source | SPACE to reset', 16, 80);
+  textAlign(LEFT, BASELINE);
+}
+
+function mousePressed() {
+  if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+    let i = floor(mouseX / resolution);
+    let j = floor(mouseY / resolution);
+    addHeatSource(i, j, 20, 100);
+  }
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    // Reset
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        u[i][j] = 0;
+      }
+    }
+    addHeatSource(cols * 0.3, rows * 0.4, 40, 100);
+    addHeatSource(cols * 0.7, rows * 0.6, 35, 80);
+    addHeatSource(cols * 0.5, rows * 0.3, 25, 60);
+    addHeatSource(cols * 0.2, rows * 0.7, 20, 50);
+    addHeatSource(cols * 0.8, rows * 0.25, 15, 40);
+    time = 0;
+  }
+  if (key === '+' || key === '=') {
+    alpha = min(alpha + 0.05, 0.5);
+  }
+  if (key === '-' || key === '_') {
+    alpha = max(alpha - 0.05, 0.05);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
