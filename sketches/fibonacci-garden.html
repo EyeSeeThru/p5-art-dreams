@@ -31,13 +31,13 @@ function setup() {
 
   // Initialize elements
   for (let i = 0; i < maxElements; i++) {
-    elements.push(createElement(i));
+    elements.push(makeElement(i));
   }
 
   textSize(11);
 }
 
-function createElement(index) {
+function makeElement(index) {
   let angle = index * goldenAngle;
   let r = sqrt(index) * 8; // Spiral spacing
   let x = width / 2 + cos(radians(angle)) * r;
