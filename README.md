@@ -155,6 +155,7 @@ The project cycles through different technique categories to ensure variety:
 - **heat-equation** — Thermal diffusion visualization using ∂u/∂t = α∇²u (heat equation). Initial heat sources Gaussian-smooth over time as heat diffuses from hot to cold regions. Click to add heat sources, SPACE to reset, +/- adjusts diffusion rate α. Blue=cold, red=hot.
 - **ising-model** — 2D Ising model of ferromagnetism using Metropolis algorithm on 80×80 spin lattice. Spins (cyan=up, orange=down) align below critical temperature Tc ≈ 2.269J/k forming domains, disorder above. + / - adjusts temperature, R randomizes, S slows. Shows phase transition, magnetization, and energy per spin.
 - **crimson-flow** — Artistic abstract flowing visualization in deep red and black. Ghostly particle trails follow organic flow fields, pulsing central glow, floating translucent orbs. Dreamlike, emotionally evocative. Click to spawn particle bursts. Not scientific — purely expressive and aesthetic.
+- **ember-dreams** — Floating glowing embers drifting upward through darkness. Each ember pulses with warm light, trails fade into the void. Subtle flow field guides their dance. Click to spawn bursts of sparks. Emotional, meditative, not scientific. Warm red-orange glow against deep black.
 - **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **dendritic-flow** — Perlin noise-driven flow field with branching particle trails and warm amber palette

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ember Dreams</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050202; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Ember Dreams — Floating Embers in Darkness
+// Artistic, emotional, dreamlike
+// Glowing embers drift and pulse against deep black
+
+let embers = [];
+let numEmbers = 120;
+let time = 0;
+let flowField = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize embers
+  for (let i = 0; i < numEmbers; i++) {
+    embers.push(createEmber(random(width), random(height)));
+  }
+
+  // Initialize simple flow field
+  initFlowField();
+}
+
+function createEmber(x, y) {
+  return {
+    x: x || random(width),
+    y: y || random(height),
+    vx: random(-0.3, 0.3),
+    vy: random(-0.8, -0.2), // Slight upward drift
+    size: random(2, 8),
+    hue: random(0, 40) % 360, // Red to orange range
+    brightness: random(60, 100),
+    alpha: random(40, 80),
+    life: random(100, 300),
+    maxLife: 0,
+    pulse: random(TWO_PI),
+    pulseSpeed: random(0.02, 0.08)
+  };
+}
+
+function initFlowField() {
+  let resolution = 30;
+  for (let x = 0; x < width / resolution + 1; x++) {
+    flowField[x] = [];
+    for (let y = 0; y < height / resolution + 1; y++) {
+      flowField[x][y] = 0;
+    }
+  }
+}
+
+function draw() {
+  // Very slow fade for long trails
+  background(0, 0, 2, 3);
+
+  time += 0.003;
+
+  // Update flow field
+  updateFlowField();
+
+  // Update and draw embers
+  for (let ember of embers) {
+    // Flow field influence
+    let resolution = 30;
+    let fx = floor(ember.x / resolution);
+    let fy = floor(ember.y / resolution);
+    fx = constrain(fx, 0, flowField.length - 1);
+    fy = constrain(fy, 0, flowField[0].length - 1);
+
+    let angle = flowField[fx][fy] * PI;
+
+    ember.vx += cos(angle) * 0.02;
+    ember.vy += sin(angle) * 0.02;
+
+    // Damping
+    ember.vx *= 0.99;
+    ember.vy *= 0.99;
+
+    // Update position
+    ember.x += ember.vx;
+    ember.y += ember.vy;
+
+    // Life
+    ember.life -= 0.3;
+    ember.pulse += ember.pulseSpeed;
+
+    // Reset if dead or out of bounds
+    if (ember.life <= 0 || ember.x < -50 || ember.x > width + 50 || ember.y < -50 || ember.y > height + 50) {
+      // Respawn at bottom with slight upward velocity
+      ember.x = random(width);
+      ember.y = height + random(10, 100);
+      ember.vx = random(-0.5, 0.5);
+      ember.vy = random(-1.2, -0.4);
+      ember.life = random(150, 350);
+      ember.size = random(2, 10);
+    }
+
+    // Pulsing glow
+    let pulseFactor = sin(ember.pulse) * 0.3 + 0.7;
+    let lifeRatio = ember.life / 150;
+    let alpha = ember.alpha * pulseFactor * min(lifeRatio, 1);
+    let brightness = ember.brightness * pulseFactor;
+
+    // Draw glow
+    noStroke();
+    let glowSize = ember.size * 4 * pulseFactor;
+
+    // Outer glow
+    fill(ember.hue, 70, brightness * 0.3, alpha * 0.2);
+    ellipse(ember.x, ember.y, glowSize * 2, glowSize * 2);
+
+    // Middle glow
+    fill(ember.hue, 80, brightness * 0.6, alpha * 0.4);
+    ellipse(ember.x, ember.y, glowSize, glowSize);
+
+    // Core
+    fill(ember.hue, 50, brightness, alpha);
+    ellipse(ember.x, ember.y, ember.size, ember.size);
+
+    // Bright center
+    fill(min(ember.hue + 20, 50), 30, 100, alpha * 0.8);
+    ellipse(ember.x, ember.y, ember.size * 0.4, ember.size * 0.4);
+  }
+
+  // Central ambient glow
+  drawAmbientGlow();
+
+  // Occasionally spawn extra embers
+  if (frameCount % 90 === 0 && embers.length < numEmbers * 1.5) {
+    embers.push(createEmber(random(width), height + random(5, 50)));
+  }
+
+  // Remove excess embers
+  while (embers.length > numEmbers * 2) {
+    embers.shift();
+  }
+}
+
+function updateFlowField() {
+  let resolution = 30;
+  let cols = floor(width / resolution) + 1;
+  let rows = floor(height / resolution) + 1;
+
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let nx = x * resolution;
+      let ny = y * resolution;
+
+      // Slow, breathing flow
+      let angle = noise(nx * 0.002, ny * 0.002, time * 0.3);
+      flowField[x][y] = angle;
+    }
+  }
+}
+
+function drawAmbientGlow() {
+  // Subtle breathing glow in center
+  let breathe = sin(time * 2) * 0.2 + 0.8;
+  let centerX = width / 2 + sin(time * 0.5) * width * 0.1;
+  let centerY = height * 0.6;
+
+  noStroke();
+  for (let r = 250; r > 0; r -= 30) {
+    fill(15, 80, 15, breathe * 1.5 * (1 - r / 250));
+    ellipse(centerX, centerY, r, r * 0.6);
+  }
+}
+
+function mousePressed() {
+  // Spawn burst of embers at click
+  for (let i = 0; i < 20; i++) {
+    let ember = createEmber(mouseX, mouseY);
+    ember.vx = random(-2, 2);
+    ember.vy = random(-2, 2);
+    ember.size = random(3, 10);
+    ember.life = random(200, 400);
+    embers.push(ember);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  initFlowField();
+}
+</script>
+</body>
+</html>
