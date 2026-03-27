@@ -1,199 +1,415 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
   <title>Galton Board</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      background: #0a0a0f; 
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
+    body { background: #0f0a08; overflow: hidden; }
     canvas { display: block; }
   </style>
 </head>
 <body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script>
-// Galton Board - Bean Machine demonstrating Normal Distribution
+// Galton Board — Bean Machine / Normal Distribution
+// Beans drop from top, bounce through pegs in triangular lattice
+// Each bounce is random left/right (50/50)
+// After many bounces, beans accumulate in bins forming bell curve (normal distribution)
+// Central Limit Theorem in action: sum of many random steps → Gaussian
 
-const PEGS_ROWS = 12;
-const PEG_SPACING = 50;
-const BEAD_RADIUS = 6;
-const BIN_COUNT = 13;
-
+let time = 0;
+let numRows = 12;
+let pegSpacingX, pegSpacingY;
 let pegs = [];
-let beads = [];
 let bins = [];
-let dropTimer = 0;
-const DROP_INTERVAL = 80;
-const MAX_BEADS = 400;
+let beans = [];
+let numBins;
+let dropRate = 3; // beans per frame
+let maxBeans = 400;
+let histogram = [];
+let showMode = 0; // 0=fill, 1=bounce, 2=path
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  colorMode(HSB, 360, 100, 100, 1);
-  
-  // Initialize bins
-  const startX = width / 2 - (BIN_COUNT - 1) * PEG_SPACING / 2;
-  for (let i = 0; i < BIN_COUNT; i++) {
-    bins.push({
-      x: startX + i * PEG_SPACING,
-      y: height - 80,
-      count: 0,
-      height: 0
-    });
-  }
-  
-  // Create pegs in triangular pattern
-  const centerX = width / 2;
-  const startY = 120;
-  for (let row = 0; row < PEGS_ROWS; row++) {
-    const pegsInRow = row + 1;
-    const rowWidth = (pegsInRow - 1) * PEG_SPACING;
-    const rowStartX = centerX - rowWidth / 2;
-    
-    for (let col = 0; col < pegsInRow; col++) {
+  colorMode(HSB, 360, 100, 100, 100);
+  frameRate(30);
+
+  // Calculate peg spacing
+  let margin = min(width, height) * 0.08;
+  let boardW = width - margin * 2;
+  let boardH = height - margin * 2 - 80; // Leave room for bins
+
+  pegSpacingX = boardW / (numRows + 2);
+  pegSpacingY = boardH / (numRows + 2);
+
+  // Create pegs in triangular lattice
+  pegs = [];
+  for (let row = 0; row < numRows; row++) {
+    let numPegs = row + 2;
+    let rowX = margin + pegSpacingX * (numRows - row) / 2;
+    for (let col = 0; col < numPegs; col++) {
       pegs.push({
-        x: rowStartX + col * PEG_SPACING,
-        y: startY + row * PEG_SPACING * 0.866
+        x: rowX + col * pegSpacingX,
+        y: margin + row * pegSpacingY + pegSpacingY,
+        r: min(pegSpacingX, pegSpacingY) * 0.15
       });
     }
   }
+
+  // Bins at bottom
+  numBins = numRows + 2;
+  let binWidth = boardW / numBins;
+  bins = [];
+  for (let i = 0; i < numBins; i++) {
+    bins.push({
+      x: margin + i * binWidth,
+      y: margin + boardH,
+      w: binWidth - 2,
+      h: 80,
+      count: 0
+    });
+  }
+
+  // Initialize histogram
+  histogram = new Array(numBins).fill(0);
+
+  // Initial beans
+  for (let i = 0; i < 50; i++) {
+    beans.push(createBean(true)); // Start with some beans already in bins
+  }
+
+  textSize(11);
+}
+
+function createBean(randomY) {
+  let boardCenterX = width / 2;
+  let topY = min(height * 0.1, 60);
+
+  return {
+    x: boardCenterX + random(-5, 5),
+    y: randomY ? random(height * 0.7, height * 0.85) : topY,
+    vx: 0,
+    vy: 0,
+    r: min(pegSpacingX, pegSpacingY) * 0.08,
+    hue: random(30, 50), // Warm orange/gold
+    bounces: 0,
+    path: [] // For showMode 2 (path tracing)
+  };
 }
 
 function draw() {
-  background(240, 15, 8);
-  
-  // Drop new bead
-  dropTimer++;
-  if (dropTimer > DROP_INTERVAL && beads.length < MAX_BEADS) {
-    dropBead();
-    dropTimer = 0;
-  }
-  
+  // Background fade
+  background(20, 40, 6, 15);
+
+  // Draw board outline
+  drawBoard();
+
   // Draw pegs
+  drawPegs();
+
+  // Draw bins
+  drawBins();
+
+  // Drop new beans
+  if (beans.length < maxBeans && frameCount % Math.max(1, floor(10 / dropRate)) === 0) {
+    beans.push(createBean(false));
+  }
+
+  // Update and draw beans
+  updateBeans();
+
+  // Draw beans
+  drawBeans();
+
+  // Draw histogram overlay
+  drawHistogram();
+
+  // Draw info
+  drawInfo();
+
+  time += 0.016;
+}
+
+function drawBoard() {
+  // Board frame
+  let margin = min(width, height) * 0.08;
+  let boardW = width - margin * 2;
+  let boardH = height - margin * 2 - 80;
+
+  strokeWeight(2);
+  stroke(40, 30, 50, 60);
+  noFill();
+  rect(margin, margin, boardW, boardH + 80, 5);
+
+  // Funnel at top
+  let funnelW = pegSpacingX * 2;
+  let funnelX = width / 2;
+  fill(30, 40, 30, 40);
+  noStroke();
+  triangle(
+    funnelX - funnelW / 2, margin - 30,
+    funnelX + funnelW / 2, margin - 30,
+    funnelX + pegSpacingX * 0.8, margin
+  );
+  triangle(
+    funnelX - funnelW / 2, margin - 30,
+    funnelX - funnelW / 2, margin - 60,
+    funnelX + pegSpacingX * 0.8, margin
+  );
+
+  // Label
+  fill(40, 20, 60, 60);
+  textAlign(CENTER);
+  textSize(10);
+  text('Galton Board — Central Limit Theorem', width / 2, margin - 70);
+  textAlign(LEFT);
+}
+
+function drawPegs() {
   noStroke();
   for (let peg of pegs) {
-    fill(180, 30, 60);
-    circle(peg.x, peg.y, 12);
+    // Peg shadow
+    fill(20, 50, 20, 50);
+    ellipse(peg.x + 2, peg.y + 2, peg.r * 2);
+    // Peg
+    fill(50, 20, 70, 80);
+    ellipse(peg.x, peg.y, peg.r * 2);
+    // Highlight
+    fill(50, 10, 90, 60);
+    ellipse(peg.x - peg.r * 0.3, peg.y - peg.r * 0.3, peg.r * 0.6);
   }
-  
-  // Update and draw beads
-  for (let i = beads.length - 1; i >= 0; i--) {
-    let bead = beads[i];
-    
-    // Apply gravity
-    bead.vy += 0.3;
-    bead.y += bead.vy;
-    bead.x += bead.vx;
-    
-    // Air resistance
-    bead.vx *= 0.99;
-    
-    // Check collision with pegs
-    for (let peg of pegs) {
-      let d = dist(bead.x, bead.y, peg.x, peg.y);
-      if (d < BEAD_RADIUS + 6) {
-        // Bounce off peg
-        let angle = atan2(bead.y - peg.y, bead.x - peg.x);
-        bead.x = peg.x + cos(angle) * (BEAD_RADIUS + 7);
-        bead.y = peg.y + sin(angle) * (BEAD_RADIUS + 7);
-        
-        // Deflect based on which side of peg
-        if (bead.x < peg.x) {
-          bead.vx -= 2 + random(0.5);
-        } else {
-          bead.vx += 2 + random(0.5);
-        }
-        bead.vy *= 0.5;
-      }
-    }
-    
-    // Check if bead reached a bin
-    if (bead.y > bins[0].y - 20) {
-      // Find which bin
-      for (let j = 0; j < bins.length; j++) {
-        if (abs(bead.x - bins[j].x) < PEG_SPACING / 2) {
-          bins[j].count++;
-          beads.splice(i, 1);
-          break;
-        }
-      }
-    }
-    
-    // Draw bead
-    if (beads[i]) {
-      let hue = map(bead.vx, -5, 5, 160, 280);
-      fill(hue, 80, 90);
-      circle(bead.x, bead.y, BEAD_RADIUS * 2);
-    }
-  }
-  
-  // Draw bins and histogram
-  drawBins();
-  
-  // Draw funnel at top
-  drawFunnel();
-}
-
-function dropBead() {
-  beads.push({
-    x: width / 2 + random(-3, 3),
-    y: 40,
-    vx: random(-0.5, 0.5),
-    vy: 0
-  });
-}
-
-function drawFunnel() {
-  noFill();
-  stroke(180, 40, 50);
-  strokeWeight(2);
-  beginShape();
-  vertex(width / 2 - 30, 20);
-  vertex(width / 2 + 30, 20);
-  vertex(width / 2 + 8, 70);
-  vertex(width / 2 - 8, 70);
-  endShape(CLOSE);
 }
 
 function drawBins() {
-  const maxCount = Math.max(...bins.map(b => b.count), 1);
-  const maxHeight = 150;
-  
+  let maxCount = Math.max(...bins.map(b => b.count), 1);
+
   for (let i = 0; i < bins.length; i++) {
     let bin = bins[i];
-    let barHeight = (bin.count / maxCount) * maxHeight;
-    
-    // Draw bin container
-    noFill();
-    stroke(180, 30, 50);
-    strokeWeight(1);
-    rect(bin.x - PEG_SPACING / 2 + 2, bin.y, PEG_SPACING - 4, 60);
-    
-    // Draw histogram bar
-    let hue = map(i, 0, BIN_COUNT, 200, 320);
+
+    // Bin background
     noStroke();
-    fill(hue, 70, 80);
-    rect(bin.x - PEG_SPACING / 2 + 4, bin.y + 60 - barHeight, PEG_SPACING - 8, barHeight);
-    
-    // Draw count
-    fill(0, 0, 100);
-    textAlign(CENTER);
-    textSize(10);
-    text(bin.count, bin.x, bin.y + 75);
+    fill(30, 40, 15, 60);
+    rect(bin.x, bin.y, bin.w, bin.h, 2);
+
+    // Fill level
+    let fillH = map(bin.count, 0, maxCount, 0, bin.h - 5);
+    let hue = map(i, 0, bins.length, 200, 60); // Blue to orange (bell curve)
+
+    fill(hue, 70, 60, 80);
+    rect(bin.x + 1, bin.y + bin.h - fillH - 1, bin.w - 2, fillH, 2);
+
+    // Bin divider lines
+    strokeWeight(1);
+    stroke(40, 30, 40, 40);
+    line(bin.x, bin.y, bin.x, bin.y + bin.h);
+    line(bin.x + bin.w, bin.y, bin.x + bin.w, bin.y + bin.h);
   }
-  
-  // Draw distribution label
-  fill(0, 0, 70);
+
+  // Draw expected normal distribution curve
+  if (showMode === 0) {
+    strokeWeight(2);
+    noFill();
+    stroke(60, 80, 90, 60);
+    beginShape();
+    for (let i = 0; i < bins.length; i++) {
+      let x = binToX(i);
+      let expected = normalPDF(i, bins.length / 2, bins.length / 6) * maxBeans * 0.3;
+      let y = bins[0].y + bins[0].h - expected * (bins[0].h / maxBeans * 2);
+      vertex(x, y);
+    }
+    endShape();
+  }
+}
+
+function binToX(binIndex) {
+  let margin = min(width, height) * 0.08;
+  let boardW = width - margin * 2;
+  let binWidth = boardW / numBins;
+  return margin + binIndex * binWidth + binWidth / 2;
+}
+
+function normalPDF(x, mean, sd) {
+  let z = (x - mean) / sd;
+  return Math.exp(-0.5 * z * z) / (sd * Math.sqrt(2 * Math.PI));
+}
+
+function updateBeans() {
+  let gravity = 0.3;
+  let bounce = 0.5;
+  let friction = 0.98;
+
+  for (let bean of beans) {
+    // Apply gravity
+    bean.vy += gravity;
+
+    // Move
+    bean.x += bean.vx;
+    bean.y += bean.vy;
+
+    // Store path for showMode 2
+    if (showMode === 2 && bean.path.length < 100) {
+      bean.path.push({ x: bean.x, y: bean.y });
+    }
+
+    // Peg collision
+    for (let peg of pegs) {
+      let dx = bean.x - peg.x;
+      let dy = bean.y - peg.y;
+      let dist = sqrt(dx * dx + dy * dy);
+      let minDist = bean.r + peg.r;
+
+      if (dist < minDist) {
+        // Separate
+        let angle = atan2(dy, dx);
+        bean.x = peg.x + cos(angle) * minDist;
+        bean.y = peg.y + sin(angle) * minDist;
+
+        // Bounce - random direction on collision
+        let bounceAngle = angle + PI / 2;
+        let speed = sqrt(bean.vx * bean.vx + bean.vy * bean.vy);
+        let rand = random(-0.3, 0.3); // Small randomness in bounce
+        bean.vx = cos(bounceAngle + rand) * speed * bounce;
+        bean.vy = sin(bounceAngle + rand) * speed * bounce - 1;
+
+        bean.bounces++;
+
+        // Small chance to change color on bounce
+        if (random() < 0.1) {
+          bean.hue = (bean.hue + random(10, 30)) % 60;
+        }
+      }
+    }
+
+    // Wall collision (left/right of board)
+    let margin = min(width, height) * 0.08;
+    let boardW = width - margin * 2;
+    if (bean.x < margin) {
+      bean.x = margin;
+      bean.vx *= -bounce;
+    }
+    if (bean.x > margin + boardW) {
+      bean.x = margin + boardW;
+      bean.vx *= -bounce;
+    }
+
+    // Floor collision (bins)
+    for (let i = 0; i < bins.length; i++) {
+      let bin = bins[i];
+      if (bean.x > bin.x && bean.x < bin.x + bin.w &&
+          bean.y > bin.y && bean.y < bin.y + bin.h) {
+        // In bin - slow down and stack
+        bean.vy *= 0.5;
+        bean.vx *= friction;
+        bean.y = bin.y + bin.h - bean.r - bin.count * bean.r * 0.5;
+        bin.count++;
+        histogram[i] = bin.count;
+      }
+    }
+
+    // Remove beans that are too old or off screen
+    if (bean.y > height + 50) {
+      bean.y = -100;
+      bean.x = width / 2;
+      bean.vy = 0;
+      bean.vx = 0;
+    }
+  }
+}
+
+function drawBeans() {
+  noStroke();
+
+  for (let bean of beans) {
+    // Path (showMode 2)
+    if (showMode === 2 && bean.path.length > 1) {
+      strokeWeight(1);
+      noFill();
+      for (let i = 1; i < bean.path.length; i++) {
+        let alpha = map(i, 0, bean.path.length, 20, 60);
+        stroke(bean.hue, 60, 80, alpha);
+        line(bean.path[i - 1].x, bean.path[i - 1].y,
+             bean.path[i].x, bean.path[i].y);
+      }
+      noStroke();
+    }
+
+    // Bean glow
+    let glowAlpha = showMode === 1 ? 30 : 0;
+    if (glowAlpha > 0) {
+      fill(bean.hue, 70, 90, glowAlpha);
+      ellipse(bean.x, bean.y, bean.r * 3);
+    }
+
+    // Bean shadow
+    fill(20, 50, 20, 40);
+    ellipse(bean.x + 2, bean.y + 2, bean.r * 2);
+
+    // Bean body
+    fill(bean.hue, 70, 80, 90);
+    ellipse(bean.x, bean.y, bean.r * 2);
+
+    // Highlight
+    fill(bean.hue, 40, 100, 70);
+    ellipse(bean.x - bean.r * 0.3, bean.y - bean.r * 0.3, bean.r * 0.6);
+  }
+}
+
+function drawHistogram() {
+  // Small histogram in corner
+  let histX = width - 180;
+  let histY = 20;
+  let histW = 160;
+  let histH = 80;
+
+  fill(0, 0, 0, 50);
+  noStroke();
+  rect(histX - 5, histY - 5, histW + 10, histH + 25, 3);
+
+  fill(40, 20, 70, 80);
+  textSize(9);
   textAlign(CENTER);
+  text('Distribution', histX + histW / 2, histY + 12);
+
+  // Bars
+  let maxCount = Math.max(...histogram, 1);
+  let barW = histW / histogram.length;
+
+  for (let i = 0; i < histogram.length; i++) {
+    let barH = map(histogram[i], 0, maxCount, 0, histH);
+    let hue = map(i, 0, histogram.length, 200, 60);
+    fill(hue, 70, 70, 80);
+    noStroke();
+    rect(histX + i * barW + 1, histY + histH - barH, barW - 2, barH);
+  }
+
+  textAlign(LEFT);
+}
+
+function drawInfo() {
+  fill(40, 15, 90, 90);
   textSize(14);
-  text('Normal Distribution', width / 2, height - 20);
+  textAlign(LEFT, TOP);
+  text('Galton Board — Central Limit Theorem', 16, 16);
+  fill(30, 10, 70, 80);
+  textSize(10);
+  text('Each peg bounce is random left/right. After many bounces,', 16, 38);
+  text('beans accumulate forming a bell curve (normal/Gaussian distribution).', 16, 52);
+  text('Sum of many random steps → Gaussian. n = ' + beans.length + ' beans', 16, 66);
+  text('SPACE to cycle modes | +/- to change drop rate', 16, 80);
+  textAlign(LEFT, BASELINE);
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    showMode = (showMode + 1) % 3;
+  }
+  if (key === '+' || key === '=') {
+    dropRate = min(dropRate + 1, 10);
+  }
+  if (key === '-' || key === '_') {
+    dropRate = max(dropRate - 1, 1);
+  }
 }
 
 function windowResized() {
