@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Julia Set</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050508; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Julia Set — Complex Plane Fractal
+// z_{n+1} = z_n² + c
+// For each pixel, iterate starting with z = pixel coordinate
+// If |z| stays bounded → inside (belongs to set)
+// If |z| diverges → outside (color by escape speed)
+// Julia sets depend on the constant c — different c give different fractals
+
+let maxIterations = 200;
+let zoom = 1.5;
+let offsetX = 0;
+let offsetY = 0;
+let time = 0;
+
+// Default c value — can be changed with presets
+let cReal = -0.7;
+let cImag = 0.27015;
+
+// Presets for different Julia sets
+let presets = [
+  { name: 'Dendrite', r: 0, i: 1 },
+  { name: 'San Marco', r: -3/4, i: 0 },
+  { name: 'Douady Rabbit', r: -0.123, i: 0.745 },
+  { name: 'Rabbit', r: -0.2, i: 0.8 },
+  { name: 'Chip', r: -1.25, i: 0 },
+  { name: 'Spiral', r: -0.8, i: 0.2 },
+  { name: 'Galaxy', r: 0.285, i: 0.01 },
+  { name: 'Snowflake', r: -0.8, i: 0.156 },
+];
+let currentPreset = 0;
+
+let pixels = [];
+let fft = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
+  noLoop();
+
+  // Initialize FFT for orbit trap (optional visual effect)
+  for (let i = 0; i < 32; i++) {
+    fft.push(sin(i * 0.3) * 0.5 + 0.5);
+  }
+
+  calculateJulia();
+  redraw();
+}
+
+function calculateJulia() {
+  loadPixels();
+
+  let w = width;
+  let h = height;
+
+  for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) {
+      // Map pixel to complex plane
+      let x0 = map(px, 0, w, -zoom * width / height, zoom * width / height) + offsetX;
+      let y0 = map(py, 0, h, -zoom, zoom) + offsetY;
+
+      // Iterate
+      let x = x0;
+      let y = y0;
+      let iteration = 0;
+
+      // Orbit trap variables (for coloring)
+      let minDist = 999;
+      let orbitSum = 0;
+
+      while (x * x + y * y <= 256 && iteration < maxIterations) {
+        // z² + c
+        let xTemp = x * x - y * y + cReal;
+        y = 2 * x * y + cImag;
+        x = xTemp;
+
+        iteration++;
+
+        // Orbit trap: distance to origin
+        let dist = sqrt(x * x + y * y);
+        if (dist < minDist) minDist = dist;
+        orbitSum += exp(-dist); // Smooth decay
+      }
+
+      // Color based on iteration count
+      let idx = 4 * (py * w + px);
+
+      if (iteration === maxIterations) {
+        // Inside the set — dark
+        pixels[idx] = 0;
+        pixels[idx + 1] = 0;
+        pixels[idx + 2] = 5;
+        pixels[idx + 3] = 255;
+      } else {
+        // Outside — color by iteration count (smooth coloring)
+        let log_zn = log(x * x + y * y) / 2;
+        let nu = log(log_zn / log(2)) / log(2);
+
+        // Smooth iteration count
+        let smoothIter = iteration + 1 - nu;
+
+        // Map to hue
+        let hue = (smoothIter * 15 + time * 2) % 360;
+        let sat = 80;
+        let bri = map(smoothIter, 0, 50, 90, 20);
+
+        // Orbit trap color influence
+        let trapInfluence = exp(-minDist * 0.5);
+        hue = (hue + trapInfluence * 60) % 360;
+
+        // HSB to RGB
+        let rgb = hsbToRgb(hue / 360, sat / 100, bri / 100);
+        pixels[idx] = rgb.r;
+        pixels[idx + 1] = rgb.g;
+        pixels[idx + 2] = rgb.b;
+        pixels[idx + 3] = 255;
+      }
+    }
+  }
+
+  updatePixels();
+}
+
+function hsbToRgb(h, s, b) {
+  let r, g, bl;
+
+  let i = floor(h * 6);
+  let f = h * 6 - i;
+  let p = b * (1 - s);
+  let q = b * (1 - f * s);
+  let t = b * (1 - (1 - f) * s);
+
+  switch (i % 6) {
+    case 0: r = b; g = t; bl = p; break;
+    case 1: r = q; g = b; bl = p; break;
+    case 2: r = p; g = b; bl = t; break;
+    case 3: r = p; g = q; bl = b; break;
+    case 4: r = t; g = p; bl = b; break;
+    case 5: r = b; g = p; bl = q; break;
+  }
+
+  return {
+    r: floor(r * 255),
+    g: floor(g * 255),
+    b: floor(bl * 255)
+  };
+}
+
+function draw() {
+  background(0);
+
+  calculateJulia();
+
+  // Draw coordinate axes
+  stroke(0, 0, 50, 40);
+  strokeWeight(1);
+  let centerX = width / 2 + offsetX * width / (2 * zoom);
+  let centerY = height / 2 - offsetY * height / (2 * zoom);
+
+  // Draw info
+  drawInfo();
+}
+
+function drawInfo() {
+  // Info panel
+  fill(0, 0, 0, 70);
+  noStroke();
+  rect(10, 10, 320, 85, 3);
+
+  fill(40, 10, 90, 90);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text('Julia Set — z² + c', 20, 18);
+  fill(30, 10, 70, 80);
+  textSize(10);
+  text('c = ' + nf(cReal, 1, 4) + ' + ' + nf(cImag, 1, 4) + 'i', 20, 40);
+  text('Preset: ' + presets[currentPreset].name, 20, 54);
+  text('Mouse: pan | Scroll: zoom | ←→: presets | SPACE: animate c', 20, 68);
+  textAlign(LEFT, BASELINE);
+}
+
+function mouseDragged() {
+  let dx = (mouseX - pmouseX) * zoom / width * 2;
+  let dy = (mouseY - pmouseY) * zoom / height * 2;
+  offsetX -= dx;
+  offsetY += dy;
+  redraw();
+}
+
+function mouseWheel(event) {
+  let zoomFactor = event.delta > 0 ? 1.1 : 0.9;
+  zoom *= zoomFactor;
+  zoom = constrain(zoom, 0.5, 10);
+  redraw();
+}
+
+function keyPressed() {
+  if (keyCode === LEFT_ARROW) {
+    currentPreset = (currentPreset - 1 + presets.length) % presets.length;
+    cReal = presets[currentPreset].r;
+    cImag = presets[currentPreset].i;
+    redraw();
+  }
+  if (keyCode === RIGHT_ARROW) {
+    currentPreset = (currentPreset + 1) % presets.length;
+    cReal = presets[currentPreset].r;
+    cImag = presets[currentPreset].i;
+    redraw();
+  }
+  if (key === ' ') {
+    // Animate c slightly
+    cImag += 0.01;
+    cImag = cImag % 1;
+    redraw();
+  }
+  if (key === 'r' || key === 'R') {
+    zoom = 1.5;
+    offsetX = 0;
+    offsetY = 0;
+    cReal = presets[0].r;
+    cImag = presets[0].i;
+    currentPreset = 0;
+    redraw();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  redraw();
+}
+</script>
+</body>
+</html>
