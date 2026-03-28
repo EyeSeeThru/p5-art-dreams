@@ -35,7 +35,7 @@ function setup() {
       hue: random(-5, 15), // Near black with slight warmth
       thickness: random(100, 250),
       highlightAlpha: random(8, 20),
-      baseBrightness: random(3, 8)
+      baseBrightness: random(18, 28)
     });
   }
 }
@@ -44,7 +44,7 @@ function draw() {
   // Deep dark background with subtle gradient
   for (let y = 0; y < height; y++) {
     let inter = map(y, 0, height, 0, 1);
-    let b = lerp(2, 5, inter);
+    let b = lerp(8, 15, inter);
     stroke(0, 20, b);
     line(0, y, width, y);
   }
@@ -113,7 +113,7 @@ function drawSilkFold(fold, index) {
     let wave3 = cos(x * fold.frequency * 0.7 + phaseOffset * 0.5) * fold.amplitude * 0.2;
     let y = baseY + wave1 + wave2 + wave3;
 
-    let highlightBrightness = 15 + sin(x * 0.03 + time * 2) * 5;
+    let highlightBrightness = 35 + sin(x * 0.03 + time * 2) * 15;
     let highlightAlpha = fold.highlightAlpha * 0.8 * (0.5 + sin(x * 0.02 + time) * 0.5);
 
     stroke(10, 50, highlightBrightness, highlightAlpha);
