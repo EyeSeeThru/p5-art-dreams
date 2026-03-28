@@ -113,6 +113,9 @@ function draw() {
 }
 
 function drawGhostFlameTrail(f, flicker) {
+  // Guard against NaN — skip frame if position is invalid
+  if (!trailGraphics || isNaN(f.x) || isNaN(f.y) || isNaN(f.baseSize)) return;
+
   trailGraphics.noStroke();
   let size = f.baseSize * (0.8 + flicker * 0.3) * f.life;
 
@@ -130,6 +133,9 @@ function drawGhostFlameTrail(f, flicker) {
 }
 
 function drawGhostFlameDirect(f, flicker) {
+  // Guard against NaN — skip frame if position is invalid
+  if (isNaN(f.x) || isNaN(f.y) || isNaN(f.baseSize)) return;
+
   noStroke();
   let size = f.baseSize * (0.8 + flicker * 0.3) * f.life;
   let directAlpha = f.alpha * 1.5;
