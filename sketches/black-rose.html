@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Black Rose</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050202; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Black Rose — Elegant Flower in Darkness
+// Artistic, romantic, melancholic
+// Deep crimson and black, beautiful and tragic
+
+let time = 0;
+let petals = [];
+let numPetals = 28;
+let centerX, centerY;
+let bloomPhase = 0;
+let swayPhase = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  centerX = width / 2;
+  centerY = height / 2;
+
+  // Create rose petals arranged in spiral pattern
+  // Based on golden angle for natural arrangement
+  let goldenAngle = PI * (3 - sqrt(5));
+
+  for (let i = 0; i < numPetals; i++) {
+    let angle = i * goldenAngle;
+    let radius = sqrt(i) * 25;
+
+    petals.push({
+      baseAngle: angle,
+      radius: radius,
+      size: map(i, 0, numPetals, 60, 20),
+      bloom: random(0.3, 0.8), // Individual petal bloom offset
+      phase: i * 0.2,
+      hue: map(i, 0, numPetals, 350, 360) % 360, // Deep red range
+      layer: floor(i / 7) // Which layer of the rose
+    });
+  }
+}
+
+function draw() {
+  // Dark background with subtle gradient
+  background(0, 20, 3);
+
+  time += 0.015;
+  bloomPhase += 0.008;
+  swayPhase += 0.005;
+
+  // Draw outer glow
+  drawRoseGlow();
+
+  // Draw petals from outer to inner
+  // Sort by radius so inner petals draw on top
+  let sortedPetals = [...petals].sort((a, b) => b.radius - a.radius);
+
+  for (let petal of sortedPetals) {
+    drawPetal(petal);
+  }
+
+  // Draw center
+  drawCenter();
+
+  // Falling petals occasionally
+  if (frameCount % 120 === 0) {
+    spawnFallingPetal();
+  }
+
+  drawFallingPetals();
+}
+
+function drawRoseGlow() {
+  // Subtle glow around the rose
+  let pulse = sin(bloomPhase * 0.5) * 0.2 + 0.8;
+  noStroke();
+
+  for (let r = 350; r > 200; r -= 30) {
+    fill(350, 80, 15, pulse * 3 * (1 - r / 350));
+    ellipse(centerX, centerY, r, r * 0.8);
+  }
+}
+
+function drawPetal(petal) {
+  let bloom = sin(bloomPhase + petal.bloom * TWO_PI) * 0.3 + 0.7;
+
+  // Sway
+  let sway = sin(swayPhase + petal.phase) * 0.1;
+  let angle = petal.baseAngle + sway;
+
+  // Petal position
+  let x = centerX + cos(angle) * petal.radius * 0.5;
+  let y = centerY + sin(angle) * petal.radius * 0.4;
+
+  // Petal size with bloom
+  let w = petal.size * bloom;
+  let h = petal.size * 1.5 * bloom;
+
+  // Petal shape - elegant pointed oval
+  push();
+  translate(x, y);
+  rotate(angle + PI / 4);
+
+  // Shadow
+  noStroke();
+  fill(0, 50, 5, 30);
+  drawPetalShape(w * 1.1, h * 1.1);
+
+  // Main petal
+  let petalHue = petal.hue;
+  let petalBrightness = 40 + petal.layer * 5;
+  let petalAlpha = 70 + petal.layer * 5;
+
+  fill(petalHue, 85, petalBrightness, petalAlpha);
+  stroke(petalHue, 90, petalBrightness + 20, 40);
+  strokeWeight(0.5);
+  drawPetalShape(w, h);
+
+  // Inner glow
+  noStroke();
+  fill(petalHue, 70, petalBrightness + 30, 30);
+  ellipse(0, -h * 0.2, w * 0.6, h * 0.4);
+
+  pop();
+}
+
+function drawPetalShape(w, h) {
+  // Elegant petal shape using bezier
+  beginShape();
+  vertex(0, 0);
+  bezierVertex(-w * 0.5, -h * 0.3, -w * 0.5, -h * 0.7, 0, -h);
+  bezierVertex(w * 0.5, -h * 0.7, w * 0.5, -h * 0.3, 0, 0);
+  endShape(CLOSE);
+}
+
+function drawCenter() {
+  // Dark center of the rose
+  noStroke();
+
+  // Outer ring
+  fill(350, 80, 25, 60);
+  ellipse(centerX, centerY, 30, 30);
+
+  // Inner darker center
+  fill(350, 60, 10, 80);
+  ellipse(centerX, centerY, 18, 18);
+
+  // Subtle highlight
+  fill(350, 40, 20, 40);
+  ellipse(centerX - 3, centerY - 3, 8, 8);
+
+  // Stamens (small dots)
+  fill(350, 30, 40, 60);
+  for (let i = 0; i < 8; i++) {
+    let angle = i * TWO_PI / 8 + time * 0.5;
+    let r = 12;
+    let sx = centerX + cos(angle) * r;
+    let sy = centerY + sin(angle) * r * 0.8;
+    ellipse(sx, sy, 2, 2);
+  }
+}
+
+let fallingPetals = [];
+
+function spawnFallingPetal() {
+  fallingPetals.push({
+    x: centerX + random(-100, 100),
+    y: centerY - 50,
+    vx: random(-0.5, 0.5),
+    vy: random(0.5, 1.5),
+    rotation: random(TWO_PI),
+    rotSpeed: random(-0.05, 0.05),
+    size: random(10, 20),
+    hue: random(345, 360) % 360,
+    alpha: random(40, 70),
+    life: 200
+  });
+}
+
+function drawFallingPetals() {
+  for (let i = fallingPetals.length - 1; i >= 0; i--) {
+    let p = fallingPetals[i];
+
+    p.x += p.vx + sin(time * 2 + p.y * 0.01) * 0.3;
+    p.y += p.vy;
+    p.rotation += p.rotSpeed;
+    p.life -= 1;
+
+    if (p.life <= 0 || p.y > height + 50) {
+      fallingPetals.splice(i, 1);
+      continue;
+    }
+
+    push();
+    translate(p.x, p.y);
+    rotate(p.rotation);
+
+    noStroke();
+    let fadeAlpha = p.alpha * (p.life / 200);
+    fill(p.hue, 80, 35, fadeAlpha);
+
+    // Small petal shape
+    beginShape();
+    vertex(0, 0);
+    bezierVertex(-p.size * 0.3, -p.size * 0.2, -p.size * 0.3, -p.size * 0.5, 0, -p.size * 0.7);
+    bezierVertex(p.size * 0.3, -p.size * 0.5, p.size * 0.3, -p.size * 0.2, 0, 0);
+    endShape(CLOSE);
+
+    pop();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  centerX = width / 2;
+  centerY = height / 2;
+}
+
+function mousePressed() {
+  // Spawn burst of falling petals
+  for (let i = 0; i < 8; i++) {
+    let p = {
+      x: centerX + random(-80, 80),
+      y: centerY + random(-30, 30),
+      vx: random(-2, 2),
+      vy: random(1, 3),
+      rotation: random(TWO_PI),
+      rotSpeed: random(-0.1, 0.1),
+      size: random(12, 25),
+      hue: random(345, 360) % 360,
+      alpha: random(50, 80),
+      life: 150
+    };
+    fallingPetals.push(p);
+  }
+}
+</script>
+</body>
+</html>
