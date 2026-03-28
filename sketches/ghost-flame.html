@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ghost Flame</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #010101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Ghost Flame — Ethereal Flickering Flames
+// Artistic, spectral, haunting
+// Semi-transparent flames leaving trails
+
+let time = 0;
+let ghostFlames = [];
+const NUM_FLAMES = 15;
+let trailGraphics;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Trail graphics buffer
+  trailGraphics = createGraphics(width, height);
+  trailGraphics.colorMode(HSB, 360, 100, 100, 100);
+  trailGraphics.background(0, 30, 1, 255);
+
+  // Initialize ghost flames
+  for (let i = 0; i < NUM_FLAMES; i++) {
+    ghostFlames.push(createGhostFlame());
+  }
+}
+
+function createGhostFlame() {
+  return {
+    x: random(width * 0.2, width * 0.8),
+    y: random(height * 0.6, height),
+    baseSize: random(30, 80),
+    hue: random(0, 35), // Red to orange-red
+    alpha: random(15, 35),
+    flickerSpeed: random(0.08, 0.2),
+    flickerPhase: random(TWO_PI),
+    driftX: random(-0.5, 0.5),
+    driftY: random(-1.5, -0.5),
+    wobbleAmp: random(5, 15),
+    wobbleFreq: random(0.02, 0.05),
+    life: 1.0,
+    decay: random(0.001, 0.003)
+  };
+}
+
+function draw() {
+  // Fade trail buffer slowly
+  trailGraphics.noStroke();
+  trailGraphics.fill(0, 30, 1, 8);
+  trailGraphics.rect(0, 0, width, height);
+
+  time += 0.01;
+
+  // Update and draw ghost flames
+  for (let i = ghostFlames.length - 1; i >= 0; i--) {
+    let f = ghostFlames[i];
+
+    // Update position
+    f.x += f.driftX + sin(time * f.wobbleFreq * 60 + f.wobblePhase) * f.wobbleAmp * 0.1;
+    f.y += f.driftY;
+
+    // Flicker
+    let flicker = sin(time * f.flickerSpeed * 60 + f.flickerPhase);
+    f.alpha = (20 + flicker * 15) * f.life;
+
+    // Fade
+    f.life -= f.decay;
+
+    // Reset if dead or off screen
+    if (f.life <= 0 || f.y < -50 || f.x < -50 || f.x > width + 50) {
+      ghostFlames.splice(i, 1, createGhostFlame());
+      continue;
+    }
+
+    // Draw to trail buffer
+    drawGhostFlameTrail(f, flicker);
+
+    // Draw directly (brighter)
+    drawGhostFlameDirect(f, flicker);
+  }
+
+  // Spawn new flames
+  if (ghostFlames.length < NUM_FLAMES && frameCount % 5 === 0) {
+    ghostFlames.push(createGhostFlame());
+  }
+
+  // Occasional burst
+  if (random() < 0.008 && ghostFlames.length < NUM_FLAMES * 2) {
+    for (let j = 0; j < 5; j++) {
+      let f = createGhostFlame();
+      f.x = random(width * 0.3, width * 0.7);
+      f.y = height;
+      ghostFlames.push(f);
+    }
+  }
+
+  // Draw trail buffer
+  image(trailGraphics, 0, 0);
+
+  // Mouse influence
+  drawMouseAura();
+}
+
+function drawGhostFlameTrail(f, flicker) {
+  trailGraphics.noStroke();
+  let size = f.baseSize * (0.8 + flicker * 0.3) * f.life;
+
+  // Outer glow
+  trailGraphics.fill(f.hue, 60, 40, f.alpha * 0.15);
+  trailGraphics.ellipse(f.x, f.y, size * 4, size * 5);
+
+  // Middle
+  trailGraphics.fill(f.hue, 70, 50, f.alpha * 0.3);
+  trailGraphics.ellipse(f.x, f.y, size * 2, size * 2.5);
+
+  // Inner
+  trailGraphics.fill(f.hue + 10, 50, 70, f.alpha * 0.5);
+  trailGraphics.ellipse(f.x, f.y, size, size * 1.2);
+}
+
+function drawGhostFlameDirect(f, flicker) {
+  noStroke();
+  let size = f.baseSize * (0.8 + flicker * 0.3) * f.life;
+  let directAlpha = f.alpha * 1.5;
+
+  // Outer glow
+  fill(f.hue, 50, 50, directAlpha * 0.2);
+  ellipse(f.x, f.y, size * 5, size * 6);
+
+  // Middle glow
+  fill(f.hue, 60, 60, directAlpha * 0.4);
+  ellipse(f.x, f.y, size * 2.5, size * 3);
+
+  // Core
+  fill(f.hue + 15, 40, 80, directAlpha * 0.7);
+  ellipse(f.x, f.y, size * 1.2, size * 1.4);
+
+  // Hot center
+  fill(min(f.hue + 30, 50), 20, 100, directAlpha * 0.5);
+  ellipse(f.x, f.y, size * 0.5, size * 0.6);
+}
+
+function drawMouseAura() {
+  // Ghostly aura around mouse
+  noFill();
+  strokeWeight(0.5);
+
+  for (let r = 200; r > 20; r -= 20) {
+    let alpha = map(r, 20, 200, 8, 0);
+    stroke(15, 40, 30, alpha);
+    ellipse(mouseX, mouseY, r, r * 0.8);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailGraphics = createGraphics(width, height);
+  trailGraphics.colorMode(HSB, 360, 100, 100, 100);
+  trailGraphics.background(0, 30, 1, 255);
+}
+
+function mousePressed() {
+  // Burst of ghost flames from mouse
+  for (let i = 0; i < 10; i++) {
+    let f = createGhostFlame();
+    f.x = mouseX + random(-30, 30);
+    f.y = mouseY + random(-20, 20);
+    f.baseSize *= random(1.2, 2);
+    f.alpha *= 1.5;
+    ghostFlames.push(f);
+  }
+}
+</script>
+</body>
+</html>
