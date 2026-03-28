@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Burning Sky</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #030101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Burning Sky — Dramatic Sunset on Fire
+// Artistic, epic, awe-inspiring
+// Layers of red and deep crimson clouds
+
+let time = 0;
+let clouds = [];
+let numCloudLayers = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Create cloud layers
+  for (let i = 0; i < numCloudLayers; i++) {
+    clouds.push({
+      y: map(i, 0, numCloudLayers, height * 0.2, height * 0.9),
+      speed: map(i, 0, numCloudLayers, 0.3, 0.05),
+      thickness: map(i, 0, numCloudLayers, 60, 200),
+      hue: map(i, 0, numCloudLayers, 0, 25), // Red to orange-red
+      saturation: map(i, 0, numCloudLayers, 90, 80),
+      brightness: map(i, 0, numCloudLayers, 35, 50),
+      alpha: map(i, 0, numCloudLayers, 40, 70),
+      noiseOffset: random(1000),
+      waveAmp: random(20, 60),
+      waveFreq: random(0.005, 0.015)
+    });
+  }
+}
+
+function draw() {
+  // Dark sky gradient at top
+  for (let y = 0; y < height * 0.3; y++) {
+    let inter = map(y, 0, height * 0.3, 0, 1);
+    let c = lerpColor(color(0, 10, 3), color(0, 30, 8), inter);
+    stroke(c);
+    line(0, y, width, y);
+  }
+
+  time += 0.008;
+
+  // Draw cloud layers (back to front)
+  for (let i = 0; i < clouds.length; i++) {
+    drawCloudLayer(clouds[i], i);
+  }
+
+  // Horizon glow
+  drawHorizonGlow();
+
+  // Birds silhouettes occasionally
+  drawBirds();
+
+  // Floating embers/ash
+  drawEmbers();
+}
+
+function drawCloudLayer(cloud, index) {
+  noStroke();
+
+  let yBase = cloud.y;
+  let xOffset = time * cloud.speed * 20;
+
+  // Multiple wisps per layer
+  for (let wisp = 0; wisp < 4; wisp++) {
+    let wispY = yBase + sin(time * 0.5 + wisp * 2) * 20;
+    let wispX = (wisp - 1.5) * width * 0.4;
+
+    // Draw wispy cloud shape
+    for (let x = 0; x < width; x += 3) {
+      let waveY = sin((x + xOffset + wisp * 100) * cloud.waveFreq + cloud.noiseOffset) * cloud.waveAmp;
+      let perlinY = noise((x + xOffset) * 0.003, wisp * 10, time * 0.02) * cloud.waveAmp * 2;
+
+      let y = wispY + waveY + perlinY;
+      let thickness = cloud.thickness * (0.5 + noise(x * 0.01, wisp, time * 0.01) * 0.5);
+
+      // Cloud color with variation
+      let hueVar = noise(x * 0.005 + wisp * 50, time * 0.02) * 10 - 5;
+      let satVar = noise(x * 0.008 + wisp * 30, time * 0.03) * 15;
+
+      fill((cloud.hue + hueVar + 360) % 360,
+           cloud.saturation - satVar,
+           cloud.brightness + noise(x * 0.01) * 15,
+           cloud.alpha * (0.7 + noise(x * 0.02, time * 0.02) * 0.3));
+
+      ellipse(x + wispX, y, 8, thickness);
+    }
+  }
+
+  // Lighter highlights on top edge
+  stroke(cloud.hue + 10, cloud.saturation - 20, cloud.brightness + 25, 20);
+  strokeWeight(2);
+  for (let x = 0; x < width; x += 5) {
+    let waveY = sin((x + xOffset) * cloud.waveFreq + cloud.noiseOffset) * cloud.waveAmp;
+    let perlinY = noise((x + xOffset) * 0.003, 0, time * 0.02) * cloud.waveAmp * 2;
+    let y = yBase + waveY + perlinY - cloud.thickness * 0.3;
+    point(x, y);
+  }
+}
+
+function drawHorizonGlow() {
+  // Intense glow at horizon
+  noStroke();
+
+  let horizonY = height * 0.85;
+
+  // Layered glow
+  for (let y = horizonY; y < height; y++) {
+    let distFromHorizon = y - horizonY;
+    let alpha = map(distFromHorizon, 0, height - horizonY, 50, 0);
+    let brightness = map(distFromHorizon, 0, height - horizonY, 60, 20);
+
+    // Gradient from deep red to darker
+    let hue = map(distFromHorizon, 0, height - horizonY, 5, 0);
+
+    fill(hue, 95, brightness, alpha);
+    rect(0, y, width, 1);
+  }
+
+  // Bright line at horizon
+  for (let x = 0; x < width; x += 2) {
+    let flicker = random(30, 60);
+    fill(5, 100, 80, flicker);
+    ellipse(x, horizonY, 4, 3);
+  }
+
+  // Sun glow (below horizon)
+  let sunX = width * 0.5;
+  let sunY = horizonY + 30;
+  let sunSize = 150;
+
+  for (let r = sunSize * 3; r > sunSize; r -= 10) {
+    let alpha = map(r, sunSize, sunSize * 3, 30, 5);
+    fill(10, 100, 70, alpha);
+    ellipse(sunX, sunY, r, r * 0.4);
+  }
+}
+
+let birds = [];
+
+function drawBirds() {
+  // Add birds occasionally
+  if (frameCount % 120 === 0 && birds.length < 15) {
+    birds.push({
+      x: -50,
+      y: random(height * 0.1, height * 0.4),
+      speed: random(2, 4),
+      wingPhase: random(TWO_PI),
+      size: random(8, 15)
+    });
+  }
+
+  // Draw and update birds
+  noStroke();
+  for (let i = birds.length - 1; i >= 0; i--) {
+    let bird = birds[i];
+    bird.x += bird.speed;
+    bird.wingPhase += 0.3;
+
+    // Remove if off screen
+    if (bird.x > width + 50) {
+      birds.splice(i, 1);
+      continue;
+    }
+
+    // Bird silhouette
+    fill(0, 30, 8, 70);
+    let wingY = sin(bird.wingPhase) * bird.size * 0.5;
+
+    // Simple bird shape (two arcs)
+    arc(bird.x - bird.size * 0.3, bird.y, bird.size, wingY, PI, TWO_PI);
+    arc(bird.x + bird.size * 0.3, bird.y, bird.size, wingY, PI, TWO_PI);
+  }
+}
+
+let embers = [];
+
+function drawEmbers() {
+  // Add new embers
+  if (frameCount % 3 === 0 && embers.length < 80) {
+    embers.push({
+      x: random(width),
+      y: height + 10,
+      vx: random(-0.5, 0.5),
+      vy: random(-1.5, -0.5),
+      size: random(1, 4),
+      hue: random(0, 20),
+      alpha: random(40, 80),
+      life: random(200, 400)
+    });
+  }
+
+  // Draw and update embers
+  noStroke();
+  for (let i = embers.length - 1; i >= 0; i--) {
+    let e = embers[i];
+    e.x += e.vx + sin(time * 2 + i) * 0.3;
+    e.y += e.vy;
+    e.life -= 1;
+
+    // Remove if dead or above screen
+    if (e.life <= 0 || e.y < -10) {
+      embers.splice(i, 1);
+      continue;
+    }
+
+    // Ember glow
+    let lifeRatio = e.life / 400;
+    fill(e.hue, 100, 70, e.alpha * lifeRatio);
+    ellipse(e.x, e.y, e.size * lifeRatio, e.size * lifeRatio);
+
+    // Small glow around ember
+    fill(e.hue, 80, 60, e.alpha * lifeRatio * 0.3);
+    ellipse(e.x, e.y, e.size * 3 * lifeRatio, e.size * 3 * lifeRatio);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  // Recalculate cloud positions
+  for (let i = 0; i < clouds.length; i++) {
+    clouds[i].y = map(i, 0, clouds.length, height * 0.2, height * 0.9);
+  }
+}
+
+function mousePressed() {
+  // Add burst of embers from click
+  for (let i = 0; i < 20; i++) {
+    embers.push({
+      x: mouseX + random(-30, 30),
+      y: mouseY,
+      vx: random(-2, 2),
+      vy: random(-3, -1),
+      size: random(2, 5),
+      hue: random(0, 20),
+      alpha: random(60, 100),
+      life: random(200, 400)
+    });
+  }
+}
+</script>
+</body>
+</html>
