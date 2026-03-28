@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dark Silk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020102; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Dark Silk — Elegant Flowing Fabric
+// Artistic, luxurious, intimate
+// Dark silk fabric moving in slow waves
+
+let time = 0;
+let numFolds = 12;
+let folds = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize silk folds
+  for (let i = 0; i < numFolds; i++) {
+    folds.push({
+      y: map(i, 0, numFolds, height * 0.1, height * 0.95),
+      amplitude: random(80, 180),
+      frequency: random(0.003, 0.008),
+      speed: random(0.3, 0.7) * random([-1, 1]),
+      phase: random(TWO_PI),
+      hue: random(-5, 15), // Near black with slight warmth
+      thickness: random(100, 250),
+      highlightAlpha: random(8, 20),
+      baseBrightness: random(3, 8)
+    });
+  }
+}
+
+function draw() {
+  // Deep dark background with subtle gradient
+  for (let y = 0; y < height; y++) {
+    let inter = map(y, 0, height, 0, 1);
+    let b = lerp(2, 5, inter);
+    stroke(0, 20, b);
+    line(0, y, width, y);
+  }
+
+  time += 0.012;
+
+  // Draw silk folds from back to front
+  for (let i = 0; i < folds.length; i++) {
+    drawSilkFold(folds[i], i);
+  }
+
+  // Subtle floating particles (dust catching light)
+  drawDust();
+
+  // Mouse interaction - fold reacts to mouse
+  drawMouseInfluence();
+}
+
+function drawSilkFold(fold, index) {
+  noStroke();
+
+  // Calculate fold position
+  let phaseOffset = fold.phase + time * fold.speed;
+  let baseY = fold.y;
+
+  // Draw multiple layers for each fold (gives depth)
+  for (let layer = 0; layer < 5; layer++) {
+    let layerOffset = layer * 15;
+    let layerAlpha = map(layer, 0, 4, fold.highlightAlpha, fold.highlightAlpha * 0.3);
+    let layerThickness = fold.thickness * (1 - layer * 0.1);
+
+    // Draw curved fold
+    beginShape();
+    for (let x = -50; x <= width + 50; x += 5) {
+      let wave1 = sin(x * fold.frequency + phaseOffset) * fold.amplitude;
+      let wave2 = sin(x * fold.frequency * 2.3 + phaseOffset * 1.7) * fold.amplitude * 0.3;
+      let wave3 = cos(x * fold.frequency * 0.7 + phaseOffset * 0.5) * fold.amplitude * 0.2;
+      let y = baseY + wave1 + wave2 + wave3 + layerOffset;
+
+      let brightness = fold.baseBrightness + sin(x * 0.02 + time) * 3;
+      let hueShift = sin(x * 0.01 + layer + time * 0.5) * 5;
+
+      fill((fold.hue + hueShift + 360) % 360, 30, brightness, layerAlpha);
+      vertex(x, y);
+    }
+
+    // Close the shape
+    for (let x = width + 50; x >= -50; x -= 5) {
+      let wave1 = sin(x * fold.frequency + phaseOffset) * fold.amplitude;
+      let wave2 = sin(x * fold.frequency * 2.3 + phaseOffset * 1.7) * fold.amplitude * 0.3;
+      let wave3 = cos(x * fold.frequency * 0.7 + phaseOffset * 0.5) * fold.amplitude * 0.2;
+      let y = baseY + wave1 + wave2 + wave3 + layerOffset + layerThickness;
+
+      let brightness = fold.baseBrightness + sin(x * 0.02 + time) * 3;
+      fill((fold.hue + 360) % 360, 30, brightness, layerAlpha * 0.5);
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+  }
+
+  // Draw highlight line on top edge
+  strokeWeight(1);
+  for (let x = -50; x <= width + 50; x += 3) {
+    let wave1 = sin(x * fold.frequency + phaseOffset) * fold.amplitude;
+    let wave2 = sin(x * fold.frequency * 2.3 + phaseOffset * 1.7) * fold.amplitude * 0.3;
+    let wave3 = cos(x * fold.frequency * 0.7 + phaseOffset * 0.5) * fold.amplitude * 0.2;
+    let y = baseY + wave1 + wave2 + wave3;
+
+    let highlightBrightness = 15 + sin(x * 0.03 + time * 2) * 5;
+    let highlightAlpha = fold.highlightAlpha * 0.8 * (0.5 + sin(x * 0.02 + time) * 0.5);
+
+    stroke(10, 50, highlightBrightness, highlightAlpha);
+    point(x, y);
+  }
+}
+
+let dustParticles = [];
+
+function drawDust() {
+  // Add new dust
+  if (frameCount % 10 === 0 && dustParticles.length < 40) {
+    dustParticles.push({
+      x: random(width),
+      y: random(height),
+      size: random(1, 3),
+      vx: random(-0.2, 0.2),
+      vy: random(-0.1, 0.1),
+      alpha: random(5, 15),
+      life: random(200, 400)
+    });
+  }
+
+  // Draw dust
+  noStroke();
+  for (let i = dustParticles.length - 1; i >= 0; i--) {
+    let p = dustParticles[i];
+    p.x += p.vx + sin(time + i) * 0.1;
+    p.y += p.vy;
+    p.life -= 1;
+
+    if (p.life <= 0) {
+      dustParticles.splice(i, 1);
+      continue;
+    }
+
+    let lifeRatio = p.life / 400;
+    fill(20, 30, 20, p.alpha * lifeRatio);
+    ellipse(p.x, p.y, p.size, p.size);
+  }
+}
+
+function drawMouseInfluence() {
+  // Subtle ripple effect around mouse
+  noFill();
+  strokeWeight(0.5);
+
+  for (let r = 300; r > 50; r -= 30) {
+    let alpha = map(r, 50, 300, 10, 0);
+    stroke(15, 40, 20, alpha);
+    ellipse(mouseX, mouseY, r, r * 0.6);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  // Recalculate fold positions
+  for (let i = 0; i < folds.length; i++) {
+    folds[i].y = map(i, 0, folds.length, height * 0.1, height * 0.95);
+  }
+}
+
+function mousePressed() {
+  // Create a ripple disturbance in the folds
+  for (let fold of folds) {
+    fold.amplitude *= 1.5;
+    setTimeout(() => {
+      fold.amplitude *= 0.7;
+    }, 500);
+  }
+}
+</script>
+</body>
+</html>
