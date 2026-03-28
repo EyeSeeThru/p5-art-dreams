@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dying Light</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #010101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Dying Light — Light Fading into Darkness
+// Artistic, emotional, contemplative
+// A warm glow that slowly diminishes
+
+let time = 0;
+let particles = [];
+let lightIntensity = 1.0;
+let fadeSpeed = 0.0003;
+let centralGlow;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  centralGlow = {
+    x: width / 2,
+    y: height / 2,
+    baseSize: min(width, height) * 0.4
+  };
+
+  // Initialize particles
+  for (let i = 0; i < 60; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle() {
+  let angle = random(TWO_PI);
+  let dist = random(50, 200);
+  return {
+    x: centralGlow.x + cos(angle) * dist,
+    y: centralGlow.y + sin(angle) * dist,
+    vx: random(-0.5, 0.5),
+    vy: random(-0.8, -0.2),
+    size: random(2, 6),
+    hue: random(10, 40), // Orange to red-orange
+    alpha: random(30, 70),
+    life: random(150, 300),
+    maxLife: 0
+  };
+}
+
+function draw() {
+  // Background darkens with time
+  background(0, 30, 1);
+
+  time += 0.01;
+
+  // Light slowly fades
+  lightIntensity = max(0.05, lightIntensity - fadeSpeed);
+
+  // Draw central glow
+  drawCentralGlow();
+
+  // Draw particles
+  drawParticles();
+
+  // Draw fading rings
+  drawRings();
+
+  // Occasional flicker
+  if (random() < 0.05) {
+    lightIntensity *= random(0.7, 0.9);
+  }
+
+  // Reset if almost dead
+  if (lightIntensity < 0.08) {
+    resetLight();
+  }
+}
+
+function drawCentralGlow() {
+  let pulse = sin(time * 2) * 0.05 + 0.95;
+  let size = centralGlow.baseSize * pulse * lightIntensity;
+
+  noStroke();
+
+  // Multiple glow layers
+  for (let r = size * 2; r > size * 0.3; r -= size * 0.15) {
+    let alpha = map(r, size * 0.3, size * 2, 50, 5) * lightIntensity;
+    let hueShift = map(r, size * 0.3, size * 2, 30, 10);
+
+    fill(25 - hueShift, 90, 60, alpha);
+    ellipse(centralGlow.x, centralGlow.y, r, r);
+  }
+
+  // Bright core
+  fill(30, 60, 90, 80 * lightIntensity);
+  ellipse(centralGlow.x, centralGlow.y, size * 0.5, size * 0.5);
+
+  // Flickering inner light
+  if (random() < 0.95) { // Occasionally dims
+    fill(40, 40, 95, 40 * lightIntensity);
+    ellipse(centralGlow.x, centralGlow.y, size * 0.3, size * 0.3);
+  }
+}
+
+function drawRings() {
+  noFill();
+  strokeWeight(1);
+
+  for (let i = 0; i < 5; i++) {
+    let ringPhase = (time * 0.5 + i * 0.3) % 3;
+    let ringRadius = ringPhase * centralGlow.baseSize * 0.5 * lightIntensity;
+    let alpha = map(ringPhase, 0, 3, 30, 0) * lightIntensity;
+
+    stroke(25, 80, 50, alpha);
+    ellipse(centralGlow.x, centralGlow.y, ringRadius * 2, ringRadius * 2);
+  }
+}
+
+function drawParticles() {
+  noStroke();
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+
+    // Update
+    p.x += p.vx + sin(time + i) * 0.2;
+    p.y += p.vy;
+    p.life -= 1;
+    p.alpha *= 0.998;
+
+    // Remove dead particles
+    if (p.life <= 0 || p.alpha < 2) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    // Draw particle with glow
+    let lifeRatio = p.life / p.maxLife;
+    let size = p.size * lifeRatio * lightIntensity;
+
+    // Glow
+    fill(p.hue, 80, 50, p.alpha * 0.3);
+    ellipse(p.x, p.y, size * 4, size * 4);
+
+    // Core
+    fill(p.hue, 70, 70, p.alpha * lifeRatio);
+    ellipse(p.x, p.y, size, size);
+
+    // Bright center
+    fill(p.hue + 10, 50, 90, p.alpha * 0.5);
+    ellipse(p.x, p.y, size * 0.5, size * 0.5);
+  }
+
+  // Spawn new particles from center
+  if (frameCount % 8 === 0 && particles.length < 80) {
+    let p = createParticle();
+    p.maxLife = p.life;
+    p.x = centralGlow.x + random(-30, 30);
+    p.y = centralGlow.y + random(-30, 30);
+    particles.push(p);
+  }
+}
+
+function resetLight() {
+  // Slow recovery
+  lightIntensity = min(1, lightIntensity + 0.01);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  centralGlow.x = width / 2;
+  centralGlow.y = height / 2;
+  centralGlow.baseSize = min(width, height) * 0.4;
+}
+
+function mousePressed() {
+  // Burst of new light
+  lightIntensity = min(1, lightIntensity + 0.3);
+
+  // Spawn burst particles
+  for (let i = 0; i < 20; i++) {
+    let p = createParticle();
+    p.maxLife = p.life;
+    p.x = mouseX + random(-20, 20);
+    p.y = mouseY + random(-20, 20);
+    p.vy = random(-2, -0.5);
+    p.alpha = random(60, 100);
+    particles.push(p);
+  }
+}
+</script>
+</body>
+</html>
