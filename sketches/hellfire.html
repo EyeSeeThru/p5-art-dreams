@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hellfire</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Hellfire — Intense dramatic flames reaching upward
+// Artistic, powerful, dangerous
+// Bright cores with dark wispy edges
+
+let time = 0;
+let flames = [];
+const NUM_FLAMES = 25;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize flames
+  for (let i = 0; i < NUM_FLAMES; i++) {
+    flames.push(createFlame());
+  }
+}
+
+function createFlame(startAlive = false) {
+  return {
+    x: random(width * 0.1, width * 0.9),
+    baseY: height + random(50, 200),
+    width: random(40, 120),
+    height: random(200, 500),
+    hue: random(0, 25), // Deep red to orange
+    flickerSpeed: random(0.05, 0.15),
+    phase: random(TWO_PI),
+    growthRate: random(0.002, 0.008),
+    decayRate: random(0.001, 0.004),
+    life: startAlive ? random(0.3, 0.8) : 0,
+    growing: true,
+    tipSharpness: random(0.5, 1.5),
+    swayAmp: random(10, 30),
+    swayFreq: random(0.01, 0.03)
+  };
+}
+
+function draw() {
+  // Dark background
+  background(2, 50, 1, 255);
+
+  // Draw flames
+  for (let i = 0; i < flames.length; i++) {
+    let f = flames[i];
+
+    // Life cycle
+    if (f.growing) {
+      f.life += f.growthRate;
+      if (f.life >= 1) {
+        f.life = 1;
+        f.growing = false;
+      }
+    } else {
+      f.life -= f.decayRate;
+      if (f.life <= 0) {
+        flames[i] = createFlame(true);
+        continue;
+      }
+    }
+
+    // Flicker
+    let flicker = sin(time * f.flickerSpeed * 60 + f.phase);
+    let currentHeight = f.height * f.life * (0.8 + flicker * 0.2);
+    let currentWidth = f.width * f.life * (0.9 + flicker * 0.1);
+
+    // Draw flame
+    drawFlame(f.x, f.baseY, currentWidth, currentHeight, f, flicker);
+  }
+
+  // Occasional new flame
+  if (random() < 0.02 && flames.filter(f => f.life > 0.7).length < flames.length * 0.6) {
+    flames.push(createFlame(true));
+    if (flames.length > NUM_FLAMES * 1.5) {
+      // Remove oldest dead flame
+      let deadIdx = flames.findIndex(f => f.life < 0.1);
+      if (deadIdx >= 0) flames.splice(deadIdx, 1);
+    }
+  }
+
+  // Draw glow at base
+  drawBaseGlow();
+
+  // Draw smoke above
+  drawSmoke();
+
+  time += 0.016;
+}
+
+function drawFlame(x, baseY, w, h, f, flicker) {
+  noStroke();
+
+  let sway = sin(time * f.swayFreq * 60 + f.phase) * f.swayAmp * f.life;
+  let tipX = x + sway;
+
+  // Multiple layers for depth
+  for (let layer = 0; layer < 5; layer++) {
+    let layerRatio = layer / 5;
+    let layerW = w * (1 - layerRatio * 0.6);
+    let layerH = h * (1 - layerRatio * 0.4);
+    let layerAlpha = (1 - layerRatio) * 50 * f.life;
+    let layerHue = f.hue + layerRatio * 15;
+
+    // Outer glow
+    fill(layerHue, 80, 40, layerAlpha * 0.3);
+    beginShape();
+    vertex(x - layerW * 0.5 + sway * (1 - layerRatio), baseY);
+    bezierVertex(
+      x - layerW * 0.6 + sway * 0.8, baseY - layerH * 0.3,
+      tipX - layerW * 0.3 * f.tipSharpness, baseY - layerH * 0.7,
+      tipX, baseY - layerH
+    );
+    bezierVertex(
+      tipX + layerW * 0.3 * f.tipSharpness, baseY - layerH * 0.7,
+      x + layerW * 0.6 + sway * 0.8, baseY - layerH * 0.3,
+      x + layerW * 0.5 + sway * (1 - layerRatio), baseY
+    );
+    endShape(CLOSE);
+
+    // Inner bright
+    if (layer < 2) {
+      let innerW = layerW * 0.5;
+      let innerH = layerH * 0.6;
+      fill(layerHue + 10, 60, 70, layerAlpha * 0.6);
+      beginShape();
+      vertex(x - innerW * 0.5 + sway * 0.9, baseY);
+      bezierVertex(
+        x - innerW * 0.5 + sway * 0.7, baseY - innerH * 0.3,
+        tipX - innerW * 0.2, baseY - innerH * 0.8,
+        tipX, baseY - innerH
+      );
+      bezierVertex(
+        tipX + innerW * 0.2, baseY - innerH * 0.8,
+        x + innerW * 0.5 + sway * 0.7, baseY - innerH * 0.3,
+        x + innerW * 0.5 + sway * 0.9, baseY
+      );
+      endShape(CLOSE);
+
+      // Hot core
+      if (layer === 0) {
+        let coreH = layerH * 0.3;
+        fill(min(layerHue + 30, 50), 30, 100, layerAlpha * 0.8);
+        ellipse(tipX, baseY - coreH * 0.5, innerW * 0.3, coreH);
+      }
+    }
+  }
+}
+
+function drawBaseGlow() {
+  // Warm glow at base
+  noStroke();
+  for (let y = height - 50; y < height; y++) {
+    let alpha = map(y, height - 50, height, 0, 15);
+    fill(15, 90, 50, alpha);
+    rect(0, y, width, 1);
+  }
+
+  // Bright spots at flame bases
+  for (let f of flames) {
+    if (f.life > 0.3) {
+      let glowSize = f.width * f.life * 2;
+      for (let r = glowSize; r > 5; r -= glowSize / 4) {
+        let alpha = map(r, 5, glowSize, 10, 0) * f.life;
+        fill(20, 80, 60, alpha);
+        ellipse(f.x, f.baseY, r, r * 0.5);
+      }
+    }
+  }
+}
+
+function drawSmoke() {
+  // Wispy smoke above flames
+  noStroke();
+  for (let i = 0; i < 20; i++) {
+    let x = random(width);
+    let y = random(height * 0.2, height * 0.5);
+    let size = random(10, 40);
+    let alpha = random(2, 8);
+
+    fill(0, 20, 15, alpha);
+    ellipse(x + sin(time * 0.5 + i) * 20, y, size * 2, size);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // Reset flames
+  flames = [];
+  for (let i = 0; i < NUM_FLAMES; i++) {
+    flames.push(createFlame(true));
+  }
+}
+
+function mousePressed() {
+  // Burst of new flames from mouse x position
+  for (let i = 0; i < 5; i++) {
+    let f = createFlame(true);
+    f.x = mouseX + random(-60, 60);
+    f.baseY = mouseY + random(0, 100);
+    f.life = 0.5;
+    flames.push(f);
+    if (flames.length > NUM_FLAMES * 2) {
+      flames.splice(0, 1);
+    }
+  }
+}
+</script>
+</body>
+</html>
