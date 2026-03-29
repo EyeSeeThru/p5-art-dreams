@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Liquid Mercury</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #010101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Liquid Mercury — Flowing mercury droplets with metallic reflections
+// Artistic, cold, metallic, hypnotic
+// Cold silver liquid metal with reflective surface
+
+let time = 0;
+let droplets = [];
+const NUM_DROPLETS = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 30, 100, 100); // Low saturation for metallic look
+
+  for (let i = 0; i < NUM_DROPLETS; i++) {
+    droplets.push(createDroplet(random(width), random(height), true));
+  }
+}
+
+function createDroplet(x, y, isInitial = false) {
+  return {
+    x: x,
+    y: y,
+    vx: random(-0.5, 0.5),
+    vy: random(-0.3, 0.3),
+    baseSize: random(20, 80),
+    size: isInitial ? random(30, 80) : random(5, 20),
+    targetSize: random(30, 80),
+    hue: random(5, 15), // Very neutral silver-gray
+    reflectHue: random(180, 220), // Cool sky reflections
+    phase: random(TWO_PI),
+    wobbleFreq: random(0.03, 0.08),
+    wobbleAmp: random(0.5, 1.5),
+    mergeTimer: 0,
+    merging: false,
+    dead: false
+  };
+}
+
+function draw() {
+  // Dark background
+  background(0, 0, 2);
+
+  // Subtle gradient background
+  drawBackground();
+
+  // Update and draw droplets
+  for (let drop of droplets) {
+    updateDrop(drop);
+    drawDrop(drop);
+  }
+
+  // Handle merging
+  handleMerging();
+
+  // Occasional reflections
+  drawReflections();
+
+  time += 0.016;
+}
+
+function drawBackground() {
+  // Very subtle radial gradient
+  noStroke();
+  for (let r = min(width, height); r > 0; r -= 50) {
+    let alpha = map(r, 0, min(width, height), 3, 0);
+    fill(220, 10, 5, alpha);
+    ellipse(width / 2, height / 2, r, r);
+  }
+}
+
+function updateDrop(drop) {
+  // Gentle drift
+  drop.x += drop.vx;
+  drop.y += drop.vy;
+
+  // Wobble
+  let wobbleX = sin(time * drop.wobbleFreq * 60 + drop.phase) * drop.wobbleAmp;
+  let wobbleY = cos(time * drop.wobbleFreq * 60 * 0.7 + drop.phase) * drop.wobbleAmp * 0.5;
+
+  // Size oscillation (breathing)
+  let sizeWobble = sin(time * drop.wobbleFreq * 30 + drop.phase) * 0.1;
+
+  // Boundary bouncing
+  if (drop.x < 0 || drop.x > width) drop.vx *= -1;
+  if (drop.y < 0 || drop.y > height) drop.vy *= -1;
+
+  // Keep in bounds
+  drop.x = constrain(drop.x, 0, width);
+  drop.y = constrain(drop.y, 0, height);
+
+  // Update size towards target
+  if (!drop.merging) {
+    drop.size = lerp(drop.size, drop.targetSize * (1 + sizeWobble), 0.02);
+  }
+
+  // Slow growth for new drops
+  if (drop.size < drop.targetSize * 0.3) {
+    drop.size += 0.5;
+  }
+}
+
+function drawDrop(drop) {
+  if (drop.dead) return;
+
+  let wobbleX = sin(time * drop.wobbleFreq * 60 + drop.phase) * drop.wobbleAmp;
+  let wobbleY = cos(time * drop.wobbleFreq * 60 * 0.7 + drop.phase) * drop.wobbleAmp * 0.5;
+  let x = drop.x + wobbleX;
+  let y = drop.y + wobbleY;
+  let s = drop.size;
+
+  // Shadow
+  noStroke();
+  fill(0, 0, 0, 20);
+  ellipse(x + 3, y + 3, s * 2, s * 2);
+
+  // Main body - metallic gradient effect
+  for (let r = s; r > 0; r -= s / 5) {
+    let t = r / s;
+    let brightness = 30 + t * 50; // Dark to bright
+    let sat = 15 - t * 10; // Less saturated towards center
+    let alpha = 60 + t * 30;
+    fill(drop.hue, sat, brightness, alpha);
+    ellipse(x, y, r * 2, r * 2);
+  }
+
+  // Bright highlight
+  fill(drop.reflectHue, 5, 95, 70);
+  ellipse(x - s * 0.3, y - s * 0.3, s * 0.4, s * 0.4);
+
+  // Secondary highlight
+  fill(drop.reflectHue, 8, 85, 40);
+  ellipse(x + s * 0.2, y - s * 0.4, s * 0.25, s * 0.25);
+
+  // Rim reflection (characteristic of liquid metal)
+  stroke(0, 0, 70, 30);
+  strokeWeight(0.5);
+  noFill();
+  arc(x, y, s * 1.8, s * 1.8, PI * 0.7, PI * 1.3);
+  arc(x, y, s * 1.6, s * 1.6, PI * 0.75, PI * 1.25);
+}
+
+function handleMerging() {
+  for (let i = droplets.length - 1; i >= 0; i--) {
+    for (let j = droplets.length - 1; j >= 0; j--) {
+      if (i !== j && !droplets[i].dead && !droplets[j].dead) {
+        let d = dist(droplets[i].x, droplets[i].y, droplets[j].x, droplets[j].y);
+        if (d < (droplets[i].size + droplets[j].size) * 0.8) {
+          // Merge - larger absorbs smaller
+          if (droplets[i].size > droplets[j].size) {
+            droplets[i].size = min(droplets[i].size * 1.2, droplets[i].targetSize * 1.5);
+            droplets[i].targetSize = droplets[i].size;
+            droplets[j].dead = true;
+          } else {
+            droplets[j].size = min(droplets[j].size * 1.2, droplets[j].targetSize * 1.5);
+            droplets[j].targetSize = droplets[j].size;
+            droplets[i].dead = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Remove dead droplets and add new ones
+  droplets = droplets.filter(d => !d.dead);
+
+  // Maintain minimum number
+  while (droplets.length < NUM_DROPLETS / 2) {
+    droplets.push(createDroplet(random(width), random(height)));
+  }
+}
+
+function drawReflections() {
+  // Occasional surface reflections
+  noStroke();
+  for (let i = 0; i < 8; i++) {
+    let x = noise(time * 0.02 + i * 50, i * 30) * width;
+    let y = noise(time * 0.015 + i * 50 + 100, i * 30) * height;
+    let len = noise(time * 0.03 + i * 50 + 200, i * 30) * 100 + 20;
+    let alpha = noise(time * 0.04 + i * 50 + 300, i * 30) * 20 + 5;
+
+    stroke(200, 10, 80, alpha);
+    strokeWeight(0.5);
+    line(x, y, x + len, y + len * 0.3);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new mercury drop at mouse position
+  let drop = createDroplet(mouseX, mouseY);
+  drop.size = 5;
+  drop.vx = random(-1, 1);
+  drop.vy = random(-1, 1);
+  droplets.push(drop);
+
+  // Spawn burst
+  for (let i = 0; i < 3; i++) {
+    let smallDrop = createDroplet(mouseX + random(-20, 20), mouseY + random(-20, 20));
+    smallDrop.size = random(3, 8);
+    smallDrop.targetSize = smallDrop.size;
+    droplets.push(smallDrop);
+  }
+}
+</script>
+</body>
+</html>
