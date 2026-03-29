@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Heat Shimmer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #030303; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Heat Shimmer — Shimmering heat distortion waves
+// Artistic, warm, atmospheric
+// Heat rising from a warm surface creating optical distortion
+
+let time = 0;
+let shimmerLayers = [];
+const NUM_LAYERS = 8;
+let distortionShader;
+let heatParticles = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Create shimmer layers
+  for (let i = 0; i < NUM_LAYERS; i++) {
+    shimmerLayers.push({
+      y: map(i, 0, NUM_LAYERS, height * 0.3, height),
+      baseAlpha: map(i, 0, NUM_LAYERS, 20, 5),
+      waveAmp: random(5, 15),
+      waveFreq: random(0.005, 0.015),
+      waveSpeed: random(0.02, 0.05),
+      phase: random(TWO_PI),
+      hue: random(10, 35),
+      sat: random(70, 100)
+    });
+  }
+
+  // Heat particles rising
+  for (let i = 0; i < 80; i++) {
+    heatParticles.push(createHeatParticle());
+  }
+}
+
+function createHeatParticle(start = false) {
+  return {
+    x: random(width),
+    y: start ? random(height * 0.5, height) : random(height * 0.8, height),
+    size: random(1, 4),
+    speed: random(0.3, 1.2),
+    wobbleAmp: random(3, 10),
+    wobbleFreq: random(0.02, 0.06),
+    phase: random(TWO_PI),
+    alpha: start ? random(20, 50) : 0,
+    hue: random(15, 40),
+    life: start ? random(0.5, 1) : 0
+  };
+}
+
+function draw() {
+  // Dark background
+  background(3, 30, 1);
+
+  // Draw ground/warm surface
+  drawWarmSurface();
+
+  // Draw heat shimmer layers
+  drawShimmerLayers();
+
+  // Draw heat particles
+  drawHeatParticles();
+
+  // Draw heat distortion effect
+  drawDistortionOverlay();
+
+  time += 0.016;
+}
+
+function drawWarmSurface() {
+  // Gradient at bottom - warm glow
+  noStroke();
+  for (let y = height * 0.75; y < height; y++) {
+    let inter = map(y, height * 0.75, height, 0, 1);
+    let hue = lerp(25, 10, inter);
+    let sat = lerp(80, 60, inter);
+    let bri = lerp(3, 15, inter);
+    fill(hue, sat, bri);
+    rect(0, y, width, 1);
+  }
+
+  // Subtle glow line at horizon
+  for (let x = 0; x < width; x += 2) {
+    let wave = sin(x * 0.02 + time * 2) * 3;
+    let alpha = 20 + sin(x * 0.05 + time) * 10;
+    stroke(25, 90, 40, alpha);
+    line(x, height * 0.78 + wave, x + 1, height * 0.78 + wave);
+  }
+}
+
+function drawShimmerLayers() {
+  noStroke();
+
+  for (let layer of shimmerLayers) {
+    let waveOffset = sin(time * layer.waveSpeed * 60 + layer.phase) * layer.waveAmp;
+
+    // Draw wavy shimmer line
+    for (let x = 0; x < width; x += 3) {
+      let y = layer.y + sin(x * layer.waveFreq + time * layer.waveSpeed * 60) * layer.waveAmp + waveOffset;
+      let alpha = layer.baseAlpha + sin(x * 0.02 + time * 2) * 10;
+
+      // Shimmer color
+      fill(layer.hue, layer.sat, 40, alpha);
+      ellipse(x, y, 4, 8);
+      fill(layer.hue, layer.sat * 0.5, 60, alpha * 0.5);
+      ellipse(x, y - 2, 2, 4);
+    }
+  }
+}
+
+function drawHeatParticles() {
+  noStroke();
+
+  for (let i = 0; i < heatParticles.length; i++) {
+    let p = heatParticles[i];
+
+    // Rise
+    p.y -= p.speed;
+
+    // Wobble
+    p.x += sin(time * p.wobbleFreq * 60 + p.phase) * p.wobbleAmp * 0.1;
+    p.x += cos(time * 0.5 + p.phase) * 0.3;
+
+    // Fade in at bottom, fade out at top
+    if (p.y > height * 0.8) {
+      p.life += 0.02;
+      p.alpha = p.life * 40;
+    } else if (p.y < height * 0.3) {
+      p.life -= 0.015;
+      p.alpha = p.life * 35;
+    }
+
+    // Reset if dead
+    if (p.life <= 0 || p.y < height * 0.2) {
+      heatParticles[i] = createHeatParticle(true);
+      continue;
+    }
+
+    // Draw particle
+    let size = p.size * (0.5 + p.life * 0.5);
+    fill(p.hue, p.sat, 50, p.alpha * 0.6);
+    ellipse(p.x, p.y, size * 4, size * 6);
+    fill(p.hue + 10, 30, 80, p.alpha * 0.8);
+    ellipse(p.x, p.y, size * 2, size * 3);
+  }
+
+  // Spawn new particles
+  if (random() < 0.3) {
+    let deadIdx = heatParticles.findIndex(p => p.life < 0.1);
+    if (deadIdx >= 0) {
+      heatParticles[deadIdx] = createHeatParticle(true);
+    }
+  }
+}
+
+function drawDistortionOverlay() {
+  // Create illusion of heat distortion through wave patterns
+  noFill();
+  strokeWeight(0.5);
+
+  // Horizontal distortion lines
+  for (let y = height * 0.4; y < height * 0.8; y += 15) {
+    let baseAlpha = map(y, height * 0.4, height * 0.8, 3, 12);
+
+    for (let x = 0; x < width; x += 4) {
+      let d = dist(x, y, mouseX, mouseY);
+      let mouseInfluence = map(d, 0, 200, 15, 0);
+
+      let wave = sin(x * 0.03 + time * 3 + y * 0.01) * 4;
+      let alpha = baseAlpha + sin(x * 0.01 + time * 2) * 3 + mouseInfluence;
+
+      stroke(20, 60, 40, min(alpha, 25));
+      point(x + wave, y + sin(time * 2 + x * 0.01) * 2);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  // Recreate layers for new dimensions
+  shimmerLayers = [];
+  for (let i = 0; i < NUM_LAYERS; i++) {
+    shimmerLayers.push({
+      y: map(i, 0, NUM_LAYERS, height * 0.3, height),
+      baseAlpha: map(i, 0, NUM_LAYERS, 20, 5),
+      waveAmp: random(5, 15),
+      waveFreq: random(0.005, 0.015),
+      waveSpeed: random(0.02, 0.05),
+      phase: random(TWO_PI),
+      hue: random(10, 35),
+      sat: random(70, 100)
+    });
+  }
+}
+
+function mousePressed() {
+  // Burst of heat particles from mouse
+  for (let i = 0; i < 15; i++) {
+    let deadIdx = heatParticles.findIndex(p => p.life < 0.2);
+    if (deadIdx >= 0) {
+      let p = createHeatParticle(true);
+      p.x = mouseX + random(-50, 50);
+      p.y = mouseY + random(-30, 30);
+      p.alpha = 60;
+      p.size *= random(1.2, 2);
+      heatParticles[deadIdx] = p;
+    }
+  }
+
+  // Distortion burst at mouse
+  for (let layer of shimmerLayers) {
+    layer.waveAmp += 10;
+    layer.baseAlpha += 5;
+  }
+}
+</script>
+</body>
+</html>
