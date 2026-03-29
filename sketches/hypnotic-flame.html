@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hypnotic Flame</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Hypnotic Flame — Swirling hypnotic spiral patterns in red and black
+// Artistic, mesmerizing, spiraling motion
+// Spirals that draw you in
+
+let time = 0;
+let particles = [];
+const NUM_PARTICLES = 300;
+let mode = 0; // 0 = inward spiral, 1 = outward spiral, 2 = figure8, 3 = expanding
+const MODES = ['INWARD SPIRAL', 'OUTWARD SPIRAL', 'FIGURE 8', 'EXPANDING WAVES'];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle(startFresh = false) {
+  let angle, radius, speed;
+
+  if (mode === 0) {
+    // Inward spiral
+    angle = random(TWO_PI);
+    radius = random(width * 0.8);
+    speed = random(0.3, 1.2) * (1 - radius / (width * 0.8) * 0.7);
+  } else if (mode === 1) {
+    // Outward spiral
+    angle = random(TWO_PI);
+    radius = random(width * 0.1, width * 0.2);
+    speed = random(0.5, 1.5) * (radius / (width * 0.5));
+  } else if (mode === 2) {
+    // Figure 8 / lemniscate
+    angle = random(TWO_PI);
+    radius = random(width * 0.3, width * 0.5);
+    speed = random(0.4, 1.0);
+  } else {
+    // Expanding waves
+    angle = random(TWO_PI);
+    radius = random(20, 100);
+    speed = random(1.0, 3.0);
+  }
+
+  return {
+    angle: angle,
+    radius: radius,
+    speed: speed,
+    hue: random(0, 40), // Red to orange
+    brightness: random(70, 100),
+    size: random(1.5, 5),
+    alpha: random(30, 70),
+    trail: [],
+    maxTrail: random(15, 40),
+    wobbleAmp: random(0.5, 3),
+    wobbleFreq: random(0.01, 0.05),
+    phase: random(TWO_PI)
+  };
+}
+
+function draw() {
+  // Fade effect for trails
+  noStroke();
+  fill(2, 30, 0.5, 15);
+  rect(0, 0, width, height);
+
+  let centerX = width / 2;
+  let centerY = height / 2;
+  let maxR = min(width, height) * 0.45;
+
+  // Draw center glow
+  for (let r = maxR * 0.3; r > 0; r -= maxR * 0.3 / 5) {
+    let alpha = map(r, 0, maxR * 0.3, 15, 0);
+    fill(15, 80, 50, alpha);
+    ellipse(centerX, centerY, r * 2, r * 2);
+  }
+
+  // Update and draw particles
+  for (let i = 0; i < particles.length; i++) {
+    let p = particles[i];
+
+    // Store trail
+    let px = centerX + cos(p.angle) * p.radius;
+    let py = centerY + sin(p.angle) * p.radius;
+    p.trail.push({ x: px, y: py, hue: p.hue, size: p.size });
+
+    if (p.trail.length > p.maxTrail) {
+      p.trail.shift();
+    }
+
+    // Draw trail
+    for (let j = 0; j < p.trail.length - 1; j++) {
+      let t = p.trail[j];
+      let alpha = map(j, 0, p.trail.length, 0, p.alpha);
+      let size = map(j, 0, p.trail.length, 0.5, p.size);
+      fill(t.hue, 90, 80, alpha);
+      noStroke();
+      ellipse(t.x, t.y, size, size);
+    }
+
+    // Update position based on mode
+    if (mode === 0) {
+      // Inward spiral
+      p.radius -= p.speed * 0.5;
+      p.angle += (p.speed + p.wobbleAmp) / (p.radius * 0.01 + 1) * 0.05;
+      if (p.radius < 5) {
+        particles[i] = createParticle();
+        particles[i].radius = maxR * random(0.8, 1.0);
+      }
+    } else if (mode === 1) {
+      // Outward spiral
+      p.radius += p.speed * 0.8;
+      p.angle += (p.speed + p.wobbleAmp) / (p.radius * 0.02 + 1) * 0.03;
+      if (p.radius > maxR) {
+        particles[i] = createParticle();
+        particles[i].radius = random(5, 20);
+      }
+    } else if (mode === 2) {
+      // Figure 8 / lemniscate pattern
+      let t = time * p.speed * 0.5 + p.phase;
+      p.angle = t;
+      let baseRadius = maxR * 0.5 * (1 - p.radius / (width * 0.5) * 0.3);
+      // Lemniscate of Bernoulli
+      let a = baseRadius;
+      let denom = 1 + sin(t) * sin(t);
+      p.radius = a * cos(t) / denom + baseRadius * 0.5;
+      p.radius = constrain(p.radius, 10, maxR);
+    } else {
+      // Expanding waves
+      p.radius += p.speed;
+      p.angle += 0.02 * p.speed;
+      if (p.radius > maxR) {
+        particles[i] = createParticle();
+        particles[i].radius = random(5, 30);
+      }
+    }
+
+    // Add wobble
+    p.angle += sin(time * p.wobbleFreq * 60 + p.phase) * p.wobbleAmp * 0.01;
+
+    // Draw particle at current position
+    let x = centerX + cos(p.angle) * p.radius;
+    let y = centerY + sin(p.angle) * p.radius;
+
+    // Glow
+    fill(p.hue, 80, 70, p.alpha * 0.3);
+    ellipse(x, y, p.size * 3, p.size * 3);
+
+    // Core
+    fill(p.hue, 60, p.brightness, p.alpha);
+    ellipse(x, y, p.size, p.size);
+  }
+
+  // Add new particles occasionally
+  if (random() < 0.05 && particles.length < NUM_PARTICLES * 1.5) {
+    particles.push(createParticle());
+  }
+
+  // Draw mode indicator occasionally
+  if (frameCount % 300 < 60) {
+    noStroke();
+    fill(0, 0, 100, 30);
+    textAlign(CENTER);
+    textSize(14);
+    text(MODES[mode], width / 2, height - 30);
+  }
+
+  time += 0.016;
+}
+
+function mousePressed() {
+  // Cycle through modes
+  mode = (mode + 1) % MODES.length;
+  // Reset particles
+  for (let i = 0; i < particles.length; i++) {
+    particles[i] = createParticle(true);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  particles = [];
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+</script>
+</body>
+</html>
