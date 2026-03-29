@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hot Coals</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Hot Coals — Glowing embers at rest, slowly pulsing
+// Artistic, meditative, intimate
+// Fire at its most peaceful — smoldering quietly
+
+let time = 0;
+let coals = [];
+const NUM_COALS = 60;
+let emberParticles = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize coals
+  for (let i = 0; i < NUM_COALS; i++) {
+    coals.push(createCoal());
+  }
+
+  // Initialize ember particles
+  for (let i = 0; i < 40; i++) {
+    emberParticles.push(createEmber());
+  }
+}
+
+function createCoal(startAlive = false) {
+  return {
+    x: random(width),
+    y: random(height * 0.7, height),
+    baseSize: random(8, 35),
+    hue: random(5, 30), // Deep red to orange
+    brightness: random(60, 90),
+    pulseSpeed: random(0.01, 0.04),
+    pulseAmp: random(10, 25),
+    phase: random(TWO_PI),
+    sat: random(80, 100),
+    crackPattern: random(3, 8), // Number of crack lines
+    heatRadius: random(1.5, 3) // How far heat extends
+  };
+}
+
+function createEmber() {
+  return {
+    x: random(width),
+    y: random(height * 0.5, height),
+    size: random(0.5, 2.5),
+    speed: random(0.1, 0.5),
+    alpha: 0,
+    hue: random(10, 35),
+    life: 0,
+    maxLife: random(60, 150),
+    wobbleAmp: random(2, 8),
+    wobbleFreq: random(0.02, 0.08),
+    phase: random(TWO_PI)
+  };
+}
+
+function draw() {
+  // Dark background with very subtle warmth at bottom
+  background(2, 30, 0.5);
+
+  // Draw heat glow at bottom
+  drawHeatGlow();
+
+  // Draw coals
+  for (let coal of coals) {
+    drawCoal(coal);
+  }
+
+  // Draw ember particles
+  for (let i = emberParticles.length - 1; i >= 0; i--) {
+    let e = emberParticles[i];
+
+    e.y -= e.speed;
+    e.x += sin(time * e.wobbleFreq * 60 + e.phase) * e.wobbleAmp * 0.05;
+
+    e.life++;
+    if (e.life < 20) {
+      e.alpha = map(e.life, 0, 20, 0, 40);
+    } else if (e.life > e.maxLife - 20) {
+      e.alpha = map(e.life, e.maxLife - 20, e.maxLife, 40, 0);
+    } else {
+      e.alpha = 40;
+    }
+
+    if (e.life >= e.maxLife || e.y < height * 0.3) {
+      emberParticles[i] = createEmber();
+      emberParticles[i].y = height * 0.85;
+      emberParticles[i].x = random(width);
+      emberParticles[i].life = 0;
+      continue;
+    }
+
+    // Draw ember
+    noStroke();
+    fill(e.hue, 90, 80, e.alpha);
+    ellipse(e.x, e.y, e.size * 2, e.size * 2);
+    fill(e.hue + 15, 40, 100, e.alpha * 0.6);
+    ellipse(e.x, e.y, e.size, e.size);
+  }
+
+  // Occasional ember burst
+  if (random() < 0.01) {
+    for (let j = 0; j < 8; j++) {
+      let e = createEmber();
+      e.x = random(width);
+      e.y = height * 0.8;
+      e.life = 0;
+      emberParticles.push(e);
+    }
+    // Limit particles
+    if (emberParticles.length > 100) {
+      emberParticles.splice(0, 30);
+    }
+  }
+
+  time += 0.016;
+}
+
+function drawHeatGlow() {
+  // Subtle heat shimmer at bottom
+  noStroke();
+  for (let y = height * 0.6; y < height; y++) {
+    let alpha = map(y, height * 0.6, height, 0, 8);
+    fill(20, 60, 20, alpha);
+    rect(0, y, width, 1);
+  }
+
+  // Warm glow above coals
+  for (let coal of coals) {
+    let pulse = sin(time * coal.pulseSpeed * 60 + coal.phase) * coal.pulseAmp;
+    let glowSize = coal.baseSize * coal.heatRadius * 3 * (1 + pulse / 100);
+
+    for (let r = glowSize; r > coal.baseSize; r -= glowSize / 5) {
+      let alpha = map(r, coal.baseSize, glowSize, 8, 0) * (coal.brightness / 100);
+      fill(coal.hue, coal.sat * 0.5, coal.brightness * 0.5, alpha);
+      ellipse(coal.x, coal.y, r, r * 0.4);
+    }
+  }
+}
+
+function drawCoal(coal) {
+  let pulse = sin(time * coal.pulseSpeed * 60 + coal.phase) * coal.pulseAmp;
+  let currentBrightness = coal.brightness + pulse;
+  let currentSize = coal.baseSize * (1 + pulse / 200);
+
+  noStroke();
+
+  // Outer glow
+  fill(coal.hue, coal.sat * 0.4, coal.brightness * 0.3, 20);
+  ellipse(coal.x, coal.y, currentSize * 3, currentSize * 1.5);
+
+  // Main coal body
+  fill(coal.hue, coal.sat, currentBrightness, 80);
+  ellipse(coal.x, coal.y, currentSize * 2, currentSize);
+
+  // Hot spots
+  fill(coal.hue + 10, coal.sat * 0.6, min(currentBrightness + 15, 100), 90);
+  ellipse(coal.x + random(-1, 1), coal.y + random(-1, 1), currentSize * 1.2, currentSize * 0.6);
+
+  // Brightest core
+  fill(min(coal.hue + 25, 45), 30, 100, 70);
+  ellipse(coal.x, coal.y, currentSize * 0.5, currentSize * 0.3);
+
+  // Subtle cracks/darker lines
+  stroke(coal.hue + 20, coal.sat, currentBrightness * 0.3, 30);
+  strokeWeight(0.5);
+  for (let i = 0; i < coal.crackPattern; i++) {
+    let angle = (TWO_PI / coal.crackPattern) * i + coal.phase;
+    let len = currentSize * 0.8;
+    line(coal.x, coal.y,
+         coal.x + cos(angle) * len,
+         coal.y + sin(angle) * len * 0.4);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  coals = [];
+  for (let i = 0; i < NUM_COALS; i++) {
+    coals.push(createCoal(true));
+  }
+  emberParticles = [];
+  for (let i = 0; i < 40; i++) {
+    emberParticles.push(createEmber());
+  }
+}
+
+function mousePressed() {
+  // Add new coal at mouse position
+  for (let i = 0; i < 5; i++) {
+    let coal = createCoal(true);
+    coal.x = mouseX + random(-40, 40);
+    coal.y = mouseY + random(-20, 20);
+    coals.push(coal);
+    if (coals.length > NUM_COALS * 1.5) {
+      coals.splice(0, 1);
+    }
+  }
+
+  // Burst of embers
+  for (let j = 0; j < 15; j++) {
+    let e = createEmber();
+    e.x = mouseX + random(-50, 50);
+    e.y = mouseY + random(-30, 30);
+    e.life = 0;
+    emberParticles.push(e);
+  }
+}
+</script>
+</body>
+</html>
