@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ink Bloom</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Ink Bloom — Black ink slowly blooming through water
+// Artistic, organic, meditative
+// Liquid darkness expanding organically
+
+let time = 0;
+let drops = [];
+const MAX_DROPS = 15;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize with one central drop
+  drops.push(createDrop(width / 2, height / 2, true));
+}
+
+function createDrop(x, y, isInitial = false) {
+  return {
+    x: x,
+    y: y,
+    startTime: time + (isInitial ? 0 : random(0.5, 2)),
+    duration: random(8, 15),
+    hue: random(200, 260), // Deep blue-purple range
+    maxRadius: isInitial ? min(width, height) * 0.45 : random(100, 300),
+    branches: floor(random(5, 12)),
+    branchJaggedness: random(0.3, 0.8),
+    particles: [],
+    done: false
+  };
+}
+
+function draw() {
+  // Very subtle background
+  background(240, 10, 2);
+
+  // Draw subtle water texture
+  drawWaterTexture();
+
+  // Update and draw drops
+  for (let drop of drops) {
+    if (time < drop.startTime) continue;
+
+    let progress = constrain((time - drop.startTime) / drop.duration, 0, 1);
+    let eased = easeOutQuart(progress);
+    let currentRadius = drop.maxRadius * eased;
+
+    if (progress < 1) {
+      drawInkDrop(drop, currentRadius, progress);
+    } else if (!drop.done) {
+      drop.done = true;
+    }
+  }
+
+  // Occasionally spawn new drops
+  if (frameCount % 180 === 60 && drops.length < MAX_DROPS) {
+    // Spawn from edge or random
+    let x = random(width);
+    let y = random(height);
+    // Don't spawn too close to existing active drops
+    let tooClose = false;
+    for (let drop of drops) {
+      if (time >= drop.startTime && !drop.done) {
+        let d = dist(x, y, drop.x, drop.y);
+        if (d < drop.maxRadius * 0.5) {
+          tooClose = true;
+          break;
+        }
+      }
+    }
+    if (!tooClose) {
+      drops.push(createDrop(x, y));
+    }
+  }
+
+  // Remove old completed drops to save memory
+  if (drops.length > MAX_DROPS) {
+    drops = drops.filter(d => !d.done);
+  }
+
+  time += 0.016;
+}
+
+function drawWaterTexture() {
+  noStroke();
+  // Subtle caustic-like pattern
+  for (let i = 0; i < 20; i++) {
+    let x = (noise(i * 0.3, time * 0.02) - 0.5) * width * 1.5 + width / 2;
+    let y = (noise(i * 0.3 + 100, time * 0.015) - 0.5) * height * 1.5 + height / 2;
+    let size = noise(i * 0.5 + 200, time * 0.01) * 100 + 20;
+    fill(220, 5, 3, 2);
+    ellipse(x, y, size, size);
+  }
+}
+
+function drawInkDrop(drop, currentRadius, progress) {
+  // Main ink blob
+  noStroke();
+
+  // Multiple layers for depth
+  for (let layer = 0; layer < 5; layer++) {
+    let layerRatio = layer / 5;
+    let layerRadius = currentRadius * (1 - layerRatio * 0.3);
+
+    // Create organic blob shape using noise
+    let points = [];
+    let numPoints = 100;
+
+    for (let i = 0; i < numPoints; i++) {
+      let angle = (TWO_PI / numPoints) * i;
+      let noiseVal = noise(
+        cos(angle) * 2 + drop.x * 0.001 + layer * 10,
+        sin(angle) * 2 + drop.y * 0.001 + time * 0.1,
+        drop.branchJaggedness * 5
+      );
+      let r = layerRadius * (0.6 + noiseVal * 0.7);
+
+      // Add branching tendrils
+      if (noise(angle * 3 + time * 0.05, drop.branchJaggedness * 10) > 0.65) {
+        r *= 1.3;
+      }
+
+      let x = drop.x + cos(angle) * r;
+      let y = drop.y + sin(angle) * r;
+      points.push({ x, y });
+    }
+
+    // Draw as filled shape
+    let alpha = map(layer, 0, 4, 60, 10) * (1 - progress * 0.3);
+    fill(drop.hue, 15, 8, alpha);
+    beginShape();
+    for (let p of points) {
+      curveVertex(p.x, p.y);
+    }
+    // Close the shape
+    curveVertex(points[0].x, points[0].y);
+    curveVertex(points[1].x, points[1].y);
+    endShape(CLOSE);
+  }
+
+  // Draw tendrils
+  drawTendrils(drop, currentRadius, progress);
+
+  // Subtle inner glow
+  for (let r = currentRadius * 0.3; r > 0; r -= currentRadius * 0.3 / 5) {
+    let alpha = map(r, 0, currentRadius * 0.3, 15, 0);
+    fill(drop.hue, 20, 15, alpha);
+    ellipse(drop.x, drop.y, r * 2, r * 2);
+  }
+}
+
+function drawTendrils(drop, currentRadius, progress) {
+  let numTendrils = drop.branches;
+  strokeWeight(random(0.5, 2));
+
+  for (let i = 0; i < numTendrils; i++) {
+    let baseAngle = (TWO_PI / numTendrils) * i + drop.branchJaggedness;
+    let tendrilLength = currentRadius * random(0.4, 1.2);
+    let progress = constrain((time - drop.startTime) / (drop.duration * 0.8), 0, 1);
+
+    if (progress > 1) continue;
+
+    let points = [];
+    let numSegments = 20;
+
+    for (let s = 0; s <= numSegments; s++) {
+      let t = s / numSegments;
+      let angle = baseAngle + sin(t * PI * 3 + time * 2 + i) * 0.5;
+      let wobble = sin(t * 10 + time * 3 + i * 2) * t * 20;
+      let len = tendrilLength * t * progress;
+      let x = drop.x + cos(angle) * len + wobble;
+      let y = drop.y + sin(angle) * len + wobble;
+      points.push({ x, y });
+    }
+
+    // Draw tendril as fading line
+    noFill();
+    for (let s = 0; s < points.length - 1; s++) {
+      let alpha = map(s, 0, points.length - 1, 30, 5) * (1 - progress * 0.5);
+      stroke(drop.hue, 10, 12, alpha);
+      strokeWeight(map(s, 0, points.length - 1, 2, 0.3));
+      line(points[s].x, points[s].y, points[s + 1].x, points[s + 1].y);
+    }
+  }
+}
+
+function easeOutQuart(t) {
+  return 1 - pow(1 - t, 4);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new ink drop at mouse position
+  drops.push(createDrop(mouseX, mouseY));
+
+  // Limit drops
+  if (drops.length > MAX_DROPS * 2) {
+    drops.splice(0, drops.length - MAX_DROPS);
+  }
+}
+</script>
+</body>
+</html>
