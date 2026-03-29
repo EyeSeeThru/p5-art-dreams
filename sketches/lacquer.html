@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Lacquer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Lacquer — Deep black lacquer surface with glossy pools of liquid light
+// Artistic, luxurious, meditative
+// The beauty of deep black with subtle glossy reflections
+
+let time = 0;
+let pools = [];
+const NUM_POOLS = 8;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  for (let i = 0; i < NUM_POOLS; i++) {
+    pools.push(createPool());
+  }
+}
+
+function createPool(initial = false) {
+  return {
+    x: random(width),
+    y: random(height),
+    baseSize: random(50, 200),
+    hue: random(0, 40), // Red to orange-red range
+    growthRate: random(0.01, 0.04),
+    phase: random(TWO_PI),
+    wobbleFreq: random(0.02, 0.05),
+    wobbleAmp: random(0.1, 0.3),
+    maxSize: random(150, 400),
+    currentSize: initial ? random(10, 50) : 0,
+    alpha: random(40, 70),
+    reflectionStrength: random(0.3, 0.7)
+  };
+}
+
+function draw() {
+  // Deep black lacquer background
+  background(0, 0, 1);
+
+  // Draw subtle lacquer texture
+  drawLacquerTexture();
+
+  // Update and draw pools
+  for (let pool of pools) {
+    drawPool(pool);
+  }
+
+  // Draw occasional glossy highlights
+  drawHighlights();
+
+  // Subtle vignette
+  drawVignette();
+
+  time += 0.016;
+}
+
+function drawLacquerTexture() {
+  noStroke();
+  // Very subtle swirl pattern in the lacquer
+  for (let i = 0; i < 30; i++) {
+    let x = noise(i * 0.5, time * 0.01) * width;
+    let y = noise(i * 0.5 + 100, time * 0.008) * height;
+    let size = noise(i * 0.3 + 200, time * 0.005) * 200 + 30;
+    fill(0, 0, 3, 3);
+    ellipse(x, y, size, size * 0.7);
+  }
+}
+
+function drawPool(pool) {
+  // Grow pool over time
+  if (pool.currentSize < pool.maxSize) {
+    pool.currentSize += pool.growthRate * (pool.maxSize - pool.currentSize) * 0.1;
+  }
+
+  // Wobble
+  let wobble = sin(time * pool.wobbleFreq * 60 + pool.phase) * pool.wobbleAmp;
+  let currentSize = pool.currentSize * (1 + wobble);
+
+  if (currentSize < 1) return;
+
+  // Multiple layers for depth
+  // Outer dark ring
+  noStroke();
+  fill(0, 20, 3, 30);
+  ellipse(pool.x, pool.y, currentSize * 2.2, currentSize * 0.7);
+
+  // Main pool
+  fill(pool.hue, 80, pool.alpha * 0.3, pool.alpha * 0.3);
+  ellipse(pool.x, pool.y, currentSize * 2, currentSize * 0.6);
+
+  // Glossy surface gradient
+  for (let r = currentSize; r > currentSize * 0.3; r -= currentSize * 0.15) {
+    let alpha = map(r, currentSize, currentSize * 0.3, 2, pool.alpha * 0.5);
+    fill(pool.hue + 10, 70, 50, alpha);
+    ellipse(pool.x, pool.y, r * 2, r * 0.6);
+  }
+
+  // Brightest center highlight
+  fill(pool.hue + 20, 50, 70, pool.alpha * 0.4);
+  ellipse(pool.x, pool.y, currentSize * 0.6, currentSize * 0.2);
+
+  // Sharp highlight
+  fill(pool.hue + 30, 30, 90, pool.alpha * 0.6);
+  ellipse(pool.x - currentSize * 0.1, pool.y - currentSize * 0.05, currentSize * 0.2, currentSize * 0.08);
+
+  // Reflection lines (lacquer has characteristic reflection lines)
+  stroke(0, 0, 80, pool.alpha * pool.reflectionStrength * 0.3);
+  strokeWeight(0.5);
+  noFill();
+  let reflectionAngle = PI * 0.25;
+  for (let i = 0; i < 3; i++) {
+    let len = currentSize * (0.3 + i * 0.2);
+    let startX = pool.x - cos(reflectionAngle) * len;
+    let startY = pool.y - sin(reflectionAngle) * len * 0.3;
+    let endX = pool.x + cos(reflectionAngle) * len * 0.5;
+    let endY = pool.y + sin(reflectionAngle) * len * 0.15;
+    bezier(startX, startY,
+            startX + random(-5, 5), startY + random(-10, 5),
+            endX + random(-5, 5), endY + random(-5, 10),
+            endX, endY);
+  }
+}
+
+function drawHighlights() {
+  // Occasional bright glossy highlights that move
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    let x = noise(time * 0.02 + i * 100, i * 50) * width;
+    let y = noise(time * 0.015 + i * 100 + 200, i * 50) * height;
+    let size = noise(time * 0.03 + i * 100, i * 50 + 300) * 50 + 10;
+    let alpha = noise(time * 0.04 + i * 100, i * 50 + 400) * 30;
+
+    fill(0, 0, 100, alpha);
+    ellipse(x, y, size, size * 0.3);
+  }
+}
+
+function drawVignette() {
+  // Subtle edge darkening
+  noStroke();
+  let vignetteSize = max(width, height) * 1.2;
+  for (let r = vignetteSize; r > min(width, height) * 0.8; r -= vignetteSize * 0.1) {
+    let alpha = map(r, vignetteSize, min(width, height) * 0.8, 0, 15);
+    fill(0, 0, 0, alpha);
+    ellipse(width / 2, height / 2, r, r * 0.7);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new glossy pool at mouse position
+  let pool = createPool();
+  pool.x = mouseX;
+  pool.y = mouseY;
+  pool.currentSize = 5;
+  pools.push(pool);
+
+  // Limit pools
+  if (pools.length > NUM_POOLS * 2) {
+    pools.shift();
+  }
+}
+</script>
+</body>
+</html>
