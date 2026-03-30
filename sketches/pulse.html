@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pulse</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Pulse — Living organic patterns in red and black
+// Painterly, alive, breathing
+// Like watching living tissue grow and pulse
+
+let cols, rows;
+let state = [];
+let nextState = [];
+
+const DA = 1.0;
+const DB = 0.48;
+const f = 0.03;  // lower feed for tighter patterns
+const k = 0.06;  // balance for organic look
+
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  cols = floor(width);
+  rows = floor(height);
+
+  for (let i = 0; i < cols; i++) {
+    state[i] = [];
+    nextState[i] = [];
+    for (let j = 0; j < rows; j++) {
+      state[i][j] = { a: 1, b: 0 };
+      nextState[i][j] = { a: 1, b: 0 };
+    }
+  }
+
+  // Seed with organic blob - like a starting cell
+  let cx = floor(cols / 2);
+  let cy = floor(rows / 2);
+
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let d = dist(i, j, cx, cy);
+      let r = min(width, height) * 0.2;
+
+      if (d < r) {
+        // Soft edge seed
+        let edge = 1 - (d / r);
+        edge = edge * edge * (3 - 2 * edge); // smoothstep
+
+        // Add organic noise
+        let n = noise(i * 0.08, j * 0.08 + 500);
+        let b = edge * (0.6 + n * 0.4);
+        state[i][j].b = b;
+        state[i][j].a = 1 - b;
+      }
+    }
+  }
+}
+
+function draw() {
+  for (let step = 0; step < 10; step++) {
+    for (let i = 1; i < cols - 1; i++) {
+      for (let j = 1; j < rows - 1; j++) {
+        let s = state[i][j];
+        let a = s.a;
+        let b = s.b;
+
+        // Laplacian with diagonals for smoother patterns
+        let la = 
+          state[i-1][j].a + state[i+1][j].a + 
+          state[i][j-1].a + state[i][j+1].a +
+          0.2 * (state[i-1][j-1].a + state[i+1][j-1].a + 
+                 state[i-1][j+1].a + state[i+1][j+1].a) - 1.8 * a;
+          
+        let lb = 
+          state[i-1][j].b + state[i+1][j].b + 
+          state[i][j-1].b + state[i][j+1].b +
+          0.2 * (state[i-1][j-1].b + state[i+1][j-1].b + 
+                 state[i-1][j+1].b + state[i+1][j+1].b) - 1.8 * b;
+
+        let newA = a + (DA * la - a * b * b + f * (1 - a));
+        let newB = b + (DB * lb + a * b * b - (k + f) * b);
+
+        newA = constrain(newA, 0, 1);
+        newB = constrain(newB, 0, 1);
+
+        nextState[i][j].a = newA;
+        nextState[i][j].b = newB;
+      }
+    }
+
+    let temp = state;
+    state = nextState;
+    nextState = temp;
+
+    // Slow feed from center to keep it alive
+    if (t % 200 === 0) {
+      let cx = floor(cols / 2);
+      let cy = floor(rows / 2);
+      for (let i = -10; i <= 10; i++) {
+        for (let j = -10; j <= 10; j++) {
+          if (random() < 0.2) {
+            let x = (cx + i + cols) % cols;
+            let y = (cy + j + rows) % rows;
+            state[x][y].a = 0.95;
+            state[x][y].b = 0.05;
+          }
+        }
+      }
+    }
+  }
+
+  t++;
+
+  loadPixels();
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let idx = (i + j * cols) * 4;
+      let s = state[i][j];
+
+      let b = s.b;
+      let r, g, bl;
+
+      // Create rich red-black palette
+      if (b > 0.4) {
+        // Bright blood red - the living tissue
+        r = 140 + (b - 0.4) * 200;
+        g = 8 + (b - 0.4) * 30;
+        bl = 15 + (b - 0.4) * 30;
+      } else if (b > 0.15) {
+        // Deep maroon - transitional
+        let t = (b - 0.15) / 0.25;
+        r = 60 + t * 120;
+        g = 5 + t * 15;
+        bl = 10 + t * 15;
+      } else {
+        // Near black - background
+        r = 12 + sin(i * 0.1 + j * 0.1) * 5;
+        g = 3 + sin(i * 0.08 + j * 0.12) * 2;
+        bl = 5 + sin(i * 0.09 + j * 0.07) * 3;
+      }
+
+      pixels[idx] = r;
+      pixels[idx+1] = g;
+      pixels[idx+2] = bl;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+
+  if (frameCount % 60 === 0) {
+    console.log('pulse', t);
+  }
+}
+
+function windowResized() {}
+
+function mousePressed() {
+  // Inject living cells at click
+  let cx = mouseX;
+  let cy = mouseY;
+
+  for (let i = -30; i <= 30; i++) {
+    for (let j = -30; j <= 30; j++) {
+      let x = (cx + i + cols) % cols;
+      let y = (cy + j + rows) % rows;
+      let d = dist(0, 0, i, j);
+      if (d < 25 && random() < 0.7) {
+        state[x][y].b = 0.8;
+        state[x][y].a = 0.2;
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
