@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Crimson Pulse</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0505; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Crimson Pulse — Abstract audio-reactive visualization in deep reds and black
+// Particles respond to internal oscillating patterns, creating flowing organic motion
+
+let particles = [];
+let numParticles = 500;
+let t = 0;
+let pulseLevel = 0;
+let pulseTarget = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Initialize particles in a flowing formation
+  for (let i = 0; i < numParticles; i++) {
+    let angle = random(TWO_PI);
+    let r = random(width * 0.3);
+    particles.push({
+      x: width/2 + cos(angle) * r,
+      y: height/2 + sin(angle) * r,
+      vx: random(-1, 1),
+      vy: random(-1, 1),
+      size: random(1, 6),
+      hue: random(-30, 30), // red variation
+      alpha: random(80, 200),
+      phase: random(TWO_PI),
+      orbitPhase: random(TWO_PI),
+      orbitSpeed: random(0.01, 0.04)
+    });
+  }
+}
+
+function draw() {
+  // Deep red undertone background
+  background(15, 3, 3);
+
+  t += 0.015;
+
+  // Pulsing heartbeat pattern
+  if (frameCount % 60 === 0) {
+    pulseTarget = random(0.3, 1.0);
+  }
+  pulseLevel = lerp(pulseLevel, pulseTarget, 0.1);
+  if (random() < 0.02) pulseTarget = 0;
+
+  // Draw flowing particle streams
+  for (let i = 0; i < numParticles; i++) {
+    let p = particles[i];
+
+    // Organic flowing movement based on noise
+    let nx = noise(p.x * 0.002, p.y * 0.002, t * 0.5) * 2 - 1;
+    let ny = noise(p.x * 0.002 + 100, p.y * 0.002 + 100, t * 0.5) * 2 - 1;
+
+    // Pulse amplifies motion
+    let pulseAmp = 1 + pulseLevel * 3;
+
+    p.vx += nx * 0.08 * pulseAmp;
+    p.vy += ny * 0.08 * pulseAmp;
+
+    // Slight attraction to center
+    let dx = width/2 - p.x;
+    let dy = height/2 - p.y;
+    let dist = sqrt(dx*dx + dy*dy);
+    p.vx += (dx / dist) * 0.01 * pulseAmp;
+    p.vy += (dy / dist) * 0.01 * pulseAmp;
+
+    // Damping
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Wrap around edges softly
+    let margin = 50;
+    if (p.x < -margin) p.x = width + margin;
+    if (p.x > width + margin) p.x = -margin;
+    if (p.y < -margin) p.y = height + margin;
+    if (p.y > height + margin) p.y = -margin;
+
+    // Draw particle with trail
+    let trailLen = 8;
+    for (let j = 0; j < trailLen; j++) {
+      let tx = p.x - p.vx * j * 1.5;
+      let ty = p.y - p.vy * j * 1.5;
+      let fade = (1 - j / trailLen) * 0.5;
+      let sz = p.size * (1 - j / trailLen * 0.5);
+
+      let h = 0 + p.hue + sin(t + p.phase) * 20;
+      let s = 70 + pulseLevel * 30;
+      let b = 40 + sin(t * 2 + p.phase) * 20;
+
+      noStroke();
+      fill(h, s, b, p.alpha * fade);
+      ellipse(tx, ty, sz, sz);
+    }
+
+    // Main particle
+    let h = 0 + p.hue;
+    let s = 80;
+    let b = 50 + pulseLevel * 40;
+    fill(h, s, b, p.alpha);
+    noStroke();
+    ellipse(p.x, p.y, p.size, p.size);
+  }
+
+  // Draw flowing connections between nearby particles
+  stroke(0, 60, 60, 20);
+  strokeWeight(0.5);
+  for (let i = 0; i < numParticles; i += 3) {
+    let p = particles[i];
+    for (let j = i + 1; j < numParticles; j += 3) {
+      let p2 = particles[j];
+      let d = dist(p.x, p.y, p2.x, p2.y);
+      if (d < 60) {
+        let alpha = map(d, 0, 60, 30, 0);
+        stroke(10, 50, 50, alpha);
+        line(p.x, p.y, p2.x, p2.y);
+      }
+    }
+  }
+
+  // Central pulse glow
+  let glowSize = 100 + pulseLevel * 150 + sin(t * 3) * 20;
+  let gradient = drawingContext.createRadialGradient(
+    width/2, height/2, 0,
+    width/2, height/2, glowSize
+  );
+  gradient.addColorStop(0, `rgba(120, 20, 20, ${0.3 * pulseLevel})`);
+  gradient.addColorStop(0.5, `rgba(60, 10, 10, ${0.15 * pulseLevel})`);
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  drawingContext.fillStyle = gradient;
+  noStroke();
+  rect(0, 0, width, height);
+
+  // Occasional bright pulse flashes
+  if (pulseLevel > 0.7 && random() < 0.3) {
+    for (let i = 0; i < 20; i++) {
+      let px = random(width);
+      let py = random(height);
+      fill(200, 30, 30, random(100, 200));
+      noStroke();
+      ellipse(px, py, random(2, 6));
+    }
+  }
+}
+
+function windowResized() {
+  // Keep particles
+  while (particles.length < numParticles) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-1, 1),
+      vy: random(-1, 1),
+      size: random(1, 6),
+      hue: random(-30, 30),
+      alpha: random(80, 200),
+      phase: random(TWO_PI),
+      orbitPhase: random(TWO_PI),
+      orbitSpeed: random(0.01, 0.04)
+    });
+  }
+}
+
+function mousePressed() {
+  // Add burst of particles and pulse
+  pulseTarget = 0.9;
+  for (let i = 0; i < 40; i++) {
+    particles.push({
+      x: mouseX + random(-40, 40),
+      y: mouseY + random(-40, 40),
+      vx: random(-3, 3),
+      vy: random(-3, 3),
+      size: random(2, 8),
+      hue: random(-20, 40),
+      alpha: random(150, 250),
+      phase: random(TWO_PI),
+      orbitPhase: random(TWO_PI),
+      orbitSpeed: random(0.01, 0.04)
+    });
+  }
+}
+</script>
+</body>
+</html>
