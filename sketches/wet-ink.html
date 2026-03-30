@@ -103,10 +103,10 @@ function draw() {
             let sz = (1 - progress * 0.7) * layerSize * 0.1;
             sz *= layerAlpha;
 
-            // Ink color - very dark with warm undertones
-            let inkR = 15 + random(10);
-            let inkG = 8 + random(5);
-            let inkB = 5 + random(3);
+            // Ink color - deep red, actually visible against dark paper
+            let inkR = 100 + random(60);
+            let inkG = 20 + random(30);
+            let inkB = 15 + random(15);
 
             noStroke();
             fill(inkR, inkG, inkB, sz * 255 * alpha);
@@ -118,7 +118,7 @@ function draw() {
 
     // Central dark pool
     noStroke();
-    fill(8, 5, 3, alpha * 200);
+    fill(80, 15, 15, alpha * 200);
     ellipse(d.x, d.y, d.sz * 0.3, d.sz * 0.3);
   }
 
