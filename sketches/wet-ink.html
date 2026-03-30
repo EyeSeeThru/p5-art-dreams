@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wet Ink</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0805; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Wet Ink — Ink spreading on paper like traditional sumi-e painting
+// Painterly, meditative, organic capillary action
+// Dark paper with ink bleeding outward
+
+let drops = [];
+let paperNoise;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Paper texture - subtle grain
+  paperNoise = [];
+  for (let i = 0; i < width * height; i++) {
+    paperNoise.push(random(0.95, 1.0));
+  }
+
+  // Seed with initial ink drops
+  for (let i = 0; i < 5; i++) {
+    let x = random(width * 0.2, width * 0.8);
+    let y = random(height * 0.2, height * 0.8);
+    drops.push({
+      x: x,
+      y: y,
+      size: random(40, 80),
+      age: random(100, 300),
+      maxAge: random(400, 800),
+      inkAmount: random(0.7, 1.0),
+      bleed: random(0.3, 0.6)
+    });
+  }
+}
+
+function draw() {
+  // Warm paper background
+  background(18, 14, 10);
+
+  // Paper texture
+  for (let x = 0; x < width; x += 2) {
+    for (let y = 0; y < height; y += 2) {
+      let n = paperNoise[x + y * width];
+      let idx = (x + y * width) * 4;
+      let r = 18 + n * 8;
+      let g = 14 + n * 6;
+      let bl = 10 + n * 4;
+      pixels[idx] = r;
+      pixels[idx+1] = g;
+      pixels[idx+2] = bl;
+      pixels[idx+3] = 255;
+    }
+  }
+
+  // Update and draw ink drops
+  for (let d of drops) {
+    d.age++;
+    d.size += d.bleed * 0.5;
+
+    // The ink spread with capillary fingers
+    let t = d.age / d.maxAge;
+    let alpha = 1 - pow(t, 0.5);
+    alpha *= d.inkAmount;
+
+    // Multiple bleed layers
+    for (let layer = 0; layer < 3; layer++) {
+      let layerSize = d.size * (1 + layer * 0.3);
+      let layerAlpha = alpha * (1 - layer * 0.3);
+
+      for (let a = 0; a < TWO_PI; a += 0.1) {
+        // Finger-like projections
+        let fingers = 8 + floor(random(4));
+        for (let f = 0; f < fingers; f++) {
+          let angle = a + f * TWO_PI / fingers + noise(d.x * 0.01, d.y * 0.01, d.age * 0.001) * 0.5;
+          let len = layerSize * (0.8 + noise(d.x * 0.02, d.y * 0.02, f) * 0.4);
+
+          // Draw capillary finger
+          let steps = 20;
+          for (let s = 0; s < steps; s++) {
+            let progress = s / steps;
+            let wobble = noise(d.x * 0.05 + cos(angle) * s, d.y * 0.05 + sin(angle) * s, d.age * 0.002) * 0.5;
+
+            let px = d.x + cos(angle) * len * progress + wobble * 10;
+            let py = d.y + sin(angle) * len * progress + wobble * 10;
+
+            let size = (1 - progress * 0.7) * layerSize * 0.1;
+            size *= layerAlpha;
+
+            // Ink color - very dark with warm undertones
+            let inkR = 15 + random(10);
+            let inkG = 8 + random(5);
+            let inkB = 5 + random(3);
+
+            noStroke();
+            fill(inkR, inkG, inkB, size * 255 * alpha);
+            ellipse(px, py, size, size);
+          }
+        }
+      }
+    }
+
+    // Central dark pool
+    noStroke();
+    fill(8, 5, 3, alpha * 200);
+    ellipse(d.x, d.y, d.size * 0.3, d.size * 0.3);
+  }
+
+  // Spawn new drops occasionally
+  if (frameCount % 120 === 0 && drops.length < 15) {
+    drops.push({
+      x: random(width * 0.1, width * 0.9),
+      y: random(height * 0.1, height * 0.9),
+      size: random(20, 50),
+      age: 0,
+      maxAge: random(500, 1000),
+      inkAmount: random(0.5, 0.9),
+      bleed: random(0.2, 0.5)
+    });
+  }
+
+  // Remove old drops
+  drops = drops.filter(d => d.age < d.maxAge);
+
+  updatePixels();
+}
+
+function windowResized() {
+  // Regenerate paper noise
+  paperNoise = [];
+  for (let i = 0; i < width * height; i++) {
+    paperNoise.push(random(0.95, 1.0));
+  }
+}
+
+function mousePressed() {
+  // Add ink drop at mouse
+  drops.push({
+    x: mouseX,
+    y: mouseY,
+    size: random(30, 60),
+    age: 0,
+    maxAge: random(600, 1200),
+    inkAmount: random(0.6, 1.0),
+    bleed: random(0.3, 0.6)
+  });
+}
+</script>
+</body>
+</html>
