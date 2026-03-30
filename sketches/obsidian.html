@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Obsidian</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #010101; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Obsidian — Volcanic glass, dark and mysterious
+// Artistic, sharp, hypnotic
+// Light refracting through volcanic darkness
+
+let time = 0;
+let highlights = [];
+let veins = [];
+const NUM_HIGHLIGHTS = 8;
+const NUM_VEINS = 12;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize refraction highlights
+  for (let i = 0; i < NUM_HIGHLIGHTS; i++) {
+    highlights.push(createHighlight());
+  }
+
+  // Initialize veins/flow lines
+  for (let i = 0; i < NUM_VEINS; i++) {
+    veins.push(createVein());
+  }
+}
+
+function createHighlight() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-0.2, 0.2),
+    vy: random(-0.15, 0.15),
+    size: random(30, 100),
+    hue: random(0, 360), // Full spectrum possible
+    hueShift: random(0.1, 0.3),
+    alpha: random(20, 50),
+    phase: random(TWO_PI),
+    freq: random(0.01, 0.03),
+    lifespan: random(150, 300),
+    age: 0,
+    visible: true
+  };
+}
+
+function createVein() {
+  let points = [];
+  let numPoints = floor(random(8, 20));
+  let startX = random(width);
+  let startY = random(height);
+
+  for (let i = 0; i < numPoints; i++) {
+    points.push({
+      x: startX + random(-150, 150),
+      y: startY + random(-150, 150),
+      thickness: random(1, 4)
+    });
+  }
+
+  return {
+    points: points,
+    alpha: random(5, 20),
+    hue: random(180, 300), // Blues and purples typical of obsidian
+    flow: random(0.0005, 0.002)
+  };
+}
+
+function draw() {
+  // Deep black obsidian base
+  drawObsidianBase();
+
+  // Draw veins
+  for (let vein of veins) {
+    drawVein(vein);
+  }
+
+  // Draw refraction highlights
+  for (let h of highlights) {
+    updateHighlight(h);
+    drawHighlight(h);
+  }
+
+  // Draw surface texture
+  drawSurfaceTexture();
+
+  // Occasional crack
+  drawCrack();
+
+  time += 0.016;
+}
+
+function drawObsidianBase() {
+  // Nearly black with very subtle variation
+  noStroke();
+  for (let y = 0; y < height; y += 4) {
+    let brightness = 1.5 + sin(y * 0.005 + time * 0.1) * 0.5;
+    fill(0, 0, brightness, 100);
+    rect(0, y, width, 4);
+  }
+}
+
+function updateHighlight(h) {
+  h.x += h.vx;
+  h.y += h.vy;
+
+  // Gentle wobble
+  let wobble = sin(time * h.freq * 60 + h.phase);
+  h.x += wobble * 0.3;
+
+  // Hue slowly shifts
+  h.hue = (h.hue + h.hueShift) % 360;
+
+  // Age and fade
+  h.age++;
+  if (h.age > h.lifespan * 0.7) {
+    h.alpha = map(h.age, h.lifespan * 0.7, h.lifespan, h.alpha, 0);
+  }
+
+  // Reset when dead
+  if (h.age > h.lifespan) {
+    let newH = createHighlight();
+    h.x = newH.x;
+    h.y = newH.y;
+    h.vx = newH.vx;
+    h.vy = newH.vy;
+    h.size = newH.size;
+    h.hue = newH.hue;
+    h.alpha = newH.alpha;
+    h.lifespan = newH.lifespan;
+    h.age = 0;
+  }
+
+  // Boundary bounce
+  if (h.x < 0 || h.x > width) h.vx *= -1;
+  if (h.y < 0 || h.y > height) h.vy *= -1;
+  h.x = constrain(h.x, 0, width);
+  h.y = constrain(h.y, 0, height);
+}
+
+function drawHighlight(h) {
+  if (h.alpha < 1) return;
+
+  let x = h.x;
+  let y = h.y;
+  let s = h.size;
+  let alpha = h.alpha;
+
+  noStroke();
+
+  // Refraction rainbow glow
+  for (let i = 0; i < 5; i++) {
+    let hOffset = (h.hue + i * 30) % 360;
+    let sizeFactor = 1 + i * 0.3;
+    fill(hOffset, 60, 70, alpha * 0.2 * (5 - i) / 5);
+    ellipse(x, y, s * sizeFactor, s * sizeFactor * 0.6);
+  }
+
+  // Core bright spot
+  fill(h.hue, 30, 90, alpha * 0.5);
+  ellipse(x, y, s, s * 0.6);
+
+  // Sharp white center
+  fill(0, 0, 100, alpha * 0.8);
+  ellipse(x, y, s * 0.3, s * 0.2);
+
+  // Prismatic edge
+  stroke(h.hue, 80, 80, alpha * 0.5);
+  strokeWeight(0.5);
+  noFill();
+  ellipse(x, y, s * 1.5, s);
+}
+
+function drawVein(vein) {
+  // Flowing vein lines
+  noFill();
+  strokeWeight(1);
+
+  for (let i = 0; i < vein.points.length - 1; i++) {
+    let p1 = vein.points[i];
+    let p2 = vein.points[i + 1];
+
+    // Animate points slightly
+    let offset = sin(time * vein.flow * 1000 + i) * 5;
+
+    stroke(vein.hue, 30, 30, vein.alpha);
+    strokeWeight(p1.thickness);
+    line(p1.x + offset, p1.y, p2.x + offset, p2.y);
+  }
+}
+
+function drawSurfaceTexture() {
+  // Subtle surface imperfections
+  noStroke();
+  for (let i = 0; i < 20; i++) {
+    let x = noise(i * 0.3, time * 0.002) * width;
+    let y = noise(i * 0.3 + 100, time * 0.002) * height;
+    let size = noise(i * 0.2 + 200, time * 0.001) * 8 + 2;
+    let alpha = noise(i * 0.4 + 300, time * 0.003) * 8 + 3;
+
+    fill(0, 0, 5, alpha);
+    ellipse(x, y, size, size);
+  }
+}
+
+function drawCrack() {
+  // Occasional sharp crack through the obsidian
+  if (random() < 0.003) {
+    stroke(0, 0, 20, random(10, 30));
+    strokeWeight(random(0.5, 2));
+    noFill();
+
+    beginShape();
+    let x = random(width);
+    let y = random(height);
+    vertex(x, y);
+
+    for (let i = 0; i < 5; i++) {
+      x += random(-50, 50);
+      y += random(-50, 50);
+      vertex(x, y);
+    }
+    endShape();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new highlights at mouse position
+  for (let i = 0; i < 5; i++) {
+    let h = createHighlight();
+    h.x = mouseX + random(-30, 30);
+    h.y = mouseY + random(-30, 30);
+    h.size = random(40, 80);
+    highlights.push(h);
+  }
+
+  // Add crack from click
+  stroke(0, 0, 30, random(20, 40));
+  strokeWeight(random(1, 3));
+  noFill();
+  beginShape();
+  vertex(mouseX, mouseY);
+  for (let i = 0; i < 8; i++) {
+    vertex(mouseX + random(-80, 80), mouseY + random(-80, 80));
+  }
+  endShape();
+
+  // Limit
+  if (highlights.length > NUM_HIGHLIGHTS * 2) {
+    highlights.splice(0, highlights.length - NUM_HIGHLIGHTS * 2);
+  }
+}
+</script>
+</body>
+</html>
