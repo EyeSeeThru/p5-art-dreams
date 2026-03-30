@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Murk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #010102; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Murk — Dark murky water with hidden depths
+// Artistic, mysterious, contemplative
+// Depth beneath an opaque surface
+
+let time = 0;
+let particles = [];
+let depths = [];
+const NUM_PARTICLES = 80;
+const NUM_DEPTHS = 5;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  // Initialize depth layers
+  for (let i = 0; i < NUM_DEPTHS; i++) {
+    depths.push({
+      y: map(i, 0, NUM_DEPTHS, 0, height),
+      alpha: map(i, 0, NUM_DEPTHS, 80, 20),
+      hue: random(0, 40), // Warm hints
+      drift: random(0.0005, 0.002)
+    });
+  }
+
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(createParticle());
+  }
+}
+
+function createParticle(initial = false) {
+  return {
+    x: random(width),
+    y: random(height),
+    size: random(2, 8),
+    vx: random(-0.2, 0.2),
+    vy: random(-0.1, 0.1),
+    hue: random(0, 40), // Warm reds, oranges
+    sat: random(30, 70),
+    alpha: random(20, 50),
+    depth: random(0.3, 1), // How deep in the murk
+    wobblePhase: random(TWO_PI),
+    wobbleFreq: random(0.01, 0.03)
+  };
+}
+
+function draw() {
+  // Murky background gradient
+  drawMurkBackground();
+
+  // Draw depth layers
+  for (let depth of depths) {
+    drawDepthLayer(depth);
+  }
+
+  // Update and draw particles
+  for (let p of particles) {
+    updateParticle(p);
+    drawParticle(p);
+  }
+
+  // Draw floating debris
+  drawDebris();
+
+  // Occasional bubbles
+  drawBubbles();
+
+  // Surface disturbance
+  drawSurface();
+
+  time += 0.016;
+}
+
+function drawMurkBackground() {
+  // Vertical gradient - darker at bottom
+  noStroke();
+  for (let y = 0; y < height; y += 4) {
+    let t = y / height;
+    let brightness = 2 + t * 3;
+    let alpha = 8 + t * 4;
+    fill(200, 30, brightness, alpha);
+    rect(0, y, width, 4);
+  }
+}
+
+function drawDepthLayer(depth) {
+  // Horizontal murky layer
+  noStroke();
+
+  // Subtle wavy distortion
+  for (let x = 0; x < width; x += 20) {
+    let yOffset = sin(x * 0.01 + time * depth.drift * 1000) * 5;
+    let xOffset = cos(x * 0.008 + time * depth.drift * 800) * 3;
+
+    fill(depth.hue, 20, 5, depth.alpha * 0.3);
+    ellipse(x + xOffset, depth.y + yOffset, 30, 10);
+  }
+}
+
+function updateParticle(p) {
+  // Slow drift
+  p.x += p.vx;
+  p.y += p.vy;
+
+  // Depth affects speed - deeper = slower
+  let depthFactor = p.depth * 0.5 + 0.5;
+
+  // Wobble
+  let wobbleX = sin(time * p.wobbleFreq * 60 + p.wobblePhase) * 0.5;
+  let wobbleY = cos(time * p.wobbleFreq * 40 + p.wobblePhase) * 0.3;
+
+  p.x += wobbleX * depthFactor;
+  p.y += wobbleY * depthFactor;
+
+  // Gentle sinking
+  p.y += 0.05 * p.depth;
+
+  // Boundary wrapping
+  if (p.x < 0) p.x = width;
+  if (p.x > width) p.x = 0;
+  if (p.y < 0) p.y = height;
+  if (p.y > height) p.y = 0;
+
+  // Slight hue shift over time
+  p.hue = (p.hue + 0.02) % 40;
+}
+
+function drawParticle(p) {
+  let x = p.x;
+  let y = p.y;
+  let s = p.size * p.depth; // Deeper = smaller
+  let alpha = p.alpha * p.depth; // Deeper = less visible
+
+  noStroke();
+
+  // Glow
+  fill(p.hue, p.sat, 40, alpha * 0.3);
+  ellipse(x, y, s * 3, s * 3);
+
+  // Core
+  fill(p.hue, p.sat * 0.7, 60, alpha * 0.6);
+  ellipse(x, y, s * 2, s * 2);
+
+  // Bright center
+  fill(p.hue + 10, 20, 80, alpha * 0.8);
+  ellipse(x, y, s, s);
+}
+
+function drawDebris() {
+  // Floating debris - darker specs
+  noStroke();
+  for (let i = 0; i < 30; i++) {
+    let x = noise(i * 0.5, time * 0.005) * width;
+    let y = noise(i * 0.5 + 100, time * 0.003) * height;
+    let size = noise(i * 0.3 + 200, time * 0.002) * 15 + 3;
+    let alpha = noise(i * 0.4 + 300, time * 0.004) * 15 + 5;
+
+    fill(30, 20, 10, alpha);
+    ellipse(x, y, size, size * 0.6);
+  }
+}
+
+function drawBubbles() {
+  // Occasional rising bubbles
+  stroke(200, 10, 50, 20);
+  strokeWeight(0.5);
+  noFill();
+
+  for (let i = 0; i < 8; i++) {
+    if (random() < 0.01) {
+      let x = random(width);
+      let y = random(height * 0.5, height);
+      let size = random(3, 10);
+      ellipse(x, y, size, size);
+    }
+  }
+}
+
+function drawSurface() {
+  // Subtle surface line
+  noFill();
+  stroke(200, 10, 15, 15);
+  strokeWeight(1);
+  beginShape();
+  for (let x = 0; x <= width; x += 10) {
+    let y = 20 + sin(x * 0.02 + time * 2) * 5 + sin(x * 0.01 - time) * 3;
+    vertex(x, y);
+  }
+  endShape();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  // Add new particles at mouse position
+  for (let i = 0; i < 8; i++) {
+    let p = createParticle();
+    p.x = mouseX + random(-30, 30);
+    p.y = mouseY + random(-30, 30);
+    p.depth = random(0.5, 1); // Start deeper
+    p.alpha = random(40, 70);
+    particles.push(p);
+  }
+
+  // Limit particles
+  if (particles.length > NUM_PARTICLES * 2) {
+    particles.splice(0, particles.length - NUM_PARTICLES * 2);
+  }
+}
+</script>
+</body>
+</html>
