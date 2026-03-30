@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Crimson Veil</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0505; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Crimson Veil — Flowing silk-like abstract in deep reds and black
+// Painterly, luxurious, dreamlike
+// Like watching silk move in slow motion with light catching it
+
+let particles = [];
+let numParticles = 400;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Initialize flowing particles
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-0.5, 0.5),
+      vy: random(-0.5, 0.5),
+      size: random(2, 15),
+      hue: random(0, 30), // only red hues
+      alpha: random(50, 180),
+      phase: random(TWO_PI),
+      speed: random(0.3, 1.2)
+    });
+  }
+}
+
+function draw() {
+  // Dark background with subtle red undertone
+  background(12, 5, 5);
+
+  t += 0.01;
+
+  // Draw silk strands
+  for (let i = 0; i < numParticles; i++) {
+    let p = particles[i];
+
+    // Update position with smooth flow
+    let angle = noise(p.x * 0.003, p.y * 0.003, t) * TWO_PI * 2;
+    p.vx += cos(angle) * 0.05 * p.speed;
+    p.vy += sin(angle) * 0.05 * p.speed;
+
+    // Damping
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Wrap around
+    if (p.x < -20) p.x = width + 20;
+    if (p.x > width + 20) p.x = -20;
+    if (p.y < -20) p.y = height + 20;
+    if (p.y > height + 20) p.y = -20;
+
+    // Draw with silky trail
+    let trailLen = 15;
+    for (let j = 0; j < trailLen; j++) {
+      let tx = p.x - p.vx * j * 2;
+      let ty = p.y - p.vy * j * 2;
+
+      let fade = 1 - j / trailLen;
+      let sz = p.size * fade;
+
+      // Color - deep crimson with variation
+      let r = 80 + p.hue + sin(t * 2 + p.phase) * 40;
+      let g = 5 + sin(t + p.phase) * 5;
+      let b = 8 + sin(t * 0.5 + p.phase) * 3;
+
+      noStroke();
+      fill(r, g, b, p.alpha * fade * 0.5);
+      ellipse(tx, ty, sz, sz * 0.3);
+    }
+
+    // Main particle
+    let r = 100 + sin(t * 2 + p.phase) * 50;
+    fill(r, 10, 15, p.alpha);
+    ellipse(p.x, p.y, p.size, p.size * 0.3);
+  }
+
+  // Add some connecting threads
+  stroke(60, 10, 15, 30);
+  for (let i = 0; i < numParticles; i += 8) {
+    let p = particles[i];
+    let p2 = particles[(i + 1) % numParticles];
+    if (dist(p.x, p.y, p2.x, p2.y) < 80) {
+      line(p.x, p.y, p2.x, p2.y);
+    }
+  }
+
+  // Occasional shimmer
+  if (frameCount % 30 === 0 && random() < 0.3) {
+    let idx = floor(random(numParticles));
+    let p = particles[idx];
+    // Bright shimmer
+    for (let j = 0; j < 5; j++) {
+      fill(200, 50, 60, random(100, 200));
+      noStroke();
+      ellipse(p.x + random(-20, 20), p.y + random(-20, 20), random(2, 5));
+    }
+  }
+}
+
+function windowResized() {
+  // Keep particles but maybe add more
+  while (particles.length < numParticles) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-0.5, 0.5),
+      vy: random(-0.5, 0.5),
+      size: random(2, 15),
+      hue: random(0, 30),
+      alpha: random(50, 180),
+      phase: random(TWO_PI),
+      speed: random(0.3, 1.2)
+    });
+  }
+}
+
+function mousePressed() {
+  // Add burst of particles at mouse
+  for (let i = 0; i < 20; i++) {
+    particles.push({
+      x: mouseX + random(-30, 30),
+      y: mouseY + random(-30, 30),
+      vx: random(-2, 2),
+      vy: random(-2, 2),
+      size: random(5, 20),
+      hue: random(0, 40),
+      alpha: random(100, 200),
+      phase: random(TWO_PI),
+      speed: random(0.5, 1.5)
+    });
+  }
+}
+</script>
+</body>
+</html>
