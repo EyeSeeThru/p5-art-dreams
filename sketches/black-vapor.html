@@ -13,24 +13,26 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script>
 // Black Vapor — Dark atmospheric vapor/mist using layered noise
-// Very dark, subtle, almost entirely black
+// Very dark, subtle, with visible texture
 // The feeling of deep shadow and shadow-veiled shadow
 
 let t = 0;
 let vaporLayers = [];
+let vaporBuffer;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
+  vaporBuffer = createGraphics(width, height);
 
   // Create vapor layers at different depths
   for (let i = 0; i < 5; i++) {
     vaporLayers.push({
-      scale: 0.002 + i * 0.001,
-      speed: 0.0003 + i * 0.0001,
+      sc: 0.002 + i * 0.001,
+      spd: 0.0003 + i * 0.0001,
       offset: i * 137.5, // golden angle for variety
-      darkness: 8 + i * 3, // slightly lighter as we go "closer"
-      alpha: 15 + i * 8
+      darkness: 25 + i * 5, // visible dark (was 8-20)
+      alpha: 20 + i * 10
     });
   }
 }
@@ -49,13 +51,15 @@ function draw() {
 }
 
 function drawVaporLayers() {
-  // Draw multiple layers of vapor at different scales
+  // Draw vapor into offscreen buffer then stamp to main canvas
+  
+  vaporBuffer.clear();
   
   for (let layer = 0; layer < vaporLayers.length; layer++) {
     let v = vaporLayers[layer];
     
     // Each vapor layer is a noise field
-    loadPixels();
+    vaporBuffer.loadPixels();
     
     let step = 3; // sample every 3 pixels for performance
     
@@ -66,52 +70,58 @@ function drawVaporLayers() {
         
         // Large slow-moving shapes
         n += noise(
-          x * v.scale + cos(t * v.speed) * 10,
-          y * v.scale + sin(t * v.speed) * 10,
-          t * v.speed * 0.5 + v.offset
+          x * v.sc + cos(t * v.spd) * 10,
+          y * v.sc + sin(t * v.spd) * 10,
+          t * v.spd * 0.5 + v.offset
         ) * 1.0;
         
         // Medium detail
         n += noise(
-          x * v.scale * 2 + t * v.speed * 0.7,
-          y * v.scale * 2 + t * v.speed * 0.7 + 100,
-          t * v.speed * 0.3 + v.offset * 2
+          x * v.sc * 2 + t * v.spd * 0.7,
+          y * v.sc * 2 + t * v.spd * 0.7 + 100,
+          t * v.spd * 0.3 + v.offset * 2
         ) * 0.5;
         
         // Fine detail (less influential)
         n += noise(
-          x * v.scale * 4 + t * v.speed * 0.5,
-          y * v.scale * 4 + t * v.speed * 0.5 + 200,
-          t * v.speed * 0.2 + v.offset * 3
+          x * v.sc * 4 + t * v.spd * 0.5,
+          y * v.sc * 4 + t * v.spd * 0.5 + 200,
+          t * v.spd * 0.2 + v.offset * 3
         ) * 0.25;
         
         n = n / 1.75; // normalize
-        n = pow(n, 1.5); // sharpen the threshold
+        n = pow(n, 1.3); // sharpen the threshold (less aggressive)
         
         // Only draw if vapor is dense enough
-        if (n > 0.35) {
-          let alpha = map(n, 0.35, 0.8, 0, v.alpha);
+        if (n > 0.32) {
+          let alpha = map(n, 0.32, 0.9, 0, v.alpha);
           alpha = constrain(alpha, 0, v.alpha);
           
           if (alpha > 1) {
             let idx = (y * width + x) * 4;
             
-            // Very subtle warm undertone in the vapor
-            let warmth = noise(x * 0.005, y * 0.005, t * 0.05) * 5;
+            // Warm undertone in the vapor
+            let warmth = noise(x * 0.005, y * 0.005, t * 0.05) * 18;
             
-            // Base dark color
-            let base = v.darkness + n * 10;
+            // Brighter base color so vapor is actually visible
+            let base = v.darkness + n * 25;
             
-            pixels[idx] = base + warmth * 0.3;     // R
-            pixels[idx+1] = base * 0.95;            // G
-            pixels[idx+2] = base * 0.92;            // B
-            // Alpha in pixels array needs special handling
+            // Gamma lift for better contrast in dark range
+            base = pow(base / 255, 0.65) * 255;
+            
+            vaporBuffer.pixels[idx] = base + warmth * 0.4;      // R
+            vaporBuffer.pixels[idx+1] = (base + warmth * 0.3) * 0.92; // G
+            vaporBuffer.pixels[idx+2] = (base + warmth * 0.2) * 0.85; // B
+            vaporBuffer.pixels[idx+3] = alpha * 2.5; // scale alpha into visible range
           }
         }
       }
     }
-    updatePixels();
+    vaporBuffer.updatePixels();
   }
+  
+  // Draw buffer to main canvas
+  image(vaporBuffer, 0, 0);
   
   // Add wispy tendrils overlay
   drawWispyTendrils();
@@ -145,10 +155,10 @@ function drawWispyTendrils() {
       
       // Fade out at ends
       let fade = sin(progress * PI);
-      let alpha = fade * 20 * noise(i, j);
+      let alpha = fade * 50 * noise(i, j);
       
-      // Very subtle warm tint
-      fill(15, 12, 10, alpha);
+      // Visible warm gray tint
+      fill(35, 28, 22, alpha);
       
       let w = (3 - progress * 2) * fade + 1;
       ellipse(tx, ty, w, w * 0.4);
@@ -171,7 +181,7 @@ function drawVignette() {
   // Multiple concentric ellipses for soft vignette
   for (let i = 0; i < 10; i++) {
     let d = maxDist * (1 - i / 10);
-    let alpha = i * 0.5; // very subtle
+    let alpha = i * 2; // visible darkening at edges
     
     fill(0, 0, 0, alpha);
     ellipse(cx, cy, d * 2, d * 2);
@@ -194,8 +204,8 @@ function drawVaporBurst(x, y) {
   
   for (let r = 0; r < 10; r++) {
     let radius = r * 20;
-    let alpha = (10 - r) * 2;
-    fill(20, 18, 15, alpha);
+    let alpha = (10 - r) * 5;
+    fill(50, 40, 32, alpha);
     ellipse(x, y, radius, radius * 0.7);
   }
 }

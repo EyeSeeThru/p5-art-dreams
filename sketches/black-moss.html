@@ -53,8 +53,8 @@ function createMossPatch() {
 }
 
 function draw() {
-  // Near-black background
-  background(3, 3, 2);
+  // Dark background - visible dark gray-green, not true black
+  background(12, 10, 8);
 
   t += 0.01;
 
@@ -99,15 +99,19 @@ function drawMossBase() {
       n += noise(x * 0.1, y * 0.1, t * 0.2) * 0.2;
       n += noise(x * 0.2, y * 0.2, t * 0.3) * 0.1;
 
-      // Very subtle warm undertone in the darks
-      let warmth = noise(x * 0.01 + 100, y * 0.01 + 100) * 8;
+      // Warm undertone in the darks
+      let warmth = noise(x * 0.01 + 100, y * 0.01 + 100) * 12;
 
-      let base = 3 + n * 12 + warmth * 0.3;
-      base = min(base, 20); // stay very dark
+      // Brighter base range so moss is actually visible
+      let base = 18 + n * 35 + warmth * 0.4;
+      base = min(base, 55); // dark but visible
 
-      pixels[idx] = base + warmth * 0.5; // R
-      pixels[idx+1] = base * 0.95; // G (slightly green)
-      pixels[idx+2] = base * 0.9; // B
+      // Gamma correction for better contrast in darks
+      base = pow(base / 255, 0.6) * 255;
+
+      pixels[idx] = base + warmth * 0.4; // R
+      pixels[idx+1] = base * 0.88;        // G (green undertone)
+      pixels[idx+2] = base * 0.80;       // B
       pixels[idx+3] = 255;
     }
   }
@@ -128,10 +132,10 @@ function drawMossPatch(p) {
 
   for (let layer = 0; layer < p.complexity; layer++) {
     let layerSz = p.sz * (1 - layer * 0.2);
-    let alpha = 30 + layer * 15;
+    let alpha = 50 + layer * 20;
 
-    // Base cluster shape
-    fill(p.baseDark + p.warmUndertone, p.baseDark, p.baseDark * 0.9, alpha);
+    // Base cluster shape - dark but visible
+    fill(p.baseDark * 2 + p.warmUndertone, p.baseDark * 1.5, p.baseDark, alpha);
 
     beginShape();
     for (let a = 0; a < TWO_PI; a += PI / 8) {
@@ -150,7 +154,7 @@ function drawMossPatch(p) {
       let dy = sin(angle) * dist;
       let ds = noise(i * 20, layer + t * 0.2) * layerSz * 0.15 + 5;
 
-      fill(p.baseDark + 5 + p.warmUndertone, p.baseDark + 3, p.baseDark * 0.9, alpha * 0.7);
+      fill(p.baseDark * 2 + 10 + p.warmUndertone, p.baseDark * 1.5 + 5, p.baseDark + 3, alpha * 0.7);
       ellipse(dx, dy, ds, ds * 0.8);
     }
   }
@@ -161,13 +165,13 @@ function drawMossPatch(p) {
     let sheenX = cos(sheenAngle) * p.sz * 0.2;
     let sheenY = sin(sheenAngle) * p.sz * 0.15;
 
-    // Soft sheen spot
-    fill(40 + p.warmUndertone * 2, 35, 30, 60 * p.sheenAmount);
-    ellipse(sheenX, sheenY, p.sz * 0.3, p.sz * 0.2);
+    // Bright sheen spot — lifted so it's actually visible
+    fill(100 + p.warmUndertone * 3, 80, 65, 80 * p.sheenAmount);
+    ellipse(sheenX, sheenY, p.sz * 0.35, p.sz * 0.25);
 
     // Secondary sheen
-    fill(30 + p.warmUndertone, 28, 25, 40 * p.sheenAmount);
-    ellipse(sheenX * 0.5, sheenY * 0.7, p.sz * 0.15, p.sz * 0.1);
+    fill(70 + p.warmUndertone * 2, 55, 45, 50 * p.sheenAmount);
+    ellipse(sheenX * 0.5, sheenY * 0.7, p.sz * 0.18, p.sz * 0.12);
   }
 
   pop();
@@ -182,10 +186,10 @@ function drawMoistureSheen() {
     let sx = noise(t * 0.1 + i * 100, i * 50) * width;
     let sy = noise(t * 0.1 + i * 200, i * 100 + 500) * height;
     let ss = noise(t * 0.05 + i * 300) * 200 + 50;
-    let sa = noise(t * 0.2 + i * 400) * 25 + 5;
+    let sa = noise(t * 0.2 + i * 400) * 40 + 10;
 
-    // Warm subtle sheen
-    fill(25, 18, 15, sa);
+    // Warm subtle sheen - visible dark gray
+    fill(50, 40, 32, sa);
     ellipse(sx, sy, ss, ss * 0.6);
   }
 }
@@ -196,11 +200,11 @@ function drawFuzzLayer() {
   for (let i = 0; i < 200; i++) {
     let fx = noise(i * 5, t * 0.1) * width;
     let fy = noise(i * 10, t * 0.1 + 200) * height;
-    let fs = noise(i * 30) * 2 + 0.5;
-    let fa = noise(i * 40) * 30 + 10;
+    let fs = noise(i * 30) * 3 + 1;
+    let fa = noise(i * 40) * 50 + 15;
 
-    // Slight warm tint
-    fill(15, 12, 10, fa);
+    // Slight warm tint - visible dark olive
+    fill(30, 25, 18, fa);
     ellipse(fx, fy, fs, fs * 0.7);
   }
 }
