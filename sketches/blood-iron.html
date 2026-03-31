@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Blood Iron</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050303; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Blood Iron — Dark iron/rust texture with deep red oxidized patterns
+// Visceral, industrial, textured
+// The feeling of old metal slowly being consumed by rust
+
+let t = 0;
+let rustPatches = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Initialize rust patches
+  for (let i = 0; i < 20; i++) {
+    rustPatches.push(createRustPatch());
+  }
+}
+
+function createRustPatch() {
+  return {
+    x: random(width),
+    y: random(height),
+    size: random(80, 250),
+    // Growth/shrink
+    phase: random(TWO_PI),
+    speed: random(0.003, 0.01),
+    growthRate: random(0.3, 0.8),
+    // Color variation (more orange vs more red)
+    hueShift: random(-20, 20),
+    saturation: random(50, 80),
+    // Pattern type
+    patternType: floor(random(3)), // 0: flowing, 1: crystalline, 2: streaking
+    // Movement
+    driftX: random(-0.2, 0.2),
+    driftY: random(-0.1, 0.1)
+  };
+}
+
+function draw() {
+  // Very dark background with warmth
+  background(8, 4, 3);
+
+  t += 0.01;
+
+  // Draw base metal texture
+  drawBaseMetal();
+
+  // Draw rust patches
+  for (let patch of rustPatches) {
+    drawRustPatch(patch);
+
+    // Update patch position
+    patch.x += patch.driftX;
+    patch.y += patch.driftY;
+
+    // Wrap
+    if (patch.x < -patch.size) patch.x = width + patch.size;
+    if (patch.x > width + patch.size) patch.x = -patch.size;
+    if (patch.y < -patch.size) patch.y = height + patch.size;
+    if (patch.y > height + patch.size) patch.y = -patch.size;
+  }
+
+  // Add overall rust overlay
+  drawRustOverlay();
+
+  // Add scratches and wear
+  drawWear();
+}
+
+function drawBaseMetal() {
+  // Create dark metallic base
+  loadPixels();
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      let idx = (y * width + x) * 4;
+
+      // Very subtle noise for metal texture
+      let n = noise(x * 0.02, y * 0.02) * 0.5;
+      n += noise(x * 0.05, y * 0.05) * 0.3;
+      n += noise(x * 0.1, y * 0.1) * 0.2;
+
+      // Dark with very subtle warm variation
+      let base = 6 + n * 8;
+      let warmth = noise(x * 0.008, y * 0.008 + 500) * 6;
+
+      pixels[idx] = base + warmth * 0.5;    // R - slight warmth
+      pixels[idx+1] = base * 0.85;          // G - slightly green from oxidation
+      pixels[idx+2] = base * 0.8;           // B - slightly blue
+    }
+  }
+  updatePixels();
+}
+
+function drawRustPatch(patch) {
+  push();
+  translate(patch.x, patch.y);
+
+  let pulse = sin(t * patch.speed + patch.phase) * 0.3 + 0.7;
+  let size = patch.size * (0.8 + pulse * 0.4);
+
+  if (patch.patternType === 0) {
+    // Flowing rust patterns
+    drawFlowingRust(size, patch, pulse);
+  } else if (patch.patternType === 1) {
+    // Crystalline rust
+    drawCrystallineRust(size, patch, pulse);
+  } else {
+    // Streaking rust (runs down surface)
+    drawStreakingRust(size, patch, pulse);
+  }
+
+  pop();
+}
+
+function drawFlowingRust(s, patch, pulse) {
+  // Flowing organic rust shapes
+  noStroke();
+
+  for (let layer = 0; layer < 5; layer++) {
+    let layerSize = s * (1 - layer * 0.15);
+    let alpha = (25 - layer * 4) * pulse;
+
+    // Main rust blob
+    fill(60 + patch.hueShift + layer * 10, patch.saturation + 10, 30, alpha);
+    
+    beginShape();
+    for (let a = 0; a < TWO_PI; a += PI / 6) {
+      let r = layerSize * (0.3 + noise(cos(a) * 2, sin(a) * 2, layer + t * 0.05) * 0.7);
+      let x = cos(a) * r;
+      let y = sin(a) * r;
+      curveVertex(x, y);
+    }
+    endShape(CLOSE);
+
+    // Inner brighter rust
+    if (layer < 2) {
+      let innerSize = layerSize * 0.5;
+      fill(70 + patch.hueShift, patch.saturation + 15, 35, alpha * 0.7);
+      ellipse(0, 0, innerSize, innerSize * 0.8);
+    }
+  }
+}
+
+function drawCrystallineRust(s, patch, pulse) {
+  // Crystalline/angular rust patterns
+  strokeWeight(2);
+
+  for (let i = 0; i < 8; i++) {
+    let angle = (TWO_PI / 8) * i + t * 0.02;
+    let len = s * (0.3 + noise(i * 3, t * 0.05) * 0.7);
+
+    // Main streak
+    let alpha = 40 * pulse;
+    stroke(55 + patch.hueShift, patch.saturation + 10, 25, alpha);
+    strokeWeight(3 + noise(i * 5) * 4);
+    line(0, 0, cos(angle) * len, sin(angle) * len);
+
+    // Bright tip
+    stroke(65 + patch.hueShift, patch.saturation, 30, alpha * 0.6);
+    strokeWeight(1);
+    let tipX = cos(angle) * len;
+    let tipY = sin(angle) * len;
+    line(tipX, tipY, tipX + cos(angle) * 10, tipY + sin(angle) * 10);
+  }
+
+  // Central darker patch
+  noStroke();
+  fill(40 + patch.hueShift, patch.saturation + 5, 20, 30 * pulse);
+  ellipse(0, 0, s * 0.3, s * 0.3);
+}
+
+function drawStreakingRust(s, patch, pulse) {
+  // Vertical rust streaks (like rust running down)
+  noStroke();
+
+  for (let i = 0; i < 6; i++) {
+    let offsetX = (i - 3) * s * 0.2;
+    let streakHeight = s * (0.5 + noise(i * 10, t * 0.03) * 0.5);
+    let streakWidth = s * (0.1 + noise(i * 8) * 0.15);
+    let alpha = (30 - abs(i) * 3) * pulse;
+
+    // Main streak
+    fill(55 + patch.hueShift + i * 5, patch.saturation + 5, 25, alpha);
+    ellipse(offsetX, streakHeight * 0.3, streakWidth, streakHeight);
+
+    // Brighter center
+    fill(65 + patch.hueShift, patch.saturation + 10, 30, alpha * 0.5);
+    ellipse(offsetX, streakHeight * 0.25, streakWidth * 0.4, streakHeight * 0.5);
+
+    // Drip tip
+    fill(45 + patch.hueShift, patch.saturation, 20, alpha * 0.8);
+    ellipse(offsetX, streakHeight * 0.7 + streakWidth * 0.3, streakWidth * 0.6, streakWidth * 0.6);
+  }
+}
+
+function drawRustOverlay() {
+  // Overall subtle rust coloration overlay
+  loadPixels();
+  for (let y = 0; y < height; y += 4) {
+    for (let x = 0; x < width; x += 4) {
+      let idx = (y * width + x) * 4;
+
+      // Only add rust in certain areas
+      let n = noise(x * 0.01, y * 0.01, t * 0.02);
+      if (n > 0.55) {
+        let intensity = map(n, 0.55, 0.85, 0, 20);
+        let hue = 15 + noise(x * 0.005, y * 0.005 + 100) * 15;
+
+        pixels[idx] += hue;           // R
+        pixels[idx+1] += intensity * 0.4; // G
+        pixels[idx+2] += intensity * 0.2; // B
+      }
+    }
+  }
+  updatePixels();
+}
+
+function drawWear() {
+  // Scratches and wear marks
+  strokeWeight(1);
+
+  for (let i = 0; i < 15; i++) {
+    let x1 = noise(i * 20, 0) * width;
+    let y1 = noise(i * 20, 1) * height;
+    let angle = noise(i * 10, t * 0.01) * PI;
+    let len = 30 + noise(i * 15) * 80;
+
+    let alpha = 15 + noise(i * 25) * 20;
+    stroke(30, 20, 15, alpha);
+    line(x1, y1, x1 + cos(angle) * len, y1 + sin(angle) * len);
+  }
+
+  // Dark pits/holes
+  noStroke();
+  for (let i = 0; i < 8; i++) {
+    let x = noise(i * 30, t * 0.02) * width;
+    let y = noise(i * 30 + 100, t * 0.02) * height;
+    let s = 5 + noise(i * 20) * 15;
+    let alpha = 40 + noise(i * 18) * 30;
+
+    fill(15, 10, 8, alpha);
+    ellipse(x, y, s, s * 0.7);
+  }
+}
+
+function windowResized() {
+  // Will maintain effect
+}
+
+function mousePressed() {
+  // Click creates a new rust patch at the mouse position
+  let newPatch = createRustPatch();
+  newPatch.x = mouseX;
+  newPatch.y = mouseY;
+  newPatch.size = random(100, 200);
+  rustPatches.push(newPatch);
+
+  // Limit patches
+  if (rustPatches.length > 30) {
+    rustPatches.shift();
+  }
+}
+</script>
+</body>
+</html>
