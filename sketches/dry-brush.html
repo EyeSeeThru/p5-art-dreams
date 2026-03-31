@@ -24,6 +24,7 @@ let canvasBuffer;
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 255);
 
   // Create rough canvas texture
   canvasBuffer = createGraphics(width, height);
@@ -37,24 +38,24 @@ function setup() {
 }
 
 function drawCanvasTexture() {
-  // Dark gessoed canvas background
-  canvasBuffer.background(12, 8, 6);
+  // Dark warm gessoed canvas background
+  canvasBuffer.background(25, 35, 22); // HSB: warm dark brown
 
-  // Add canvas weave texture
+  // Add canvas weave texture using pixel manipulation
   canvasBuffer.loadPixels();
   for (let i = 0; i < canvasBuffer.pixels.length; i += 4) {
     let n = noise(
       (i/4 % canvasBuffer.width) * 0.15,
       floor((i/4) / canvasBuffer.width) * 0.15
-    ) * 15;
-    canvasBuffer.pixels[i] += n;
-    canvasBuffer.pixels[i+1] += n * 0.7;
-    canvasBuffer.pixels[i+2] += n * 0.4;
+    ) * 12;
+    canvasBuffer.pixels[i] += n;     // warm undertone
+    canvasBuffer.pixels[i+1] += n * 0.5;
+    canvasBuffer.pixels[i+2] += n * 0.3;
   }
   canvasBuffer.updatePixels();
 
   // Subtle vertical and horizontal thread lines
-  canvasBuffer.stroke(20, 14, 10, 40);
+  canvasBuffer.stroke(20, 25, 18, 50);
   canvasBuffer.strokeWeight(0.5);
   for (let y = 0; y < height; y += 4) {
     canvasBuffer.line(0, y, width, y);
@@ -73,13 +74,13 @@ function createDryBrushStroke() {
     brushWidth: random(8, 25),
     speed: random(0.5, 2),
     phase: random(TWO_PI),
-    hue: random(-10, 25), // red to ochre
-    saturation: random(50, 80),
-    brightness: random(25, 50),
-    opacity: random(100, 200),
-    dryness: random(0.3, 0.7), // how dry (more texture vs smooth)
-    pressure: random(0.3, 1.0), // pressure affects opacity and width
-   bend: random(-0.3, 0.3) // slight curve
+    hue: random(0, 25),          // red to orange-yellow (HSB)
+    saturation: random(70, 95),   // rich pigment
+    brightness: random(80, 96),  // visible (was 25-50, too dark)
+    opacity: random(220, 255),   // near-opaque (was 100-200, too faint)
+    dryness: random(0.3, 0.7),
+    pressure: random(0.3, 1.0),
+    bend: random(-0.3, 0.3)
   };
 }
 
@@ -139,24 +140,24 @@ function drawDryBrushStroke(s) {
     let bristleVariation = noise(j * 0.3, t * 0.5) * s.brushWidth * 0.5;
     let currentWidth = s.brushWidth * currentPressure * (0.5 + bristleVariation);
 
-    // Dry brush: some parts skip (paint runs out)
-    let skipChance = s.dryness * (1 - progressCurve);
+    // Dry brush: more likely to skip at edges (less pressure) vs center (more)
+    let skipChance = s.dryness * (1 - progress);
     if (random() < skipChance * 0.3) continue;
 
-    // Shadow/depth layer
+    // Shadow/depth layer — dark warm underpainting
     noStroke();
-    fill(5, 3, 2, s.opacity * 0.3);
+    fill(15, 40, 20, s.opacity * 0.35);
     ellipse(tx + 2, ty + 2, currentWidth, currentWidth * 0.6);
 
-    // Main stroke color
-    let h = 0 + s.hue;
-    let b = s.brightness + sin(t * 2 + s.phase) * 10;
+    // Main stroke color — HSB mode: hue 0-25 (red-orange), saturation 70-95, brightness 80-96
+    let h = s.hue;
+    let b = min(s.brightness + sin(t * 2 + s.phase) * 8, 100);
     fill(h, s.saturation, b, s.opacity * currentPressure);
     ellipse(tx, ty, currentWidth, currentWidth * 0.65);
 
     // Highlight on top edge
     if (random() < 0.2 && currentPressure > 0.5) {
-      fill(40, 30, 25, s.opacity * 0.4);
+      fill(h + 5, s.saturation - 15, s.brightness + 5, s.opacity * 0.45);
       ellipse(tx - currentWidth * 0.1, ty - currentWidth * 0.15, currentWidth * 0.3, currentWidth * 0.15);
     }
 
@@ -179,9 +180,9 @@ function drawBristleScatter() {
     let bx = noise(i * 5, t * 0.3) * width;
     let by = noise(i * 10, t * 0.3 + 100) * height;
     let bs = noise(i * 20) * 3 + 0.5;
-    let h = noise(i * 30) * 15 - 5;
+    let h = noise(i * 30) * 20; // 0-20: red-orange range
 
-    fill(30 + h, 40, 30, 60);
+    fill(h, 60, 70, 80); // warm colored bristles
     ellipse(bx, by, bs, bs * 0.4); // elongated bristle
   }
 }
@@ -192,14 +193,15 @@ function drawDripMarks() {
   let dripY = noise(t * 0.2 + 500) * height * 0.3;
   let dripLen = noise(t * 0.1) * 40 + 10;
 
+  // Drip body — dark warm brown, visible
   strokeWeight(2);
-  stroke(40, 35, 25, 80);
+  stroke(12, 50, 45, 110);
   line(dripX, dripY, dripX, dripY + dripLen);
 
-  // Drip head
+  // Drip head — slightly brighter
   noStroke();
-  fill(60, 45, 30, 100);
-  ellipse(dripX, dripY + dripLen, 4, 4);
+  fill(15, 55, 60, 140);
+  ellipse(dripX, dripY + dripLen, 5, 5);
 }
 
 function windowResized() {
