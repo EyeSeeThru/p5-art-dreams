@@ -22,6 +22,7 @@ let rustPatches = [];
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
 
   // Initialize rust patches
   for (let i = 0; i < 20; i++) {
@@ -50,8 +51,8 @@ function createRustPatch() {
 }
 
 function draw() {
-  // Very dark background with warmth
-  background(8, 4, 3);
+  // Dark warm background — visible contrast for red rust
+  background(15, 55, 12);
 
   t += 0.01;
 
@@ -81,7 +82,7 @@ function draw() {
 }
 
 function drawBaseMetal() {
-  // Create dark metallic base
+  // Create dark metallic base — warm dark iron
   loadPixels();
   for (let y = 0; y < height; y += 2) {
     for (let x = 0; x < width; x += 2) {
@@ -92,13 +93,13 @@ function drawBaseMetal() {
       n += noise(x * 0.05, y * 0.05) * 0.3;
       n += noise(x * 0.1, y * 0.1) * 0.2;
 
-      // Dark with very subtle warm variation
-      let base = 6 + n * 8;
-      let warmth = noise(x * 0.008, y * 0.008 + 500) * 6;
+      // Dark warm iron base in HSB(15, 50, 18-26)
+      let base = 18 + n * 8;
+      let warmth = noise(x * 0.008, y * 0.008 + 500) * 5;
 
-      pixels[idx] = base + warmth * 0.5;    // R - slight warmth
-      pixels[idx+1] = base * 0.85;          // G - slightly green from oxidation
-      pixels[idx+2] = base * 0.8;           // B - slightly blue
+      pixels[idx] = base + warmth * 0.8;    // R — warm undertone
+      pixels[idx+1] = base * 0.6;           // G — low, desaturated
+      pixels[idx+2] = base * 0.55;          // B — very low blue
     }
   }
   updatePixels();
@@ -126,15 +127,15 @@ function drawRustPatch(patch) {
 }
 
 function drawFlowingRust(s, patch, pulse) {
-  // Flowing organic rust shapes
+  // Flowing organic rust shapes — vivid red
   noStroke();
 
   for (let layer = 0; layer < 5; layer++) {
     let layerSize = s * (1 - layer * 0.15);
-    let alpha = (25 - layer * 4) * pulse;
+    let alpha = (75 - layer * 10) * pulse; // raised from 25-layer*4
 
-    // Main rust blob
-    fill(60 + patch.hueShift + layer * 10, patch.saturation + 10, 30, alpha);
+    // Main rust blob — red-orange, visible
+    fill(8 + patch.hueShift * 0.5 + layer * 5, 88, 82, alpha);
     
     beginShape();
     for (let a = 0; a < TWO_PI; a += PI / 6) {
@@ -145,83 +146,81 @@ function drawFlowingRust(s, patch, pulse) {
     }
     endShape(CLOSE);
 
-    // Inner brighter rust
+    // Inner brighter rust — vivid
     if (layer < 2) {
       let innerSize = layerSize * 0.5;
-      fill(70 + patch.hueShift, patch.saturation + 15, 35, alpha * 0.7);
+      fill(5 + patch.hueShift * 0.3, 92, 90, alpha * 0.8);
       ellipse(0, 0, innerSize, innerSize * 0.8);
     }
   }
 }
 
 function drawCrystallineRust(s, patch, pulse) {
-  // Crystalline/angular rust patterns
-  strokeWeight(2);
+  // Crystalline/angular rust patterns — vivid red streaks
+  strokeWeight(1.5);
 
   for (let i = 0; i < 8; i++) {
     let angle = (TWO_PI / 8) * i + t * 0.02;
     let len = s * (0.3 + noise(i * 3, t * 0.05) * 0.7);
 
-    // Main streak
-    let alpha = 40 * pulse;
-    stroke(55 + patch.hueShift, patch.saturation + 10, 25, alpha);
-    strokeWeight(3 + noise(i * 5) * 4);
+    // Main streak — bright red
+    let alpha = 90 * pulse;
+    stroke(6 + patch.hueShift * 0.3, 90, 80, alpha);
+    strokeWeight(2 + noise(i * 5) * 3);
     line(0, 0, cos(angle) * len, sin(angle) * len);
 
-    // Bright tip
-    stroke(65 + patch.hueShift, patch.saturation, 30, alpha * 0.6);
+    // Bright tip — vivid orange-red
+    stroke(12 + patch.hueShift * 0.4, 88, 88, alpha * 0.7);
     strokeWeight(1);
     let tipX = cos(angle) * len;
     let tipY = sin(angle) * len;
     line(tipX, tipY, tipX + cos(angle) * 10, tipY + sin(angle) * 10);
   }
 
-  // Central darker patch
+  // Central darker patch — deep red
   noStroke();
-  fill(40 + patch.hueShift, patch.saturation + 5, 20, 30 * pulse);
+  fill(4, 85, 45, 50 * pulse);
   ellipse(0, 0, s * 0.3, s * 0.3);
 }
 
 function drawStreakingRust(s, patch, pulse) {
-  // Vertical rust streaks (like rust running down)
+  // Vertical rust streaks (like rust running down) — vivid red
   noStroke();
 
   for (let i = 0; i < 6; i++) {
     let offsetX = (i - 3) * s * 0.2;
     let streakHeight = s * (0.5 + noise(i * 10, t * 0.03) * 0.5);
     let streakWidth = s * (0.1 + noise(i * 8) * 0.15);
-    let alpha = (30 - abs(i) * 3) * pulse;
+    let alpha = (90 - abs(i) * 8) * pulse; // raised from 30-abs(i)*3
 
-    // Main streak
-    fill(55 + patch.hueShift + i * 5, patch.saturation + 5, 25, alpha);
+    // Main streak — red
+    fill(8 + i * 3, 88, 78, alpha);
     ellipse(offsetX, streakHeight * 0.3, streakWidth, streakHeight);
 
-    // Brighter center
-    fill(65 + patch.hueShift, patch.saturation + 10, 30, alpha * 0.5);
+    // Brighter center — orange-red
+    fill(12 + i * 2, 90, 85, alpha * 0.6);
     ellipse(offsetX, streakHeight * 0.25, streakWidth * 0.4, streakHeight * 0.5);
 
-    // Drip tip
-    fill(45 + patch.hueShift, patch.saturation, 20, alpha * 0.8);
+    // Drip tip — vivid
+    fill(6, 92, 75, alpha * 0.9);
     ellipse(offsetX, streakHeight * 0.7 + streakWidth * 0.3, streakWidth * 0.6, streakWidth * 0.6);
   }
 }
 
 function drawRustOverlay() {
-  // Overall subtle rust coloration overlay
+  // Subtle warm red tint overlay — very gentle
   loadPixels();
   for (let y = 0; y < height; y += 4) {
     for (let x = 0; x < width; x += 4) {
       let idx = (y * width + x) * 4;
 
-      // Only add rust in certain areas
       let n = noise(x * 0.01, y * 0.01, t * 0.02);
       if (n > 0.55) {
-        let intensity = map(n, 0.55, 0.85, 0, 20);
-        let hue = 15 + noise(x * 0.005, y * 0.005 + 100) * 15;
-
-        pixels[idx] += hue;           // R
-        pixels[idx+1] += intensity * 0.4; // G
-        pixels[idx+2] += intensity * 0.2; // B
+        let intensity = map(n, 0.55, 0.85, 0, 18);
+        // Add warm red-orange in RGB
+        pixels[idx] += intensity * 1.2;     // R — dominant
+        pixels[idx+1] += intensity * 0.5;   // G — subtle
+        pixels[idx+2] += intensity * 0.15;  // B — minimal
       }
     }
   }
@@ -229,7 +228,7 @@ function drawRustOverlay() {
 }
 
 function drawWear() {
-  // Scratches and wear marks
+  // Scratches and wear marks — visible dark red
   strokeWeight(1);
 
   for (let i = 0; i < 15; i++) {
@@ -238,21 +237,21 @@ function drawWear() {
     let angle = noise(i * 10, t * 0.01) * PI;
     let len = 30 + noise(i * 15) * 80;
 
-    let alpha = 15 + noise(i * 25) * 20;
-    stroke(30, 20, 15, alpha);
+    let alpha = 50 + noise(i * 25) * 40; // raised from 15-35
+    stroke(8, 65, 40, alpha); // HSB: dark warm red-brown, visible
     line(x1, y1, x1 + cos(angle) * len, y1 + sin(angle) * len);
   }
 
-  // Dark pits/holes
+  // Dark pits/holes — deep red, visible
   noStroke();
   for (let i = 0; i < 8; i++) {
     let x = noise(i * 30, t * 0.02) * width;
     let y = noise(i * 30 + 100, t * 0.02) * height;
-    let s = 5 + noise(i * 20) * 15;
-    let alpha = 40 + noise(i * 18) * 30;
+    let sz = 5 + noise(i * 20) * 15;
+    let alpha = 70 + noise(i * 18) * 40; // raised from 40-70
 
-    fill(15, 10, 8, alpha);
-    ellipse(x, y, s, s * 0.7);
+    fill(5, 70, 25, alpha); // HSB: deep dark red
+    ellipse(x, y, sz, sz * 0.7);
   }
 }
 
