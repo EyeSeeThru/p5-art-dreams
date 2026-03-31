@@ -34,7 +34,7 @@ function createDrop(x, y, isInitial = false) {
     y: y,
     startTime: time + (isInitial ? 0 : random(0.5, 2)),
     duration: random(8, 15),
-    hue: random(200, 260), // Deep blue-purple range
+    hue: random(0, 18), // Red range (0-18 wraps through orange-red)
     maxRadius: isInitial ? min(width, height) * 0.45 : random(100, 300),
     branches: floor(random(5, 12)),
     branchJaggedness: random(0.3, 0.8),
@@ -139,8 +139,8 @@ function drawInkDrop(drop, currentRadius, progress) {
     }
 
     // Draw as filled shape
-    let alpha = map(layer, 0, 4, 60, 10) * (1 - progress * 0.3);
-    fill(drop.hue, 15, 8, alpha);
+    let alpha = map(layer, 0, 4, 70, 20) * (1 - progress * 0.3);
+    fill(drop.hue, 92, 90, alpha);
     beginShape();
     for (let p of points) {
       curveVertex(p.x, p.y);
@@ -156,8 +156,8 @@ function drawInkDrop(drop, currentRadius, progress) {
 
   // Subtle inner glow
   for (let r = currentRadius * 0.3; r > 0; r -= currentRadius * 0.3 / 5) {
-    let alpha = map(r, 0, currentRadius * 0.3, 15, 0);
-    fill(drop.hue, 20, 15, alpha);
+    let alpha = map(r, 0, currentRadius * 0.3, 25, 0);
+    fill(drop.hue, 85, 95, alpha);
     ellipse(drop.x, drop.y, r * 2, r * 2);
   }
 }
@@ -189,9 +189,9 @@ function drawTendrils(drop, currentRadius, progress) {
     // Draw tendril as fading line
     noFill();
     for (let s = 0; s < points.length - 1; s++) {
-      let alpha = map(s, 0, points.length - 1, 30, 5) * (1 - progress * 0.5);
-      stroke(drop.hue, 10, 12, alpha);
-      strokeWeight(map(s, 0, points.length - 1, 2, 0.3));
+      let alpha = map(s, 0, points.length - 1, 50, 8) * (1 - progress * 0.5);
+      stroke(drop.hue, 88, 88, alpha);
+      strokeWeight(map(s, 0, points.length - 1, 2.5, 0.3));
       line(points[s].x, points[s].y, points[s + 1].x, points[s + 1].y);
     }
   }
