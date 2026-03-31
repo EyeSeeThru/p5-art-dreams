@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Black Vapor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020202; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Black Vapor — Dark atmospheric vapor/mist using layered noise
+// Very dark, subtle, almost entirely black
+// The feeling of deep shadow and shadow-veiled shadow
+
+let t = 0;
+let vaporLayers = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Create vapor layers at different depths
+  for (let i = 0; i < 5; i++) {
+    vaporLayers.push({
+      scale: 0.002 + i * 0.001,
+      speed: 0.0003 + i * 0.0001,
+      offset: i * 137.5, // golden angle for variety
+      darkness: 8 + i * 3, // slightly lighter as we go "closer"
+      alpha: 15 + i * 8
+    });
+  }
+}
+
+function draw() {
+  // Nearly black background
+  background(2, 2, 3);
+
+  t += 0.008;
+
+  // Draw layered vapor
+  drawVaporLayers();
+
+  // Add very subtle vignette
+  drawVignette();
+}
+
+function drawVaporLayers() {
+  // Draw multiple layers of vapor at different scales
+  
+  for (let layer = 0; layer < vaporLayers.length; layer++) {
+    let v = vaporLayers[layer];
+    
+    // Each vapor layer is a noise field
+    loadPixels();
+    
+    let step = 3; // sample every 3 pixels for performance
+    
+    for (let y = 0; y < height; y += step) {
+      for (let x = 0; x < width; x += step) {
+        // Multi-octave noise for organic vapor shape
+        let n = 0;
+        
+        // Large slow-moving shapes
+        n += noise(
+          x * v.scale + cos(t * v.speed) * 10,
+          y * v.scale + sin(t * v.speed) * 10,
+          t * v.speed * 0.5 + v.offset
+        ) * 1.0;
+        
+        // Medium detail
+        n += noise(
+          x * v.scale * 2 + t * v.speed * 0.7,
+          y * v.scale * 2 + t * v.speed * 0.7 + 100,
+          t * v.speed * 0.3 + v.offset * 2
+        ) * 0.5;
+        
+        // Fine detail (less influential)
+        n += noise(
+          x * v.scale * 4 + t * v.speed * 0.5,
+          y * v.scale * 4 + t * v.speed * 0.5 + 200,
+          t * v.speed * 0.2 + v.offset * 3
+        ) * 0.25;
+        
+        n = n / 1.75; // normalize
+        n = pow(n, 1.5); // sharpen the threshold
+        
+        // Only draw if vapor is dense enough
+        if (n > 0.35) {
+          let alpha = map(n, 0.35, 0.8, 0, v.alpha);
+          alpha = constrain(alpha, 0, v.alpha);
+          
+          if (alpha > 1) {
+            let idx = (y * width + x) * 4;
+            
+            // Very subtle warm undertone in the vapor
+            let warmth = noise(x * 0.005, y * 0.005, t * 0.05) * 5;
+            
+            // Base dark color
+            let base = v.darkness + n * 10;
+            
+            pixels[idx] = base + warmth * 0.3;     // R
+            pixels[idx+1] = base * 0.95;            // G
+            pixels[idx+2] = base * 0.92;            // B
+            // Alpha in pixels array needs special handling
+          }
+        }
+      }
+    }
+    updatePixels();
+  }
+  
+  // Add wispy tendrils overlay
+  drawWispyTendrils();
+}
+
+function drawWispyTendrils() {
+  // Draw thin wispy lines of vapor
+  noStroke();
+  
+  for (let i = 0; i < 15; i++) {
+    // Each tendril follows a curved path
+    let startX = noise(i * 50, t * 0.05) * width;
+    let startY = noise(i * 100, t * 0.05 + 500) * height;
+    
+    let tendrilLength = 100 + noise(i * 30) * 200;
+    let angle = noise(i * 20, t * 0.03) * TWO_PI;
+    
+    // Draw as a series of connected ellipses
+    let prevX = startX;
+    let prevY = startY;
+    
+    for (let j = 0; j < 20; j++) {
+      let progress = j / 20;
+      let offset = progress * tendrilLength;
+      
+      // Add curve to path
+      angle += noise(i * 10 + j * 5, t * 0.02) * 0.1 - 0.05;
+      
+      let tx = prevX + cos(angle) * (offset - (progress - 1) * tendrilLength) * 0.3;
+      let ty = prevY + sin(angle) * (offset - (progress - 1) * tendrilLength) * 0.3;
+      
+      // Fade out at ends
+      let fade = sin(progress * PI);
+      let alpha = fade * 20 * noise(i, j);
+      
+      // Very subtle warm tint
+      fill(15, 12, 10, alpha);
+      
+      let w = (3 - progress * 2) * fade + 1;
+      ellipse(tx, ty, w, w * 0.4);
+      
+      prevX = tx;
+      prevY = ty;
+    }
+  }
+}
+
+function drawVignette() {
+  // Very subtle vignette to enhance depth
+  noStroke();
+  
+  // Draw a radial gradient vignette
+  let cx = width / 2;
+  let cy = height / 2;
+  let maxDist = sqrt(cx * cx + cy * cy);
+  
+  // Multiple concentric ellipses for soft vignette
+  for (let i = 0; i < 10; i++) {
+    let d = maxDist * (1 - i / 10);
+    let alpha = i * 0.5; // very subtle
+    
+    fill(0, 0, 0, alpha);
+    ellipse(cx, cy, d * 2, d * 2);
+  }
+}
+
+function windowResized() {
+  // Will maintain effect
+}
+
+function mousePressed() {
+  // Click creates a subtle disturbance in the vapor
+  // Just adds visual interest without changing the calm nature
+  drawVaporBurst(mouseX, mouseY);
+}
+
+function drawVaporBurst(x, y) {
+  // Subtle ripple of vapor at click point
+  noStroke();
+  
+  for (let r = 0; r < 10; r++) {
+    let radius = r * 20;
+    let alpha = (10 - r) * 2;
+    fill(20, 18, 15, alpha);
+    ellipse(x, y, radius, radius * 0.7);
+  }
+}
+</script>
+</body>
+</html>
