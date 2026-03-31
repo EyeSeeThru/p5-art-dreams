@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Charcoal Paper</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #060504; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Charcoal Paper — Charcoal marks on dark paper with smudging and soft edges
+// Soft, gestural marks like a real charcoal drawing
+// White and gray on near-black paper with occasional warm smudges
+
+let charcoalStrokes = [];
+let numStrokes = 30;
+let t = 0;
+let paperBuffer;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Create dark paper texture
+  paperBuffer = createGraphics(width, height);
+  paperBuffer.pixelDensity(1);
+  drawPaperTexture();
+
+  // Initialize charcoal strokes
+  for (let i = 0; i < numStrokes; i++) {
+    charcoalStrokes.push(createCharcoalStroke());
+  }
+}
+
+function drawPaperTexture() {
+  // Near-black paper with subtle tooth/texture
+  paperBuffer.background(10, 8, 7);
+
+  // Add paper grain
+  paperBuffer.loadPixels();
+  for (let i = 0; i < paperBuffer.pixels.length; i += 4) {
+    let n = noise(
+      (i/4 % paperBuffer.width) * 0.2,
+      floor((i/4) / paperBuffer.width) * 0.2
+    ) * 10;
+    // Warm subtle variation
+    paperBuffer.pixels[i] += n * 0.8;
+    paperBuffer.pixels[i+1] += n * 0.6;
+    paperBuffer.pixels[i+2] += n * 0.5;
+  }
+  paperBuffer.updatePixels();
+}
+
+function createCharcoalStroke() {
+  return {
+    x: random(width),
+    y: random(height),
+    angle: random(TWO_PI),
+    length: random(100, 300),
+    width: random(10, 40),
+    speed: random(0.2, 0.8),
+    phase: random(TWO_PI),
+    // Charcoal properties
+    darkness: random(0.3, 0.9), // how dark/light
+    softness: random(0.4, 0.9), // soft edges vs sharp
+    smudgeAmount: random(0.2, 0.6), // tendency to smudge
+    chalkiness: random(0.0, 0.3), // chalk-like highlights
+    pressure: random(0.5, 1.0), // overall pressure
+    curve: random(-0.5, 0.5), // curved path
+    segments: floor(random(15, 30))
+  };
+}
+
+function draw() {
+  // Draw paper texture first
+  image(paperBuffer, 0, 0);
+
+  t += 0.008;
+
+  // Update and draw charcoal strokes
+  for (let i = 0; i < charcoalStrokes.length; i++) {
+    let s = charcoalStrokes[i];
+
+    // Very slow drift
+    s.x += cos(s.angle) * s.speed * 0.15;
+    s.y += sin(s.angle) * s.speed * 0.15;
+
+    // Very slight angle change
+    s.angle += sin(t * 0.5 + s.phase) * 0.003;
+
+    // Wrap
+    if (s.x < -s.length) s.x = width + s.length;
+    if (s.x > width + s.length) s.x = -s.length;
+    if (s.y < -s.length) s.y = height + s.length;
+    if (s.y > height + s.length) s.y = -s.length;
+
+    // Draw charcoal stroke
+    drawCharcoalStroke(s);
+  }
+
+  // Add overall smudge/blur effect
+  applyPaperSmudge();
+
+  // Add scattered charcoal dust
+  drawCharcoalDust();
+}
+
+function drawCharcoalStroke(s) {
+  let prevX, prevY;
+
+  for (let j = 0; j < s.segments; j++) {
+    let progress = j / s.segments;
+    let offsetAlong = progress * s.length;
+
+    // Curved path
+    let curveOffset = sin(progress * PI) * s.curve * 80;
+    let perpOffset = cos(progress * PI * 2) * s.curve * 20;
+
+    let tx = s.x + cos(s.angle) * offsetAlong + cos(s.angle + HALF_PI) * curveOffset;
+    let ty = s.y + sin(s.angle) * offsetAlong + sin(s.angle + HALF_PI) * curveOffset;
+
+    // Pressure variation (lighter at start and end)
+    let pressureCurve = sin(progress * PI);
+    let currentPressure = s.pressure * (0.3 + pressureCurve * 0.7);
+
+    // Width varies along stroke
+    let w = s.width * currentPressure * (0.5 + noise(j * 0.5, t) * 0.5);
+
+    // Softness affects edge blur
+    let softness = s.softness * (0.5 + pressureCurve * 0.5);
+
+    // Main charcoal mark - soft elliptical shape
+    noStroke();
+
+    // Shadow layer (slightly offset)
+    let shadowOffset = 3 * s.darkness;
+    fill(5, 4, 3, 40 * currentPressure);
+    ellipse(tx + shadowOffset, ty + shadowOffset, w * 1.1, w * 0.8);
+
+    // Main charcoal mark with varying darkness
+    let darkness = s.darkness * currentPressure;
+    let gray = 80 - darkness * 60; // darker = lower gray value
+    // Add slight warmth
+    let r = gray + 5;
+    let g = gray * 0.95;
+    let b = gray * 0.9;
+
+    fill(r, g, b, 60 + darkness * 100);
+    ellipse(tx, ty, w, w * 0.75);
+
+    // Soft edge (feathered)
+    if (softness > 0.5) {
+      fill(r * 0.8, g * 0.8, b * 0.8, 30 * softness);
+      ellipse(tx, ty, w * 1.3, w * 1.1);
+    }
+
+    // Chalk highlight (bright mark in center of stroke)
+    if (s.chalkiness > 0.1 && random() < s.chalkiness * pressureCurve) {
+      fill(220, 215, 210, 50);
+      ellipse(tx - w * 0.1, ty - w * 0.1, w * 0.25, w * 0.2);
+    }
+
+    // Connect segments with a stroke
+    if (prevX !== undefined && random() < 0.8) {
+      let connPressure = (s.pressure + (j > 0 ? s.pressure * 0.3 : 0)) * 0.5;
+      stroke(r, g, b, 40 * connPressure);
+      strokeWeight(w * 0.4 * connPressure);
+      line(prevX, prevY, tx, ty);
+    }
+
+    prevX = tx;
+    prevY = ty;
+  }
+
+  // Smudge at the end of stroke
+  if (s.smudgeAmount > 0.3) {
+    let endX = s.x + cos(s.angle) * s.length;
+    let endY = s.y + sin(s.angle) * s.length;
+    let smudgeSize = s.width * s.smudgeAmount * 2;
+    fill(20, 18, 15, 25 * s.smudgeAmount);
+    noStroke();
+    ellipse(endX, endY, smudgeSize, smudgeSize * 0.7);
+  }
+}
+
+function applyPaperSmudge() {
+  // Very subtle overall blur to soften everything (like charcoal smudging)
+  // Only apply occasionally
+  if (random() < 0.02) {
+    loadPixels();
+    // Simple box blur on small area
+    let bx = random(width);
+    let by = random(height);
+    let bs = random(20, 50);
+
+    for (let y = by - bs/2; y < by + bs/2; y++) {
+      for (let x = bx - bs/2; x < bx + bs/2; x++) {
+        if (x > 0 && x < width && y > 0 && y < height) {
+          let idx = (floor(y) * width + floor(x)) * 4;
+          // Simple blur by averaging with neighbors
+          let nextIdx = (floor(y) * width + min(floor(x) + 1, width-1)) * 4;
+          pixels[idx] = (pixels[idx] + pixels[nextIdx]) / 2.5;
+          pixels[idx+1] = (pixels[idx+1] + pixels[nextIdx+1]) / 2.5;
+          pixels[idx+2] = (pixels[idx+2] + pixels[nextIdx+2]) / 2.5;
+        }
+      }
+    }
+    updatePixels();
+  }
+}
+
+function drawCharcoalDust() {
+  // Tiny scattered charcoal dust particles
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let dx = noise(i * 3, t * 0.2) * width;
+    let dy = noise(i * 7, t * 0.2 + 100) * height;
+    let ds = noise(i * 15) * 4 + 0.5;
+    let dAlpha = noise(i * 20) * 40 + 10;
+
+    fill(60, 55, 50, dAlpha);
+    ellipse(dx, dy, ds, ds * 0.6);
+  }
+}
+
+function windowResized() {
+  // Recreate paper texture
+  paperBuffer = createGraphics(width, height);
+  paperBuffer.pixelDensity(1);
+  drawPaperTexture();
+}
+
+function mousePressed() {
+  // Add new charcoal stroke at mouse position
+  let newStroke = createCharcoalStroke();
+  newStroke.x = mouseX;
+  newStroke.y = mouseY;
+  newStroke.angle = random(TWO_PI);
+  newStroke.pressure = 1.0; // full pressure on click
+  newStroke.smudgeAmount = random(0.4, 0.8);
+  charcoalStrokes.push(newStroke);
+
+  // Limit strokes
+  if (charcoalStrokes.length > 45) {
+    charcoalStrokes.shift();
+  }
+}
+</script>
+</body>
+</html>
