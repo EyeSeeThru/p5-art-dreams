@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Encaustic Dreams</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050505; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Encaustic Dreams — Thick wax-like paint strokes with luminous layers
+// Impasto technique: thick paint strokes with shadows, pooling, and embedded marks
+// Red and black palette with luminous highlights
+
+let strokes = [];
+let numStrokes = 35;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Initialize with thick brush strokes
+  for (let i = 0; i < numStrokes; i++) {
+    strokes.push(createStroke());
+  }
+}
+
+function createStroke() {
+  return {
+    x: random(width),
+    y: random(height),
+    angle: random(TWO_PI),
+    length: random(80, 250),
+    thickness: random(15, 50),
+    hue: random(-15, 30), // red variation
+    speed: random(0.3, 1.2),
+    phase: random(TWO_PI),
+    curve: random(0.02, 0.08),
+    depth: random(0.3, 1.0), // 3D depth illusion
+    opacity: random(150, 255),
+    type: floor(random(3)) // 0: straight drag, 1: curved, 2: circular dab
+  };
+}
+
+function draw() {
+  // Dark textured background like raw canvas/board
+  background(8, 4, 3);
+
+  // Add subtle canvas texture
+  drawCanvasTexture();
+
+  t += 0.008;
+
+  // Draw each stroke with depth and pooling effect
+  for (let i = 0; i < strokes.length; i++) {
+    let s = strokes[i];
+
+    // Slow organic movement
+    s.angle += sin(t * s.speed + s.phase) * 0.005;
+    s.x += cos(s.angle) * s.speed * 0.3;
+    s.y += sin(s.angle) * s.speed * 0.3;
+
+    // Wrap around
+    if (s.x < -s.length) s.x = width + s.length;
+    if (s.x > width + s.length) s.x = -s.length;
+    if (s.y < -s.length) s.y = height + s.length;
+    if (s.y > height + s.length) s.y = -s.length;
+
+    // Draw with 3D depth effect
+    drawImpastoStroke(s);
+  }
+
+  // Draw pooling wax at stroke intersections
+  drawWaxPooling();
+
+  // Add scattered embedded marks (tiny dots, scratches)
+  drawEmbeddedMarks();
+
+  // Add luminous surface sheen
+  drawSurfaceSheen();
+}
+
+function drawCanvasTexture() {
+  // Subtle noise texture for canvas feel
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 4) {
+    let n = noise(pixels[i] * 0.1, pixels[i+1] * 0.1) * 8;
+    pixels[i] += n;
+    pixels[i+1] += n * 0.6;
+    pixels[i+2] += n * 0.3;
+  }
+  updatePixels();
+}
+
+function drawImpastoStroke(s) {
+  let steps = floor(s.length / 8);
+
+  for (let j = 0; j < steps; j++) {
+    let progress = j / steps;
+    let offsetAlong = progress * s.length;
+
+    // Curved path for organic feel
+    let curveOffset = sin(progress * PI) * sin(t + s.phase) * 20;
+
+    let tx = s.x + cos(s.angle) * offsetAlong + cos(s.angle + HALF_PI) * curveOffset;
+    let ty = s.y + sin(s.angle) * offsetAlong + sin(s.angle + HALF_PI) * curveOffset;
+
+    // 3D illusion: shadow offset based on "depth"
+    let shadowX = tx + s.depth * 8 * cos(s.angle + PI * 0.7);
+    let shadowY = ty + s.depth * 8 * sin(s.angle + PI * 0.7);
+
+    // Shadow (darker, offset)
+    noStroke();
+    fill(2, 1, 0, 60);
+    ellipse(shadowX, shadowY, s.thickness * 0.9, s.thickness * 0.5);
+
+    // Main stroke with color variation
+    let h = 0 + s.hue;
+    let baseBright = 30 + sin(t * 2 + s.phase) * 10;
+    fill(h, 80, baseBright, s.opacity);
+    ellipse(tx, ty, s.thickness, s.thickness * 0.7);
+
+    // Highlight on top edge (impasto lighting)
+    if (random() < 0.3) {
+      fill(20, 40, 50, 80);
+      ellipse(tx - s.thickness * 0.2, ty - s.thickness * 0.15, s.thickness * 0.4, s.thickness * 0.25);
+    }
+  }
+
+  // End dab (pooling wax effect)
+  let endX = s.x + cos(s.angle) * s.length;
+  let endY = s.y + sin(s.angle) * s.length;
+  let poolSize = s.thickness * 1.5 + sin(t + s.phase) * 5;
+  fill(0 + s.hue, 70, 35, s.opacity * 0.7);
+  noStroke();
+  ellipse(endX, endY, poolSize, poolSize * 0.7);
+}
+
+function drawWaxPooling() {
+  // Small pools of wax at random positions
+  noStroke();
+  for (let i = 0; i < 8; i++) {
+    let px = noise(t * 0.5 + i * 100) * width;
+    let py = noise(t * 0.3 + i * 200, 50) * height;
+    let ps = noise(t * 0.7 + i * 300, 100) * 30 + 10;
+    let h = noise(i * 50) * 20 - 10;
+
+    fill(0 + h, 60, 25, 40);
+    ellipse(px, py, ps, ps * 0.6);
+  }
+}
+
+function drawEmbeddedMarks() {
+  // Tiny embedded marks like dust or scratches in the wax
+  strokeWeight(0.5);
+  for (let i = 0; i < 40; i++) {
+    let mx = noise(i * 10, t * 0.1) * width;
+    let my = noise(i * 20, t * 0.1 + 500) * height;
+    let len = noise(i * 30) * 8 + 2;
+    let angle = noise(i * 40) * TWO_PI;
+
+    stroke(30, 20, 15, 60);
+    line(mx, my, mx + cos(angle) * len, my + sin(angle) * len);
+  }
+}
+
+function drawSurfaceSheen() {
+  // Subtle luminous sheen that moves slowly
+  let gradient = drawingContext.createRadialGradient(
+    width/2 + sin(t * 0.3) * width * 0.3,
+    height/2 + cos(t * 0.2) * height * 0.3,
+    0,
+    width/2,
+    height/2,
+    width * 0.8
+  );
+  gradient.addColorStop(0, 'rgba(60, 20, 20, 0.15)');
+  gradient.addColorStop(0.5, 'rgba(20, 8, 5, 0.08)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  drawingContext.fillStyle = gradient;
+  noStroke();
+  rect(0, 0, width, height);
+}
+
+function windowResized() {
+  // Keep strokes but adjust if needed
+}
+
+function mousePressed() {
+  // Add new stroke at mouse position
+  let newStroke = createStroke();
+  newStroke.x = mouseX;
+  newStroke.y = mouseY;
+  newStroke.angle = random(TWO_PI);
+  strokes.push(newStroke);
+
+  // Limit strokes
+  if (strokes.length > 50) {
+    strokes.shift();
+  }
+}
+</script>
+</body>
+</html>
