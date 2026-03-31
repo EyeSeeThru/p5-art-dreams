@@ -34,21 +34,21 @@ function createMossPatch() {
   return {
     x: random(width),
     y: random(height),
-    size: random(40, 120),
-    phase: random(TWO_PI),
-    speed: random(0.002, 0.008),
+    sz: random(40, 120),
+    ph: random(TWO_PI),
+    spd: random(0.002, 0.008),
     // Color variation
     baseDark: random(8, 18), // very dark
     warmUndertone: random(-5, 15), // subtle red/warm shift
     // Texture
-    scale: random(0.03, 0.08),
+    texScale: random(0.03, 0.08),
     complexity: floor(random(3, 6)),
     // Sheen (moisture reflection)
     sheenAmount: random(0.1, 0.4),
-    sheenPhase: random(TWO_PI),
+    sheenPh: random(TWO_PI),
     // Movement
-    breatheSpeed: random(0.005, 0.015),
-    breatheAmount: random(0.02, 0.06)
+    breatheSpd: random(0.005, 0.015),
+    breatheAmt: random(0.02, 0.06)
   };
 }
 
@@ -66,14 +66,14 @@ function draw() {
     let p = mossPatch[i];
 
     // Slow drift
-    p.x += sin(t * p.speed + p.phase) * 0.2;
-    p.y += cos(t * p.speed * 0.7 + p.phase) * 0.15;
+    p.x += sin(t * p.spd + p.ph) * 0.2;
+    p.y += cos(t * p.spd * 0.7 + p.ph) * 0.15;
 
     // Wrap
-    if (p.x < -p.size) p.x = width + p.size;
-    if (p.x > width + p.size) p.x = -p.size;
-    if (p.y < -p.size) p.y = height + p.size;
-    if (p.y > height + p.size) p.y = -p.size;
+    if (p.x < -p.sz) p.x = width + p.sz;
+    if (p.x > width + p.sz) p.x = -p.sz;
+    if (p.y < -p.sz) p.y = height + p.sz;
+    if (p.y > height + p.sz) p.y = -p.sz;
 
     // Draw this moss patch
     drawMossPatch(p);
@@ -120,14 +120,14 @@ function drawMossPatch(p) {
   translate(p.x, p.y);
 
   // Breathing scale
-  let breathe = 1 + sin(t * p.breatheSpeed + p.breathePhase) * p.breatheAmount;
+  let breathe = 1 + sin(t * p.breatheSpd + p.sheenPh) * p.breatheAmt;
   scale(breathe);
 
   // Draw fractal-like moss strands
   noStroke();
 
   for (let layer = 0; layer < p.complexity; layer++) {
-    let layerSize = p.size * (1 - layer * 0.2);
+    let layerSz = p.sz * (1 - layer * 0.2);
     let alpha = 30 + layer * 15;
 
     // Base cluster shape
@@ -135,7 +135,7 @@ function drawMossPatch(p) {
 
     beginShape();
     for (let a = 0; a < TWO_PI; a += PI / 8) {
-      let r = layerSize * (0.5 + noise(cos(a) * 2, sin(a) * 2, layer + t * 0.1) * 0.5);
+      let r = layerSz * (0.5 + noise(cos(a) * 2, sin(a) * 2, layer + t * 0.1) * 0.5);
       let x = cos(a) * r;
       let y = sin(a) * r;
       vertex(x, y);
@@ -145,10 +145,10 @@ function drawMossPatch(p) {
     // Add smaller detail clusters within
     for (let i = 0; i < 5; i++) {
       let angle = noise(i * 10, layer + t * 0.1) * TWO_PI;
-      let dist = noise(i * 5, layer + t * 0.1 + 50) * layerSize * 0.4;
+      let dist = noise(i * 5, layer + t * 0.1 + 50) * layerSz * 0.4;
       let dx = cos(angle) * dist;
       let dy = sin(angle) * dist;
-      let ds = noise(i * 20, layer + t * 0.2) * layerSize * 0.15 + 5;
+      let ds = noise(i * 20, layer + t * 0.2) * layerSz * 0.15 + 5;
 
       fill(p.baseDark + 5 + p.warmUndertone, p.baseDark + 3, p.baseDark * 0.9, alpha * 0.7);
       ellipse(dx, dy, ds, ds * 0.8);
@@ -157,17 +157,17 @@ function drawMossPatch(p) {
 
   // Add sheen (moisture reflection) highlights
   if (p.sheenAmount > 0.15) {
-    let sheenAngle = t * 0.2 + p.sheenPhase;
-    let sheenX = cos(sheenAngle) * p.size * 0.2;
-    let sheenY = sin(sheenAngle) * p.size * 0.15;
+    let sheenAngle = t * 0.2 + p.sheenPh;
+    let sheenX = cos(sheenAngle) * p.sz * 0.2;
+    let sheenY = sin(sheenAngle) * p.sz * 0.15;
 
     // Soft sheen spot
     fill(40 + p.warmUndertone * 2, 35, 30, 60 * p.sheenAmount);
-    ellipse(sheenX, sheenY, p.size * 0.3, p.size * 0.2);
+    ellipse(sheenX, sheenY, p.sz * 0.3, p.sz * 0.2);
 
     // Secondary sheen
     fill(30 + p.warmUndertone, 28, 25, 40 * p.sheenAmount);
-    ellipse(sheenX * 0.5, sheenY * 0.7, p.size * 0.15, p.size * 0.1);
+    ellipse(sheenX * 0.5, sheenY * 0.7, p.sz * 0.15, p.sz * 0.1);
   }
 
   pop();
