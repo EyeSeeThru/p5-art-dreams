@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dry Brush</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #080604; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// Dry Brush — Scratchy dry brush strokes on rough canvas
+// Paint almost dry, leaving textured marks and bristle trails
+// Red and ochre on dark gessoed canvas
+
+let brushStrokes = [];
+let numStrokes = 40;
+let t = 0;
+let canvasBuffer;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+
+  // Create rough canvas texture
+  canvasBuffer = createGraphics(width, height);
+  canvasBuffer.pixelDensity(1);
+  drawCanvasTexture();
+
+  // Initialize dry brush strokes
+  for (let i = 0; i < numStrokes; i++) {
+    brushStrokes.push(createDryBrushStroke());
+  }
+}
+
+function drawCanvasTexture() {
+  // Dark gessoed canvas background
+  canvasBuffer.background(12, 8, 6);
+
+  // Add canvas weave texture
+  canvasBuffer.loadPixels();
+  for (let i = 0; i < canvasBuffer.pixels.length; i += 4) {
+    let n = noise(
+      (i/4 % canvasBuffer.width) * 0.15,
+      floor((i/4) / canvasBuffer.width) * 0.15
+    ) * 15;
+    canvasBuffer.pixels[i] += n;
+    canvasBuffer.pixels[i+1] += n * 0.7;
+    canvasBuffer.pixels[i+2] += n * 0.4;
+  }
+  canvasBuffer.updatePixels();
+
+  // Subtle vertical and horizontal thread lines
+  canvasBuffer.stroke(20, 14, 10, 40);
+  canvasBuffer.strokeWeight(0.5);
+  for (let y = 0; y < height; y += 4) {
+    canvasBuffer.line(0, y, width, y);
+  }
+  for (let x = 0; x < width; x += 4) {
+    canvasBuffer.line(x, 0, x, height);
+  }
+}
+
+function createDryBrushStroke() {
+  return {
+    x: random(width),
+    y: random(height),
+    angle: random(TWO_PI),
+    length: random(60, 180),
+    brushWidth: random(8, 25),
+    speed: random(0.5, 2),
+    phase: random(TWO_PI),
+    hue: random(-10, 25), // red to ochre
+    saturation: random(50, 80),
+    brightness: random(25, 50),
+    opacity: random(100, 200),
+    dryness: random(0.3, 0.7), // how dry (more texture vs smooth)
+    pressure: random(0.3, 1.0), // pressure affects opacity and width
+   bend: random(-0.3, 0.3) // slight curve
+  };
+}
+
+function draw() {
+  // Draw canvas texture first
+  image(canvasBuffer, 0, 0);
+
+  t += 0.01;
+
+  // Update and draw each brush stroke
+  for (let i = 0; i < brushStrokes.length; i++) {
+    let s = brushStrokes[i];
+
+    // Slow movement
+    s.x += cos(s.angle) * s.speed * 0.3;
+    s.y += sin(s.angle) * s.speed * 0.3;
+
+    // Slight angle drift
+    s.angle += sin(t + s.phase) * 0.01;
+
+    // Wrap
+    if (s.x < -s.length) s.x = width + s.length;
+    if (s.x > width + s.length) s.x = -s.length;
+    if (s.y < -s.length) s.y = height + s.length;
+    if (s.y > height + s.length) s.y = -s.length;
+
+    // Draw dry brush stroke
+    drawDryBrushStroke(s);
+  }
+
+  // Add scattered bristles (tiny marks that fly off)
+  drawBristleScatter();
+
+  // Add paint drip marks
+  drawDripMarks();
+}
+
+function drawDryBrushStroke(s) {
+  let segments = floor(s.length / 6);
+  let prevX, prevY;
+
+  for (let j = 0; j < segments; j++) {
+    let progress = j / segments;
+    let offsetAlong = progress * s.length;
+
+    // Slight curve
+    let curve = sin(progress * PI) * s.bend * 30;
+
+    let tx = s.x + cos(s.angle) * offsetAlong + cos(s.angle + HALF_PI) * curve;
+    let ty = s.y + sin(s.angle) * offsetAlong + sin(s.angle + HALF_PI) * curve;
+
+    // Pressure variation (lighter at start and end = dry brush effect)
+    let pressureCurve = sin(progress * PI);
+    let currentPressure = s.pressure * pressureCurve;
+
+    // Bristle texture: varies width along stroke
+    let bristleVariation = noise(j * 0.3, t * 0.5) * s.brushWidth * 0.5;
+    let currentWidth = s.brushWidth * currentPressure * (0.5 + bristleVariation);
+
+    // Dry brush: some parts skip (paint runs out)
+    let skipChance = s.dryness * (1 - progressCurve);
+    if (random() < skipChance * 0.3) continue;
+
+    // Shadow/depth layer
+    noStroke();
+    fill(5, 3, 2, s.opacity * 0.3);
+    ellipse(tx + 2, ty + 2, currentWidth, currentWidth * 0.6);
+
+    // Main stroke color
+    let h = 0 + s.hue;
+    let b = s.brightness + sin(t * 2 + s.phase) * 10;
+    fill(h, s.saturation, b, s.opacity * currentPressure);
+    ellipse(tx, ty, currentWidth, currentWidth * 0.65);
+
+    // Highlight on top edge
+    if (random() < 0.2 && currentPressure > 0.5) {
+      fill(40, 30, 25, s.opacity * 0.4);
+      ellipse(tx - currentWidth * 0.1, ty - currentWidth * 0.15, currentWidth * 0.3, currentWidth * 0.15);
+    }
+
+    // Connect to previous for continuous stroke
+    if (prevX !== undefined && random() < 0.7) {
+      stroke(h, s.saturation, b, s.opacity * currentPressure * 0.6);
+      strokeWeight(currentWidth * 0.5);
+      line(prevX, prevY, tx, ty);
+    }
+
+    prevX = tx;
+    prevY = ty;
+  }
+}
+
+function drawBristleScatter() {
+  // Tiny bristles that scatter from strokes
+  noStroke();
+  for (let i = 0; i < 30; i++) {
+    let bx = noise(i * 5, t * 0.3) * width;
+    let by = noise(i * 10, t * 0.3 + 100) * height;
+    let bs = noise(i * 20) * 3 + 0.5;
+    let h = noise(i * 30) * 15 - 5;
+
+    fill(30 + h, 40, 30, 60);
+    ellipse(bx, by, bs, bs * 0.4); // elongated bristle
+  }
+}
+
+function drawDripMarks() {
+  // Occasional drip of paint running down
+  let dripX = noise(t * 0.2) * width;
+  let dripY = noise(t * 0.2 + 500) * height * 0.3;
+  let dripLen = noise(t * 0.1) * 40 + 10;
+
+  strokeWeight(2);
+  stroke(40, 35, 25, 80);
+  line(dripX, dripY, dripX, dripY + dripLen);
+
+  // Drip head
+  noStroke();
+  fill(60, 45, 30, 100);
+  ellipse(dripX, dripY + dripLen, 4, 4);
+}
+
+function windowResized() {
+  // Recreate canvas texture
+  canvasBuffer = createGraphics(width, height);
+  canvasBuffer.pixelDensity(1);
+  drawCanvasTexture();
+}
+
+function mousePressed() {
+  // Add new stroke at mouse position
+  let newStroke = createDryBrushStroke();
+  newStroke.x = mouseX;
+  newStroke.y = mouseY;
+  newStroke.angle = random(TWO_PI);
+  newStroke.pressure = 1.0; // full pressure on click
+  brushStrokes.push(newStroke);
+
+  // Limit strokes
+  if (brushStrokes.length > 55) {
+    brushStrokes.shift();
+  }
+}
+</script>
+</body>
+</html>
