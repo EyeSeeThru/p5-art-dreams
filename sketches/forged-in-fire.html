@@ -16,7 +16,7 @@
 // The transformation of raw metal through extreme heat
 // GLSL shader for the molten metal effect
 
-let shader;
+let fireShader;
 let t = 0;
 
 function preload() {
@@ -29,7 +29,7 @@ function setup() {
   noStroke();
 
   // Create shader
-  shader = createShader(`
+  fireShader = createShader(`
     precision highp float;
     uniform vec2 uResolution;
     uniform float uTime;
@@ -168,16 +168,16 @@ function setup() {
 function draw() {
   t += 0.016;
 
-  shader.setUniform('uResolution', [width, height]);
-  shader.setUniform('uTime', t);
+  fireShader.setUniform('uResolution', [width, height]);
+  fireShader.setUniform('uTime', t);
 
-  shader.setUniform('uResolution', [width, height]);
-  shader.setUniform('uTime', t);
+  fireShader.setUniform('uResolution', [width, height]);
+  fireShader.setUniform('uTime', t);
 
   // Draw full-screen quad with shader
   push();
   resetShader();
-  shader(shader);
+  shader(fireShader);
   rect(0, 0, width, height);
   pop();
 
