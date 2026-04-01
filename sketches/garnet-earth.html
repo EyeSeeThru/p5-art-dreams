@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Garnet Earth</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { background: #030000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<script>
+// Garnet Earth — deep red mineral/crystal aesthetic, flowing crystalline patterns
+// Artistic abstract: the feeling of deep earth minerals, garnet crystals in darkness
+
+let crystals = [];
+let particles = [];
+let veins = [];
+const NUM_CRYSTALS = 20;
+const NUM_PARTICLES = 50;
+const NUM_VEINS = 8;
+
+class Crystal {
+  constructor(x, y, size) {
+    this.x = x;
+    this.y = y;
+    this.size = size;
+    this.angle = random(TWO_PI);
+    this.rotationSpeed = random(-0.005, 0.005);
+    this.growth = 0;
+    this.growthSpeed = random(0.005, 0.02);
+    this.maxGrowth = random(0.7, 1);
+    this.hue = random(5, 20); // deep red
+    this.saturation = random(80, 100);
+    this.brightness = random(50, 80);
+    this.sparklePhase = random(TWO_PI);
+    this.sparkleSpeed = random(0.05, 0.1);
+    this.facets = floor(random(4, 8));
+  }
+  
+  update() {
+    if (this.growth < this.maxGrowth) {
+      this.growth += this.growthSpeed;
+    }
+    this.angle += this.rotationSpeed;
+    this.sparklePhase += this.sparkleSpeed;
+  }
+  
+  display() {
+    if (this.growth < 0.1) return;
+    
+    push();
+    translate(this.x, this.y);
+    rotate(this.angle);
+    scale(this.growth);
+    
+    let sparkle = pow(sin(this.sparklePhase), 8); // sharp sparkle
+    
+    // Glow
+    noStroke();
+    fill(this.hue, this.saturation * 0.5, this.brightness * 0.3, 40 + sparkle * 60);
+    beginShape();
+    for (let i = 0; i < this.facets; i++) {
+      let a = (i / this.facets) * TWO_PI;
+      let r = this.size * 2;
+      vertex(cos(a) * r, sin(a) * r);
+    }
+    endShape(CLOSE);
+    
+    // Crystal body
+    fill(this.hue, this.saturation, this.brightness + sparkle * 20, 180);
+    stroke(this.hue, this.saturation * 0.5, min(100, this.brightness + 30), 100);
+    strokeWeight(1);
+    beginShape();
+    for (let i = 0; i < this.facets; i++) {
+      let a = (i / this.facets) * TWO_PI;
+      let r = this.size * (0.8 + sin(this.sparklePhase + i) * 0.2);
+      vertex(cos(a) * r, sin(a) * r);
+    }
+    endShape(CLOSE);
+    
+    // Inner highlight
+    noStroke();
+    fill(this.hue, this.saturation * 0.3, min(100, this.brightness + 40), 100 + sparkle * 50);
+    beginShape();
+    for (let i = 0; i < this.facets; i++) {
+      let a = (i / this.facets) * TWO_PI;
+      let r = this.size * 0.4;
+      vertex(cos(a) * r, sin(a) * r);
+    }
+    endShape(CLOSE);
+    
+    pop();
+  }
+}
+
+class Vein {
+  constructor(startX, startY) {
+    this.segments = [];
+    this.x = startX;
+    this.y = startY;
+    this.angle = random(TWO_PI);
+    this.length = 0;
+    this.maxLength = random(100, 300);
+    this.growthSpeed = random(0.5, 1.5);
+    this.thickness = random(2, 5);
+    this.hue = random(5, 18);
+    this.saturation = random(70, 95);
+    this.brightness = random(40, 70);
+    this.branched = false;
+    this.branchAngle = random(-PI/4, PI/4);
+  }
+  
+  update() {
+    if (this.length < this.maxLength) {
+      this.length += this.growthSpeed;
+      
+      // Add new segment
+      let segX = this.x + cos(this.angle) * this.length;
+      let segY = this.y + sin(this.angle) * this.length;
+      let wobble = noise(segX * 0.01, segY * 0.01, frameCount * 0.02) * 10 - 5;
+      this.segments.push({x: segX, y: segY, wobble: wobble});
+      
+      // Occasional branching
+      if (!this.branched && this.length > this.maxLength * 0.3 && random() < 0.005) {
+        this.branched = true;
+        let branchVein = new Vein(segX, segY);
+        branchVein.angle = this.angle + this.branchAngle;
+        branchVein.maxLength = this.maxLength * random(0.3, 0.6);
+        veins.push(branchVein);
+      }
+      
+      // Slight curve
+      this.angle += noise(this.length * 0.02, frameCount * 0.01) * 0.1 - 0.05;
+    }
+  }
+  
+  display() {
+    if (this.segments.length < 2) return;
+    
+    // Glow
+    noFill();
+    for (let glow = 3; glow >= 0; glow--) {
+      stroke(this.hue, this.saturation * 0.5, this.brightness * 0.5, 30 - glow * 7);
+      strokeWeight(this.thickness + glow * 4);
+      beginShape();
+      for (let i = 0; i < this.segments.length; i++) {
+        let s = this.segments[i];
+        curveVertex(s.x + s.wobble, s.y + s.wobble);
+      }
+      endShape();
+    }
+    
+    // Core vein
+    stroke(this.hue, this.saturation, this.brightness, 200);
+    strokeWeight(this.thickness);
+    beginShape();
+    for (let i = 0; i < this.segments.length; i++) {
+      let s = this.segments[i];
+      curveVertex(s.x + s.wobble, s.y + s.wobble);
+    }
+    endShape();
+    
+    // Highlight
+    stroke(this.hue + 10, this.saturation * 0.7, min(100, this.brightness + 30), 100);
+    strokeWeight(this.thickness * 0.4);
+    beginShape();
+    for (let i = 0; i < this.segments.length; i++) {
+      let s = this.segments[i];
+      curveVertex(s.x + s.wobble - 1, s.y + s.wobble - 1);
+    }
+    endShape();
+  }
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(1, 3);
+    this.vx = random(-0.2, 0.2);
+    this.vy = random(-0.5, 0.1);
+    this.life = 1;
+    this.decay = random(0.002, 0.008);
+    this.hue = random(5, 20);
+    this.saturation = random(60, 90);
+    this.brightness = random(40, 70);
+  }
+  
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.002; // slight gravity
+    this.vx *= 0.99;
+    this.life -= this.decay;
+    
+    if (this.life <= 0 || this.y > height + 10) {
+      this.reset();
+      this.y = -10; // reset at top
+      this.life = random(0.3, 0.8);
+    }
+  }
+  
+  display() {
+    noStroke();
+    fill(this.hue, this.saturation, this.brightness, this.life * 180);
+    ellipse(this.x, this.y, this.size * this.life, this.size * this.life * 0.6);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(5, 80, 2);
+  
+  // Create crystals scattered across canvas
+  for (let i = 0; i < NUM_CRYSTALS; i++) {
+    let x = random(width);
+    let y = random(height);
+    let size = random(15, 60);
+    crystals.push(new Crystal(x, y, size));
+  }
+  
+  // Create veins growing from edges
+  for (let i = 0; i < NUM_VEINS; i++) {
+    let edge = floor(random(4));
+    let x, y, angle;
+    if (edge === 0) { // top
+      x = random(width);
+      y = -10;
+      angle = PI/2 + random(-PI/4, PI/4);
+    } else if (edge === 1) { // right
+      x = width + 10;
+      y = random(height);
+      angle = PI + random(-PI/4, PI/4);
+    } else if (edge === 2) { // bottom
+      x = random(width);
+      y = height + 10;
+      angle = -PI/2 + random(-PI/4, PI/4);
+    } else { // left
+      x = -10;
+      y = random(height);
+      angle = random(-PI/4, PI/4);
+    }
+    let vein = new Vein(x, y);
+    vein.angle = angle;
+    veins.push(vein);
+  }
+  
+  // Create particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  // Very slow fade for depth
+  background(5, 80, 2, 4);
+  
+  // Earth texture - subtle noise layer
+  noStroke();
+  for (let x = 0; x < width; x += 30) {
+    for (let y = 0; y < height; y += 30) {
+      let n = noise(x * 0.005, y * 0.005, frameCount * 0.001);
+      if (n > 0.6) {
+        fill(8, 60, 8, (n - 0.6) * 50);
+        rect(x, y, 30, 30);
+      }
+    }
+  }
+  
+  // Update and display veins (behind crystals)
+  for (let v of veins) {
+    v.update();
+    v.display();
+  }
+  
+  // Update and display crystals
+  for (let c of crystals) {
+    c.update();
+    c.display();
+  }
+  
+  // Update and display particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Add new vein occasionally
+  if (frameCount % 120 === 0 && veins.length < 20) {
+    let edge = floor(random(4));
+    let x, y, angle;
+    if (edge === 0) {
+      x = random(width);
+      y = -10;
+      angle = PI/2 + random(-PI/4, PI/4);
+    } else if (edge === 1) {
+      x = width + 10;
+      y = random(height);
+      angle = PI + random(-PI/4, PI/4);
+    } else if (edge === 2) {
+      x = random(width);
+      y = height + 10;
+      angle = -PI/2 + random(-PI/4, PI/4);
+    } else {
+      x = -10;
+      y = random(height);
+      angle = random(-PI/4, PI/4);
+    }
+    let vein = new Vein(x, y);
+    vein.angle = angle;
+    veins.push(vein);
+  }
+  
+  // Vignette
+  noStroke();
+  let vignetteSize = max(width, height) * 1.3;
+  for (let i = 0; i < 12; i++) {
+    let alpha = map(i, 0, 12, 0, 35);
+    fill(0, 0, 0, alpha);
+    ellipse(width/2, height/2, vignetteSize - i * vignetteSize * 0.07, vignetteSize - i * vignetteSize * 0.07);
+  }
+}
+
+function mousePressed() {
+  // Spawn crystals near click
+  for (let i = 0; i < 3; i++) {
+    let x = mouseX + random(-50, 50);
+    let y = mouseY + random(-50, 50);
+    let size = random(10, 40);
+    crystals.push(new Crystal(x, y, size));
+  }
+  
+  // Spawn particle burst
+  for (let i = 0; i < 20; i++) {
+    let p = new Particle();
+    p.x = mouseX + random(-20, 20);
+    p.y = mouseY + random(-20, 20);
+    p.vy = random(-2, -0.5);
+    p.life = 1;
+    particles.push(p);
+  }
+  
+  // Spawn vein from click
+  if (veins.length < 25) {
+    let vein = new Vein(mouseX, mouseY - 50);
+    vein.angle = PI/2 + random(-PI/4, PI/4);
+    veins.push(vein);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(5, 80, 2);
+}
+</script>
+</body>
+</html>
