@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Crimson Cadence</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { background: #050000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<script>
+// Crimson Cadence — visual rhythm, flowing waveforms that pulse like a heartbeat
+// Artistic abstract: not a literal audio visualizer, but the FEELING of rhythm
+
+let waveforms = [];
+let particles = [];
+let beatPhase = 0;
+let beatInterval = 60; // frames between beats
+let lastBeat = 0;
+const NUM_WAVES = 5;
+const NUM_PARTICLES = 80;
+
+class Waveform {
+  constructor(y, amplitude, frequency, speed, hue) {
+    this.y = y;
+    this.baseY = y;
+    this.amplitude = amplitude;
+    this.frequency = frequency;
+    this.speed = speed;
+    this.hue = hue;
+    this.phase = random(TWO_PI);
+    this.thickness = random(1.5, 4);
+    this.noiseOffset = random(1000);
+  }
+  
+  update() {
+    this.phase += this.speed;
+    // Beat modulation - amplitude pulses on beat
+    let beatMod = 1;
+    if (frameCount - lastBeat < 15) {
+      beatMod = map(frameCount - lastBeat, 0, 15, 2.5, 1);
+    }
+    this.y = this.baseY + sin(this.phase) * this.amplitude * beatMod;
+  }
+  
+  display() {
+    push();
+    noFill();
+    
+    // Glow layer
+    for (let glow = 3; glow >= 0; glow--) {
+      let alpha = map(glow, 0, 3, 150, 20);
+      let weight = this.thickness + glow * 3;
+      stroke(this.hue, 90, 70, alpha);
+      strokeWeight(weight);
+      
+      beginShape();
+      for (let x = 0; x <= width; x += 5) {
+        let wave1 = sin(x * this.frequency + this.phase) * this.amplitude * 0.6;
+        let wave2 = sin(x * this.frequency * 2.3 + this.phase * 1.7) * this.amplitude * 0.3;
+        let noise = noise(x * 0.008 + this.noiseOffset, this.phase * 0.1) * this.amplitude * 0.4;
+        let beatPulse = (frameCount - lastBeat < 20) ? sin((frameCount - lastBeat) / 20 * PI) * this.amplitude * 0.5 : 0;
+        let yPos = this.y + wave1 + wave2 + noise + beatPulse;
+        curveVertex(x, yPos);
+      }
+      endShape();
+    }
+    
+    // Core line
+    stroke(this.hue, 95, 95);
+    strokeWeight(this.thickness);
+    beginShape();
+    for (let x = 0; x <= width; x += 5) {
+      let wave1 = sin(x * this.frequency + this.phase) * this.amplitude * 0.6;
+      let wave2 = sin(x * this.frequency * 2.3 + this.phase * 1.7) * this.amplitude * 0.3;
+      let noise = noise(x * 0.008 + this.noiseOffset, this.phase * 0.1) * this.amplitude * 0.4;
+      let beatPulse = (frameCount - lastBeat < 20) ? sin((frameCount - lastBeat) / 20 * PI) * this.amplitude * 0.5 : 0;
+      let yPos = this.y + wave1 + wave2 + noise + beatPulse;
+      curveVertex(x, yPos);
+    }
+    endShape();
+    pop();
+  }
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(2, 6);
+    this.vx = random(-0.5, 0.5);
+    this.vy = random(-1, -0.2);
+    this.life = 1;
+    this.decay = random(0.003, 0.01);
+    this.hue = random(0, 15);
+    this.saturation = random(80, 100);
+    this.brightness = random(60, 90);
+    this.waveOffset = random(TWO_PI);
+  }
+  
+  update() {
+    // Follow waveform influence
+    let waveInfluence = sin(this.waveOffset + this.x * 0.02 + frameCount * 0.05) * 0.5;
+    this.vy += waveInfluence * 0.05;
+    this.vy *= 0.98;
+    this.vx += sin(this.waveOffset + frameCount * 0.03) * 0.02;
+    
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life -= this.decay;
+    
+    // Beat burst - particles explode outward on beat
+    if (frameCount === lastBeat) {
+      this.vx += random(-2, 2);
+      this.vy += random(-2, 0);
+    }
+    
+    if (this.life <= 0 || this.y < -10 || this.x < -10 || this.x > width + 10) {
+      this.reset();
+      this.y = height + 10; // start from bottom
+      this.life = random(0.5, 1);
+    }
+  }
+  
+  display() {
+    noStroke();
+    let alpha = this.life * 200;
+    fill(this.hue, this.saturation, this.brightness, alpha);
+    
+    // Glow
+    fill(this.hue, this.saturation * 0.7, this.brightness * 0.5, alpha * 0.3);
+    ellipse(this.x, this.y, this.size * 3, this.size * 3);
+    
+    // Core
+    fill(this.hue, this.saturation, this.brightness, alpha);
+    ellipse(this.x, this.y, this.size * this.life, this.size * this.life * 0.7);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(5, 90, 3);
+  
+  // Create waveforms at different heights
+  let spacing = height / (NUM_WAVES + 1);
+  for (let i = 0; i < NUM_WAVES; i++) {
+    let y = spacing * (i + 1);
+    let amp = random(30, 80);
+    let freq = random(0.005, 0.015);
+    let speed = random(0.02, 0.05);
+    let hue = random(5, 20); // red-orange range
+    waveforms.push(new Waveform(y, amp, freq, speed, hue));
+  }
+  
+  // Create particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    let p = new Particle();
+    p.y = random(height); // start scattered
+    particles.push(p);
+  }
+  
+  lastBeat = -beatInterval; // first beat immediately
+}
+
+function draw() {
+  // Slow fade
+  background(5, 90, 3, 8);
+  
+  // Beat detection
+  if (frameCount - lastBeat >= beatInterval) {
+    lastBeat = frameCount;
+    // Occasionally change beat interval for syncopation
+    if (random() < 0.3) {
+      beatInterval = floor(random(40, 90));
+    }
+  }
+  
+  // Update and display waveforms
+  for (let w of waveforms) {
+    w.update();
+    w.display();
+  }
+  
+  // Update and display particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Central rhythm pulse
+  let beatProgress = (frameCount - lastBeat) / beatInterval;
+  let pulseAlpha = sin(beatProgress * PI) * 40;
+  let pulseSize = sin(beatProgress * PI) * min(width, height) * 0.3;
+  
+  noStroke();
+  // Outer glow
+  fill(0, 90, 60, pulseAlpha * 0.2);
+  ellipse(width/2, height/2, pulseSize * 2, pulseSize * 0.5);
+  // Inner pulse
+  fill(5, 80, 70, pulseAlpha);
+  ellipse(width/2, height/2, pulseSize, pulseSize * 0.4);
+  
+  // Vignette
+  noStroke();
+  let vignetteSize = max(width, height) * 1.2;
+  for (let i = 0; i < 15; i++) {
+    let alpha = map(i, 0, 15, 0, 40);
+    fill(0, 0, 0, alpha);
+    ellipse(width/2, height/2, vignetteSize - i * vignetteSize * 0.06, vignetteSize - i * vignetteSize * 0.06);
+  }
+}
+
+function mousePressed() {
+  // Trigger a beat
+  lastBeat = frameCount;
+  
+  // Spawn particles from click
+  for (let i = 0; i < 20; i++) {
+    let p = new Particle();
+    p.x = mouseX + random(-30, 30);
+    p.y = mouseY + random(-30, 30);
+    p.vy = random(-2, -0.5);
+    p.life = 1;
+    particles.push(p);
+  }
+  
+  // Randomize beat interval
+  beatInterval = floor(random(30, 100));
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(5, 90, 3);
+  
+  // Reposition waveforms
+  let spacing = height / (NUM_WAVES + 1);
+  for (let i = 0; i < waveforms.length; i++) {
+    waveforms[i].baseY = spacing * (i + 1);
+    waveforms[i].y = waveforms[i].baseY;
+  }
+}
+</script>
+</body>
+</html>
