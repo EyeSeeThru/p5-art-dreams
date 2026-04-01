@@ -193,6 +193,7 @@ The project cycles through different technique categories to ensure variety:
 - **garnet-earth** — Deep red mineral and crystal aesthetic with crystalline formations and flowing veins. Crystals grow and rotate slowly with internal sparkle, deep red veins branch across the darkness like geological formations. Particles drift like mineral dust. The feeling of deep earth minerals, garnet crystals in darkness, geological time made visible. Click to spawn new crystals and particle bursts. Crystalline, ancient, precious — the beauty of deep earth stones and mineral formations. Red and black with subtle sparkle and earth texture.
 - **rust-bloom** — Rust patterns growing like organic blooms, industrial oxidation as living growth. Multiple layered rust formations bloom outward with concentric petal-like rings, particles drift and trail like rust dust. The beauty of decay, the life within corrosion, the unexpected blooms of oxidation. Deep orange-red rust against darkness, painterly and organic despite the industrial subject. Click to spawn new blooms and particle bursts. Industrial, organic, beautiful — decay as creation, rust as flower. Red and rust orange on black.
 - **vermillion-audio** — Audio-reactive visualization with flowing waveforms and bright particles responding to internal audio patterns. Multiple waveform layers (bass, mid, high) in bright red and orange-red on dark background. Central pulsing orb synchronized to bass. Particles flow and respond to audio frequencies with varying brightness and speed. Click to spawn particle bursts. Vivid, alive, rhythmic — the feeling of sound made visible, audio frequencies dancing in bright red. Red and dark, audio-reactive, waveforms, pulsing. Background brightness 18 for visibility.
+- **ash-fall** — Drifting ash and ember particles descending through darkness like snow or embers falling. Particles follow subtle wind currents, wobble gently, and have varying brightness — mostly dim with occasional hot glowing embers. Some particles have visible hot cores that pulse. Soft accumulation gradient at bottom suggests settling ash. Click anywhere to spawn bursts of new particles at that location. Meditative, quiet, atmospheric — the feeling of watching something slowly drift and settle. Red and near-black, embers glow brighter while ash is dim and subtle. Background brightness 20 for visibility.
 - **de-jong-attractor** — De Jong strange attractor with parameter-based variations and particle trails
 - **dendrite-growth** — Crystal growth simulation with branching patterns and glowing particles
 - **dendritic-flow** — Perlin noise-driven flow field with branching particle trails and warm amber palette
@@ -358,6 +359,17 @@ The project cycles through different technique categories to ensure variety:
 - **couette-flow** — Classical viscous flow between parallel plates showing parabolic velocity profile with colored particle tracers
 
 All sketches are self-contained single HTML files.
+
+## Constraint Handling
+
+When adding constraints (like color palettes, specific libraries, or themes):
+
+1. **Keep concept selection unchanged** — Use the same process to select concepts regardless of constraints
+2. **Apply constraint as styling** — The constraint modifies the visual output, not the underlying concept
+3. **Avoid constraint-driven concepts** — Don't pick "fire" just because you're using red/black
+4. **Concept first, constraint second** — The concept drives everything, constraints are styling layers
+
+Example: For red/black palette, valid concepts include: silk, roses, abstract art, space nebulae, deep sea, fractals — anything that can be styled in red/black
 
 ```bash
 # Or serve locally
