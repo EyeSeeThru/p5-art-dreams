@@ -39,7 +39,7 @@ function setup() {
 
 function draw() {
   // Near-black background with slight warmth
-  background(1, 1, 2);
+  background(3, 3, 5);
 
   t += 0.008;
   breathPhase = sin(t * 0.3) * 0.5 + 0.5; // 0 to 1 to 0
@@ -77,9 +77,9 @@ function drawSubtleParticles() {
 
     // Draw with glow
     let glowSize = p.size * 4;
-    fill(40, 30, 50, alpha * 0.2);
+    fill(50, 40, 70, alpha * 0.2);
     ellipse(p.x, p.y, glowSize, glowSize);
-    fill(60, 50, 70, alpha);
+    fill(120, 80, 160, alpha);
     ellipse(p.x, p.y, p.size, p.size);
   }
 }
@@ -127,22 +127,22 @@ function drawHorizon() {
 }
 
 function drawVignette() {
-  // Very subtle vignette
-  loadPixels();
-  for (let y = 0; y < height; y += 2) {
-    for (let x = 0; x < width; x += 2) {
-      let idx = (y * width + x) * 4;
-
-      let distFromCenter = dist(x, y, width / 2, height / 2);
-      let maxDist = dist(0, 0, width / 2, height / 2);
-      let vignette = 1 - pow(distFromCenter / maxDist, 3) * 0.15;
-
-      pixels[idx] = pixels[idx] * vignette;
-      pixels[idx+1] = pixels[idx+1] * vignette;
-      pixels[idx+2] = pixels[idx+2] * vignette;
-    }
+  // Subtle vignette overlay using shapes instead of pixel manipulation
+  noStroke();
+  let maxDist = dist(0, 0, width / 2, height / 2);
+  for (let i = 0; i < 8; i++) {
+    let edge = i * (maxDist / 8);
+    let alpha = map(i, 0, 8, 0, 25);
+    fill(0, 0, 0, alpha);
+    // Top
+    rect(0, 0, width, edge);
+    // Bottom
+    rect(0, height - edge, width, edge);
+    // Left
+    rect(0, 0, edge, height);
+    // Right
+    rect(width - edge, 0, edge, height);
   }
-  updatePixels();
 }
 
 function windowResized() {
