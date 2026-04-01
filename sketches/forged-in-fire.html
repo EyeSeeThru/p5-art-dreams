@@ -28,8 +28,19 @@ function setup() {
   pixelDensity(1);
   noStroke();
 
-  // Create shader
+  // Create shader — vertex source FIRST, fragment source SECOND
   fireShader = createShader(`
+    precision highp float;
+    attribute vec3 aPosition;
+    attribute vec2 aTexCoord;
+    varying vec2 vTexCoord;
+    void main() {
+      vTexCoord = aTexCoord;
+      vec4 positionVec4 = vec4(aPosition, 1.0);
+      positionVec4.xy = positionVec4.xy * 2.0 - 1.0;
+      gl_Position = positionVec4;
+    }
+  `, `
     precision highp float;
     uniform vec2 uResolution;
     uniform float uTime;
@@ -72,6 +83,12 @@ function setup() {
       return f;
     }
 
+    float random(vec2 st) {
+      return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+    }
+
+    out vec4 fragColor;
+
     void main() {
       vec2 uv = gl_FragCoord.xy / uResolution.xy;
       vec2 p = (gl_FragCoord.xy - 0.5 * uResolution.xy) / min(uResolution.x, uResolution.y);
@@ -103,10 +120,10 @@ function setup() {
       molten = pow(molten, 0.7);
 
       // Color gradient: deep red -> orange -> yellow-white
-      vec3 coldColor = vec3(0.15, 0.02, 0.01);  // Dark red
-      vec3 warmColor = vec3(0.6, 0.15, 0.02);    // Orange-red
-      vec3 hotColor = vec3(0.95, 0.5, 0.1);     // Bright orange
-      vec3 whiteColor = vec3(1.0, 0.85, 0.5);   // White-hot
+      vec3 coldColor = vec3(0.15, 0.02, 0.01);
+      vec3 warmColor = vec3(0.6, 0.15, 0.02);
+      vec3 hotColor = vec3(0.95, 0.5, 0.1);
+      vec3 whiteColor = vec3(1.0, 0.85, 0.5);
 
       vec3 metalColor = coldColor;
       metalColor = mix(metalColor, warmColor, smoothstep(0.2, 0.5, molten));
@@ -136,7 +153,7 @@ function setup() {
           mod(fi * 0.1 + t * (0.3 + fi * 0.02) - t * 0.5, 1.0) - 0.2
         );
         float spark = 1.0 - smoothstep(0.0, 0.015, length(p - sparkPos));
-        spark *= (1.0 - sparkPos.y); // Fade near bottom
+        spark *= (1.0 - sparkPos.y);
         vec3 sparkColor = mix(hotColor, whiteColor, random(vec2(fi, fi * 2.0)));
         col += sparkColor * spark * 2.0;
       }
@@ -145,22 +162,7 @@ function setup() {
       float vig = 1.0 - pow(length(uv - 0.5) * 1.2, 2.0);
       col *= vig;
 
-      gl_FragColor = vec4(col, 1.0);
-    }
-
-    float random(vec2 st) {
-      return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-    }
-  `, `
-    precision highp float;
-    attribute vec3 aPosition;
-    attribute vec2 aTexCoord;
-    varying vec2 vTexCoord;
-    void main() {
-      vTexCoord = aTexCoord;
-      vec4 positionVec4 = vec4(aPosition, 1.0);
-      positionVec4.xy = positionVec4.xy * 2.0 - 1.0;
-      gl_Position = positionVec4;
+      fragColor = vec4(col, 1.0);
     }
   `);
 }
