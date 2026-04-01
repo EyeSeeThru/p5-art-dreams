@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Crimson Flow</title>
+  <title>Blood Veins</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000000; overflow: hidden; }
@@ -12,9 +12,9 @@
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script>
-// Crimson Flow — Reaction-diffusion in red and black
-// Painterly, dreamlike, organic
-// Inspired by Turing patterns - activator-substrate model
+// Blood Veins — Turing pattern reaction-diffusion in red and black
+// Painterly, organic, alive
+// Like watching blood flow through veins
 
 let cols, rows;
 let state = [];
@@ -22,8 +22,8 @@ let nextState = [];
 
 const DA = 1.0;
 const DB = 0.5;
-const f = 0.055;  // feed rate
-const k = 0.062;  // kill rate
+const f = 0.055;
+const k = 0.062;
 
 let t = 0;
 
@@ -34,28 +34,27 @@ function setup() {
   cols = floor(width);
   rows = floor(height);
 
-  // Initialize with some seed
   for (let i = 0; i < cols; i++) {
     state[i] = [];
     nextState[i] = [];
     for (let j = 0; j < rows; j++) {
-      // Start with all activator (A=1, B=0)
       state[i][j] = { a: 1, b: 0 };
       nextState[i][j] = { a: 1, b: 0 };
     }
   }
 
-  // Seed a central region with B (the catalyst)
+  // Seed from edges - like veins growing from boundaries
+  let r = min(width, height) * 0.12;
   let cx = floor(cols / 2);
   let cy = floor(rows / 2);
-  let r = min(width, height) * 0.15;
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
       let d = dist(i, j, cx, cy);
       if (d < r) {
-        let noiseVal = noise(i * 0.1, j * 0.1);
-        state[i][j].b = 0.8 + noiseVal * 0.2;
+        let angle = atan2(j - cy, i - cx);
+        let noiseVal = noise(i * 0.05 + j * 0.05 + 1000);
+        state[i][j].b = 0.7 + noiseVal * 0.3;
         state[i][j].a = 1 - state[i][j].b;
       }
     }
@@ -63,7 +62,6 @@ function setup() {
 }
 
 function draw() {
-  // Run several steps per frame
   for (let step = 0; step < 8; step++) {
     for (let i = 1; i < cols - 1; i++) {
       for (let j = 1; j < rows - 1; j++) {
@@ -71,11 +69,9 @@ function draw() {
         let a = s.a;
         let b = s.b;
 
-        // Laplacian
         let la = (state[i-1][j].a + state[i+1][j].a + state[i][j-1].a + state[i][j+1].a) - 4*a;
         let lb = (state[i-1][j].b + state[i+1][j].b + state[i][j-1].b + state[i][j+1].b) - 4*b;
 
-        // Reaction-diffusion update
         let newA = a + (DA * la - a * b * b + f * (1 - a));
         let newB = b + (DB * lb + a * b * b - (k + f) * b);
 
@@ -87,24 +83,29 @@ function draw() {
       }
     }
 
-    // Swap
     let temp = state;
     state = nextState;
     nextState = temp;
 
-    // Slowly inject fresh activator in corners
-    if (t % 50 === 0) {
-      for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 5; j++) {
-          if (random() < 0.3) {
-            state[i][j].a = 1;
-            state[i][j].b = 0;
-            state[cols-1-i][j].a = 1;
-            state[cols-1-i][j].b = 0;
-            state[i][rows-1-j].a = 1;
-            state[i][rows-1-j].b = 0;
-            state[cols-1-i][rows-1-j].a = 1;
-            state[cols-1-i][rows-1-j].b = 0;
+    // Inject fresh at edges occasionally
+    if (t % 100 === 0) {
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (random() < 0.1) {
+            state[i][j].b = 0.8;
+            state[i][j].a = 0.2;
+            state[i][rows-1-j].b = 0.8;
+            state[i][rows-1-j].a = 0.2;
+          }
+        }
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < rows; j++) {
+            if (random() < 0.1) {
+              state[i][j].b = 0.8;
+              state[i][j].a = 0.2;
+              state[cols-1-i][j].b = 0.8;
+              state[cols-1-i][j].a = 0.2;
+            }
           }
         }
       }
@@ -113,37 +114,30 @@ function draw() {
 
   t++;
 
-  // Draw
   loadPixels();
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
       let idx = (i + j * cols) * 4;
       let s = state[i][j];
 
-      // Map to red-black palette
-      // B high -> dark red/maroon
-      // A high -> black or dark with red undertones
       let b = s.b;
-      let a = s.a;
-
-      // Create a richer palette
       let r, g, bl;
 
-      if (b > 0.3) {
-        // High B: deep crimson/maroon
-        r = 120 + b * 100;
-        g = 10 + b * 20;
-        bl = 20 + b * 30;
-      } else if (a > 0.7) {
-        // High A: near black with subtle red undertone
-        r = 15 + (1-a) * 40;
-        g = 5 + (1-a) * 15;
-        bl = 10 + (1-a) * 20;
+      if (b > 0.25) {
+        // Dark blood red
+        r = 80 + b * 120;
+        g = 5 + b * 15;
+        bl = 10 + b * 15;
+      } else if (b > 0.1) {
+        // Deep maroon
+        r = 40 + b * 200;
+        g = 3 + b * 20;
+        bl = 5 + b * 25;
       } else {
-        // Transition: dark red
-        r = 60 + b * 80;
-        g = 8 + b * 15;
-        bl = 15 + b * 20;
+        // Near black with warmth
+        r = 10 + random(8);
+        g = 2 + random(4);
+        bl = 5 + random(5);
       }
 
       pixels[idx] = r;
@@ -153,21 +147,14 @@ function draw() {
     }
   }
   updatePixels();
-
-  if (t % 500 === 0) {
-    console.log('running...', t);
-  }
 }
 
-function windowResized() {
-  // Keep original simulation, just resize display
-}
+function windowResized() {}
 
 function mousePressed() {
-  // Inject B at mouse position
   let cx = mouseX;
   let cy = mouseY;
-  let r = 30;
+  let r = 25;
 
   for (let i = -r; i <= r; i++) {
     for (let j = -r; j <= r; j++) {
