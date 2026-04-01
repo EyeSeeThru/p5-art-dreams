@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Rust Bloom</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { background: #020000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<script>
+// Rust Bloom — rust patterns growing like organic blooms, industrial beauty
+// Artistic abstract: the feeling of oxidation as living growth, decay as creation
+
+let blooms = [];
+let particles = [];
+let rustLayers = [];
+const NUM_BLOOMS = 12;
+const NUM_PARTICLES = 40;
+const NUM_RUST_LAYERS = 3;
+
+class RustBloom {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.size = 0;
+    this.maxSize = random(80, 200);
+    this.growthSpeed = random(0.3, 1);
+    this.phase = random(TWO_PI);
+    this.rotationSpeed = random(-0.005, 0.005);
+    this.angle = random(TWO_PI);
+    this.petals = floor(random(5, 10));
+    this.hue = random(8, 25); // rust orange-red
+    this.layerHues = [
+      this.hue,
+      this.hue - 5,
+      this.hue + 8
+    ];
+    this.layerSats = [95, 80, 60];
+    this.layerBrights = [60, 45, 30];
+  }
+  
+  update() {
+    if (this.size < this.maxSize) {
+      this.size += this.growthSpeed;
+    }
+    this.phase += 0.02;
+    this.angle += this.rotationSpeed;
+  }
+  
+  display() {
+    push();
+    translate(this.x, this.y);
+    rotate(this.angle);
+    
+    let breathe = sin(this.phase) * 5;
+    
+    // Draw multiple rust layers
+    for (let l = NUM_RUST_LAYERS - 1; l >= 0; l--) {
+      let layerSize = this.size * (1 - l * 0.15) + breathe;
+      let hue = this.layerHues[l];
+      let sat = this.layerSats[l];
+      let bright = this.layerBrights[l];
+      
+      // Rust layer glow
+      noStroke();
+      fill(hue, sat * 0.4, bright * 0.5, 30 - l * 8);
+      beginShape();
+      for (let i = 0; i < this.petals * 3; i++) {
+        let a = (i / (this.petals * 3)) * TWO_PI;
+        let r = layerSize * (0.7 + sin(a * this.petals + this.phase * 2) * 0.3);
+        curveVertex(cos(a) * r, sin(a) * r);
+      }
+      endShape(CLOSE);
+      
+      // Rust layer body
+      fill(hue, sat, bright, 200 - l * 40);
+      stroke(hue, sat * 0.7, bright + 20, 100);
+      strokeWeight(2 - l * 0.5);
+      beginShape();
+      for (let i = 0; i < this.petals * 3; i++) {
+        let a = (i / (this.petals * 3)) * TWO_PI;
+        let r = layerSize * (0.6 + sin(a * this.petals + this.phase * 2) * 0.35);
+        curveVertex(cos(a) * r, sin(a) * r);
+      }
+      endShape(CLOSE);
+    }
+    
+    // Inner detail
+    noStroke();
+    fill(this.hue - 10, 90, 40, 150);
+    beginShape();
+    for (let i = 0; i < this.petals * 2; i++) {
+      let a = (i / (this.petals * 2)) * TWO_PI;
+      let r = this.size * 0.2 + sin(a * this.petals * 2 + this.phase * 3) * this.size * 0.1;
+      curveVertex(cos(a) * r, sin(a) * r);
+    }
+    endShape(CLOSE);
+    
+    pop();
+  }
+}
+
+class RustParticle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(1, 4);
+    this.vx = random(-0.3, 0.3);
+    this.vy = random(-0.5, 0.1);
+    this.life = 1;
+    this.decay = random(0.001, 0.005);
+    this.hue = random(5, 25);
+    this.sat = random(70, 100);
+    this.bright = random(30, 60);
+    this.trail = [];
+    this.maxTrail = floor(random(5, 15));
+  }
+  
+  update() {
+    // Store trail
+    this.trail.push({x: this.x, y: this.y});
+    if (this.trail.length > this.maxTrail) {
+      this.trail.shift();
+    }
+    
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy *= 0.99;
+    this.vx += noise(this.x * 0.01, this.y * 0.01, frameCount * 0.02) * 0.1 - 0.05;
+    this.life -= this.decay;
+    
+    if (this.life <= 0 || this.y < -10) {
+      this.reset();
+      this.y = height + 5;
+      this.life = random(0.4, 1);
+    }
+  }
+  
+  display() {
+    noStroke();
+    
+    // Trail
+    for (let i = 0; i < this.trail.length; i++) {
+      let alpha = (i / this.trail.length) * this.life * 100;
+      let size = this.size * (i / this.trail.length) * 0.7;
+      fill(this.hue, this.sat * 0.7, this.bright, alpha);
+      ellipse(this.trail[i].x, this.trail[i].y, size, size * 0.6);
+    }
+    
+    // Main particle
+    fill(this.hue, this.sat, this.bright, this.life * 200);
+    ellipse(this.x, this.y, this.size * this.life, this.size * this.life * 0.6);
+    
+    // Glow
+    fill(this.hue, this.sat * 0.5, this.bright * 1.5, this.life * 50);
+    ellipse(this.x, this.y, this.size * 3, this.size * 2);
+  }
+}
+
+class RustSpot {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 0;
+    this.maxRadius = random(30, 100);
+    this.growthRate = random(0.2, 0.8);
+    this.hue = random(5, 20);
+    this.sat = random(60, 90);
+    this.bright = random(25, 50);
+  }
+  
+  update() {
+    if (this.radius < this.maxRadius) {
+      this.radius += this.growthRate;
+    }
+  }
+  
+  display() {
+    if (this.radius < 1) return;
+    
+    push();
+    translate(this.x, this.y);
+    
+    // Multiple concentric rust rings
+    for (let r = 3; r >= 0; r--) {
+      let ringRadius = this.radius * (1 - r * 0.2);
+      if (ringRadius < 1) continue;
+      
+      noStroke();
+      fill(this.hue, this.sat * (1 - r * 0.15), this.bright * (1 - r * 0.1), 80 - r * 15);
+      
+      // Irregular circle
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.1) {
+        let noiseR = noise(cos(a) * 2 + this.x * 0.01, sin(a) * 2 + this.y * 0.01) * ringRadius * 0.3;
+        let rFinal = ringRadius + noiseR;
+        curveVertex(cos(a) * rFinal, sin(a) * rFinal);
+      }
+      endShape(CLOSE);
+    }
+    
+    pop();
+  }
+}
+
+let rustSpots = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  background(5, 90, 1.5);
+  
+  // Create initial rust blooms
+  for (let i = 0; i < NUM_BLOOMS; i++) {
+    blooms.push(new RustBloom(random(width), random(height)));
+  }
+  
+  // Create rust spots
+  for (let i = 0; i < 20; i++) {
+    let spot = new RustSpot(random(width), random(height));
+    spot.radius = random(10, 50); // start partially grown
+    rustSpots.push(spot);
+  }
+  
+  // Create particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new RustParticle());
+  }
+}
+
+function draw() {
+  // Very slow fade for depth
+  background(5, 90, 1.5, 3);
+  
+  // Add subtle rust texture
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    let x = random(width);
+    let y = random(height);
+    let s = random(20, 60);
+    fill(10, 70, 15, 3);
+    rect(x, y, s, s);
+  }
+  
+  // Update and display rust spots
+  for (let spot of rustSpots) {
+    spot.update();
+    spot.display();
+  }
+  
+  // Update and display blooms
+  for (let bloom of blooms) {
+    bloom.update();
+    bloom.display();
+  }
+  
+  // Update and display particles
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+  
+  // Occasionally add new bloom
+  if (frameCount % 180 === 0 && blooms.length < 20) {
+    blooms.push(new RustBloom(random(width), random(height)));
+  }
+  
+  // Occasionally add new rust spot
+  if (frameCount % 240 === 0 && rustSpots.length < 35) {
+    rustSpots.push(new RustSpot(random(width), random(height)));
+  }
+  
+  // Vignette
+  noStroke();
+  let vignetteSize = max(width, height) * 1.3;
+  for (let i = 0; i < 12; i++) {
+    let alpha = map(i, 0, 12, 0, 40);
+    fill(0, 0, 0, alpha);
+    ellipse(width/2, height/2, vignetteSize - i * vignetteSize * 0.07, vignetteSize - i * vignetteSize * 0.07);
+  }
+}
+
+function mousePressed() {
+  // Spawn new blooms near click
+  for (let i = 0; i < 3; i++) {
+    blooms.push(new RustBloom(mouseX + random(-40, 40), mouseY + random(-40, 40)));
+  }
+  
+  // Spawn rust spot
+  rustSpots.push(new RustSpot(mouseX, mouseY));
+  
+  // Spawn particle burst
+  for (let i = 0; i < 30; i++) {
+    let p = new RustParticle();
+    p.x = mouseX + random(-30, 30);
+    p.y = mouseY + random(-30, 30);
+    p.vy = random(-3, -0.5);
+    p.life = 1;
+    particles.push(p);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(5, 90, 1.5);
+}
+</script>
+</body>
+</html>
