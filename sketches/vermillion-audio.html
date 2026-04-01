@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Vermillion Audio</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { background: #1a0505; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<script>
+// Vermillion Audio — audio-reactive visualization with flowing waveforms
+// Data Visualization / Sonification: audio-reactive patterns in vivid red
+
+let particles = [];
+let waveform = [];
+const NUM_PARTICLES = 80;
+const WAVEFORM_POINTS = 200;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  // Background: dark but VISIBLE - brightness >= 15
+  background(5, 80, 18);
+  
+  // Initialize particles
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new AudioParticle());
+  }
+  
+  // Initialize waveform
+  for (let i = 0; i < WAVEFORM_POINTS; i++) {
+    waveform.push(0);
+  }
+}
+
+function draw() {
+  // Background: dark but VISIBLE - brightness 18 (not 1.5!)
+  background(5, 80, 18, 40);
+  
+  // Generate pseudo-audio values
+  let bass = sin(millis() * 0.002) * 0.5 + 0.5;
+  let mid = sin(millis() * 0.005 + 1) * 0.5 + 0.5;
+  let high = sin(millis() * 0.01 + 2) * 0.5 + 0.5;
+  
+  // Update waveform
+  let audioVal = (bass * 0.5 + mid * 0.3 + high * 0.2);
+  waveform.shift();
+  waveform.push(audioVal);
+  
+  // Draw waveform
+  drawWaveform(audioVal, bass, mid, high);
+  
+  // Update and display particles
+  for (let p of particles) {
+    p.update(audioVal, bass, mid, high);
+    p.display(audioVal, bass, mid, high);
+  }
+  
+  // Draw center pulse
+  drawCenterPulse(audioVal, bass);
+  
+  // Vignette
+  drawVignette();
+}
+
+function drawWaveform(audioVal, bass, mid, high) {
+  // Waveform lines - BRIGHT RED (brightness 80+)
+  noFill();
+  
+  // Bass waveform - thicker, lower
+  stroke(5, 95, 80); // bright red, HSB
+  strokeWeight(3);
+  beginShape();
+  for (let i = 0; i < WAVEFORM_POINTS; i++) {
+    let x = map(i, 0, WAVEFORM_POINTS - 1, 0, width);
+    let y = height * 0.7 + (waveform[i] - 0.5) * height * 0.4 * bass;
+    curveVertex(x, y);
+  }
+  endShape();
+  
+  // Mid waveform - medium
+  stroke(10, 90, 75);
+  strokeWeight(2);
+  beginShape();
+  for (let i = 0; i < WAVEFORM_POINTS; i++) {
+    let x = map(i, 0, WAVEFORM_POINTS - 1, 0, width);
+    let y = height * 0.5 + sin(i * 0.1 + millis() * 0.003) * height * 0.15 * mid;
+    curveVertex(x, y);
+  }
+  endShape();
+  
+  // High waveform - thinner, higher
+  stroke(15, 85, 70);
+  strokeWeight(1.5);
+  beginShape();
+  for (let i = 0; i < WAVEFORM_POINTS; i++) {
+    let x = map(i, 0, WAVEFORM_POINTS - 1, 0, width);
+    let y = height * 0.3 + sin(i * 0.2 + millis() * 0.008) * height * 0.1 * high;
+    curveVertex(x, y);
+  }
+  endShape();
+}
+
+function drawCenterPulse(audioVal, bass) {
+  // Center circle that pulses with bass
+  let pulseSize = 100 + bass * 150;
+  
+  // Outer glow - BRIGHT (brightness 60+)
+  noStroke();
+  for (let i = 5; i >= 0; i--) {
+    let alpha = map(i, 0, 5, 40, 5);
+    let size = pulseSize + i * 20;
+    fill(5, 95, 60, alpha); // bright red, visible
+    ellipse(width/2, height/2, size, size * 0.8);
+  }
+  
+  // Inner core - VERY BRIGHT (brightness 90+)
+  fill(0, 100, 95); // nearly pure red, maximum brightness
+  noStroke();
+  ellipse(width/2, height/2, pulseSize * 0.5, pulseSize * 0.4);
+  
+  // Highlight
+  fill(20, 80, 100);
+  ellipse(width/2 - pulseSize * 0.1, height/2 - pulseSize * 0.1, pulseSize * 0.15, pulseSize * 0.12);
+}
+
+function drawVignette() {
+  // Vignette - dark edges but NOT too dark (minimum brightness 10+)
+  noFill();
+  for (let i = 0; i < 15; i++) {
+    let alpha = map(i, 0, 15, 0, 30);
+    let size = max(width, height) * (1 + i * 0.08);
+    stroke(0, 0, 10, alpha); // very dark red, but visible
+    strokeWeight(20);
+    ellipse(width/2, height/2, size, size);
+  }
+}
+
+class AudioParticle {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(3, 10);
+    this.vx = random(-1, 1);
+    this.vy = random(-1, 1);
+    this.life = random(0.5, 1);
+    this.decay = random(0.002, 0.008);
+    this.hue = random(5, 20); // red range
+    this.baseSat = random(80, 100);
+    this.baseBright = random(70, 95); // BRIGHT
+  }
+  
+  update(audioVal, bass, mid, high) {
+    // Movement influenced by audio
+    let angle = noise(this.x * 0.005, this.y * 0.005, millis() * 0.0005) * TWO_PI * 2;
+    let speed = (0.5 + audioVal * 2);
+    
+    this.vx += cos(angle) * speed * 0.1;
+    this.vy += sin(angle) * speed * 0.1;
+    
+    // Bass affects vertical movement
+    this.vy += (bass - 0.5) * 0.5;
+    
+    this.vx *= 0.98;
+    this.vy *= 0.98;
+    
+    this.x += this.vx;
+    this.y += this.vy;
+    
+    this.life -= this.decay;
+    
+    if (this.life <= 0 || this.x < -50 || this.x > width + 50 || this.y < -50 || this.y > height + 50) {
+      this.reset();
+    }
+  }
+  
+  display(audioVal, bass, mid, high) {
+    // Particles are BRIGHT (brightness 70+)
+    let bright = this.baseBright * this.life;
+    let size = this.size * (0.5 + audioVal * 0.5);
+    
+    // Glow
+    noStroke();
+    fill(this.hue, this.baseSat * 0.7, bright * 0.5, 30);
+    ellipse(this.x, this.y, size * 3, size * 2);
+    
+    // Main particle - BRIGHT
+    fill(this.hue, this.baseSat, bright, this.life * 200);
+    ellipse(this.x, this.y, size, size * 0.7);
+    
+    // Highlight
+    fill(20, 70, 100, this.life * 150);
+    ellipse(this.x - size * 0.2, this.y - size * 0.2, size * 0.3, size * 0.2);
+  }
+}
+
+function mousePressed() {
+  // Spawn particle burst
+  for (let i = 0; i < 20; i++) {
+    let p = particles[floor(random(particles.length))];
+    p.x = mouseX + random(-30, 30);
+    p.y = mouseY + random(-30, 30);
+    p.vx = random(-3, 3);
+    p.vy = random(-3, 3);
+    p.life = 1;
+    p.size = random(5, 15);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  background(5, 80, 18);
+}
+</script>
+</body>
+</html>
