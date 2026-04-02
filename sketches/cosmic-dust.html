@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Dust</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #141414; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Cosmic Dust — layered flowing noise creates depth and swirling patterns
+// Abstract cosmic clouds with depth and luminosity
+// RED AND BLACK version - deep crimson clouds on dark background
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red rgb(100,100,100) minimum
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let particles = [];
+const NUM_PARTICLES = 80;
+
+class Star {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(1, 4);
+    this.brightness = random(150, 255);
+    this.twinkleSpeed = random(0.02, 0.08);
+    this.phase = random(TWO_PI);
+    this.depth = random(0.5, 3);
+  }
+  
+  update() {
+    this.phase += this.twinkleSpeed;
+  }
+  
+  draw() {
+    let twinkle = (sin(this.phase) + 1) / 2;
+    let b = this.brightness * (0.5 + twinkle * 0.5);
+    // Deep red glow with warm center
+    fill(b, b * 0.3, b * 0.2, b);
+    noStroke();
+    ellipse(this.x, this.y, this.size * twinkle);
+    
+    // Hot white center
+    if (this.size > 2) {
+      fill(255, 220, 200, b * 0.8);
+      ellipse(this.x, this.y, this.size * twinkle * 0.4);
+    }
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Star());
+  }
+}
+
+function draw() {
+  // Dark background with warmth
+  background(BG_R, BG_G * 0.6, BG_B * 0.4);
+  
+  // Draw layered nebula clouds
+  drawNebula();
+  
+  // Draw stars
+  for (let star of particles) {
+    star.update();
+    star.draw();
+  }
+  
+  // Vignette
+  drawVignette();
+}
+
+function drawNebula() {
+  noStroke();
+  
+  // Layer 1: Deep background clouds - dark red/maroon
+  for (let i = 0; i < 8; i++) {
+    let x = noise(i * 0.5, frameCount * 0.001) * width * 1.5 - width * 0.25;
+    let y = noise(i * 0.5 + 100, frameCount * 0.001 + 100) * height * 1.5 - height * 0.25;
+    let size = noise(i * 0.3, frameCount * 0.0005) * 400 + 200;
+    
+    // Dark maroon outer
+    fill(60, 15, 15, 50);
+    ellipse(x, y, size, size * 0.6);
+  }
+  
+  // Layer 2: Mid clouds with more color - deep crimson
+  for (let i = 0; i < 6; i++) {
+    let x = noise(i * 0.7 + 50, frameCount * 0.002) * width * 1.3 - width * 0.15;
+    let y = noise(i * 0.7 + 150, frameCount * 0.002 + 50) * height * 1.3 - height * 0.15;
+    let size = noise(i * 0.4 + 200, frameCount * 0.001) * 300 + 150;
+    
+    // Deep crimson glow
+    fill(120, 30, 20, 60);
+    ellipse(x, y, size, size * 0.7);
+    
+    // Brighter core
+    fill(180, 60, 40, 40);
+    ellipse(x, y, size * 0.5, size * 0.35);
+  }
+  
+  // Layer 3: Bright regions - vivid red
+  for (let i = 0; i < 4; i++) {
+    let x = noise(i * 1.0 + 300, frameCount * 0.003) * width;
+    let y = noise(i * 1.0 + 400, frameCount * 0.003 + 200) * height;
+    let size = noise(i * 0.5 + 500, frameCount * 0.002) * 150 + 80;
+    
+    // Vivid red-orange core
+    fill(200, 80, 50, 80);
+    ellipse(x, y, size, size * 0.6);
+    
+    // Bright center
+    fill(255, 140, 100, 50);
+    ellipse(x, y, size * 0.4, size * 0.24);
+  }
+  
+  // Flowing streams
+  drawStreams();
+}
+
+function drawStreams() {
+  for (let s = 0; s < 5; s++) {
+    let startX = noise(s * 2, frameCount * 0.001) * width;
+    let startY = noise(s * 2 + 50, frameCount * 0.001 + 50) * height;
+    
+    noFill();
+    strokeWeight(random(20, 50));
+    
+    // Outer glow - dark red
+    stroke(50, 15, 10, 40);
+    drawStream(startX, startY);
+    
+    // Inner brighter - crimson
+    strokeWeight(random(10, 25));
+    stroke(150, 50, 30, 60);
+    drawStream(startX, startY);
+  }
+}
+
+function drawStream(startX, startY) {
+  beginShape();
+  let x = startX;
+  let y = startY;
+  
+  for (let i = 0; i < 10; i++) {
+    let noiseX = noise(x * 0.005, y * 0.005, frameCount * 0.002) * 100 - 50;
+    let noiseY = noise(x * 0.005 + 100, y * 0.005 + 100, frameCount * 0.002) * 100 - 50;
+    
+    x += noiseX;
+    y += noiseY + 20;
+    
+    if (x < -50) x = width + 50;
+    if (x > width + 50) x = -50;
+    if (y < -50) y = height + 50;
+    if (y > height + 50) y = -50;
+    
+    curveVertex(x, y);
+  }
+  endShape();
+}
+
+function drawVignette() {
+  let vignetteSize = min(width, height) * 1.3;
+  noFill();
+  for (let i = 0; i < 40; i++) {
+    let alpha = map(i, 0, 40, 0, 20);
+    stroke(BG_R, BG_G * 0.6, BG_B * 0.4, alpha);
+    strokeWeight(15);
+    ellipse(width/2, height/2, vignetteSize - i * 15, vignetteSize - i * 15);
+  }
+}
+
+function mousePressed() {
+  for (let i = 0; i < 10; i++) {
+    let star = new Star();
+    star.x = mouseX + random(-20, 20);
+    star.y = mouseY + random(-20, 20);
+    star.brightness = 255;
+    star.size = random(3, 6);
+    particles.push(star);
+  }
+  
+  while (particles.length > NUM_PARTICLES * 2) {
+    particles.shift();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
