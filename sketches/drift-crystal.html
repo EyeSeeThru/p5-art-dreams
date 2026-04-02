@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drift Crystal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #141414; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Drift Crystal — abstract crystalline lattice where particles drift and form shifting connections
+// Nodes pulse gently, channels glow and fade, the whole structure breathes and shifts
+// Click to disturb the lattice at that point
+
+const GRID_SIZE = 40;
+const NODE_CHANCE = 0.4;
+const BG_BRIGHTNESS = 20;
+
+let nodes = [];
+let cols, rows;
+
+class Node {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.active = random() < NODE_CHANCE;
+    this.brightness = random(100, 200);
+    this.pulsePhase = random(TWO_PI);
+    this.pulseSpeed = random(0.01, 0.03);
+    this.size = random(2, 5);
+    this.connections = [];
+    this.connectionBrightness = [];
+  }
+  
+  update(nodes) {
+    if (!this.active) return;
+    
+    // Pulse
+    this.pulsePhase += this.pulseSpeed;
+    this.brightness = map(sin(this.pulsePhase), -1, 1, 80, 200);
+    
+    // Find and update connections to nearby active nodes
+    this.connections = [];
+    this.connectionBrightness = [];
+    
+    for (let other of nodes) {
+      if (other === this || !other.active) continue;
+      let d = dist(this.x, this.y, other.x, other.y);
+      if (d < GRID_SIZE * 2.5) {
+        this.connections.push(other);
+        // Connection brightness based on distance and both nodes' brightness
+        let cb = map(d, 0, GRID_SIZE * 2.5, this.brightness, 30);
+        cb = (cb + other.brightness) * 0.4;
+        this.connectionBrightness.push(cb);
+      }
+    }
+  }
+  
+  draw() {
+    if (!this.active) return;
+    
+    let b = this.brightness;
+    
+    // Draw connections first (behind nodes)
+    for (let i = 0; i < this.connections.length; i++) {
+      let other = this.connections[i];
+      let cb = this.connectionBrightness[i];
+      
+      // Glowing line
+      stroke(cb * 0.3, cb * 0.1, cb * 0.05, 50);
+      strokeWeight(6);
+      line(this.x, this.y, other.x, other.y);
+      
+      stroke(cb * 0.6, cb * 0.2, cb * 0.1, 100);
+      strokeWeight(3);
+      line(this.x, this.y, other.x, other.y);
+      
+      stroke(cb, cb * 0.3, cb * 0.15, 180);
+      strokeWeight(1);
+      line(this.x, this.y, other.x, other.y);
+    }
+    
+    // Node glow
+    noStroke();
+    fill(b * 0.2, b * 0.05, b * 0.02, 30);
+    ellipse(this.x, this.y, this.size * 6, this.size * 6);
+    
+    fill(b * 0.4, b * 0.1, b * 0.05, 60);
+    ellipse(this.x, this.y, this.size * 3, this.size * 3);
+    
+    // Node core
+    fill(b, b * 0.25, b * 0.1, 220);
+    ellipse(this.x, this.y, this.size, this.size);
+    
+    // Hot center for brighter nodes
+    if (b > 140) {
+      fill(b + 50, b * 0.5, b * 0.2, 200);
+      ellipse(this.x, this.y, this.size * 0.5, this.size * 0.5);
+    }
+  }
+  
+  disturb() {
+    // Make nearby nodes more active / brighter
+    for (let other of nodes) {
+      if (!other.active) {
+        let d = dist(this.x, this.y, other.x, other.y);
+        if (d < GRID_SIZE * 3 && random() < 0.3) {
+          other.active = true;
+          other.brightness = random(100, 160);
+        }
+      } else {
+        other.brightness = min(255, other.brightness + random(20, 50));
+      }
+    }
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  
+  cols = ceil(width / GRID_SIZE) + 2;
+  rows = ceil(height / GRID_SIZE) + 2;
+  
+  // Create grid of nodes
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let px = x * GRID_SIZE + GRID_SIZE / 2;
+      let py = y * GRID_SIZE + GRID_SIZE / 2;
+      // Add slight offset for variety
+      px += random(-GRID_SIZE * 0.2, GRID_SIZE * 0.2);
+      py += random(-GRID_SIZE * 0.2, GRID_SIZE * 0.2);
+      nodes.push(new Node(px, py));
+    }
+  }
+}
+
+function draw() {
+  // Dark background with warmth
+  background(BG_BRIGHTNESS, BG_BRIGHTNESS * 0.15, BG_BRIGHTNESS * 0.1);
+  
+  // Update nodes
+  for (node of nodes) {
+    node.update(nodes);
+  }
+  
+  // Draw nodes (connections drawn within node.draw())
+  for (node of nodes) {
+    node.draw();
+  }
+  
+  // Subtle vignette
+  drawVignette();
+}
+
+function drawVignette() {
+  let vignetteSize = min(width, height) * 1.2;
+  noFill();
+  for (let i = 0; i < 40; i++) {
+    let alpha = map(i, 0, 40, 0, 25);
+    stroke(BG_BRIGHTNESS, BG_BRIGHTNESS * 0.15, BG_BRIGHTNESS * 0.1, alpha);
+    strokeWeight(20);
+    ellipse(width/2, height/2, vignetteSize - i * 20, vignetteSize - i * 20);
+  }
+}
+
+function mousePressed() {
+  // Find closest node and disturb it
+  let closest = null;
+  let closestDist = Infinity;
+  
+  for (node of nodes) {
+    let d = dist(mouseX, mouseY, node.x, node.y);
+    if (d < closestDist) {
+      closestDist = d;
+      closest = node;
+    }
+  }
+  
+  if (closest && closestDist < GRID_SIZE * 2) {
+    closest.disturb();
+  }
+  
+  // Also spawn some new nodes near click
+  for (let i = 0; i < 5; i++) {
+    let nx = mouseX + random(-GRID_SIZE, GRID_SIZE);
+    let ny = mouseY + random(-GRID_SIZE, GRID_SIZE);
+    for (node of nodes) {
+      if (dist(nx, ny, node.x, node.y) < GRID_SIZE && !node.active) {
+        if (random() < 0.5) {
+          node.active = true;
+          node.brightness = random(120, 200);
+        }
+        break;
+      }
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  setup();
+}
+</script>
+</body>
+</html>
