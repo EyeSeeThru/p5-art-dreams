@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Living Coral</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #141414; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Living Coral — organic reaction-diffusion patterns like living coral
+// Artistic interpretation of Gray-Scott reaction-diffusion
+// Soft, flowing organic forms with gentle pulsing
+// Background brightness 20, coral brightness 80-200
+
+const BG = 20;
+const CELL_SIZE = 6;
+const WIDTH_CELLS = 213; // 1280 / 6 = ~213
+const HEIGHT_CELLS = 120; // 720 / 6 = 120
+
+let grid, nextGrid;
+let t = 0;
+
+function resetSketch() {
+  grid = [];
+  nextGrid = [];
+  
+  for (let i = 0; i < WIDTH_CELLS; i++) {
+    grid[i] = [];
+    nextGrid[i] = [];
+    for (let j = 0; j < HEIGHT_CELLS; j++) {
+      grid[i][j] = { a: 1, b: 0 };
+      nextGrid[i][j] = { a: 1, b: 0 };
+    }
+  }
+  
+  // Add initial seed - several organic blobs
+  addBlob(WIDTH_CELLS * 0.3, HEIGHT_CELLS * 0.3, 8);
+  addBlob(WIDTH_CELLS * 0.7, HEIGHT_CELLS * 0.4, 10);
+  addBlob(WIDTH_CELLS * 0.5, HEIGHT_CELLS * 0.7, 7);
+  addBlob(WIDTH_CELLS * 0.2, HEIGHT_CELLS * 0.6, 6);
+  addBlob(WIDTH_CELLS * 0.8, HEIGHT_CELLS * 0.2, 8);
+}
+
+function addBlob(cx, cy, radius) {
+  for (let i = -radius; i <= radius; i++) {
+    for (let j = -radius; j <= radius; j++) {
+      let dist = sqrt(i * i + j * j);
+      if (dist < radius) {
+        let x = floor(cx + i);
+        let y = floor(cy + j);
+        if (x >= 0 && x < WIDTH_CELLS && y >= 0 && y < HEIGHT_CELLS) {
+          grid[x][y].b = 1;
+        }
+      }
+    }
+  }
+}
+
+function laplacian(grid, x, y) {
+  let sumA = 0, sumB = 0;
+  let neighbors = 0;
+  
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      if (i !== 0 || j !== 0) {
+        let nx = x + i;
+        let ny = y + j;
+        
+        if (nx < 0) nx = WIDTH_CELLS - 1;
+        if (nx >= WIDTH_CELLS) nx = 0;
+        if (ny < 0) ny = HEIGHT_CELLS - 1;
+        if (ny >= HEIGHT_CELLS) ny = 0;
+        
+        sumA += grid[nx][ny].a;
+        sumB += grid[nx][ny].b;
+        neighbors++;
+      }
+    }
+  }
+  
+  return {
+    a: sumA / neighbors,
+    b: sumB / neighbors
+  };
+}
+
+function updateGrid() {
+  let dA = 1.0;
+  let dB = 0.5;
+  let feed = 0.055;
+  let kill = 0.062;
+  
+  // Add slight variation to parameters for organic feel
+  let feedMod = sin(t * 0.001) * 0.002;
+  let killMod = cos(t * 0.0015) * 0.002;
+  
+  for (let i = 0; i < WIDTH_CELLS; i++) {
+    for (let j = 0; j < HEIGHT_CELLS; j++) {
+      let cell = grid[i][j];
+      let lap = laplacian(grid, i, j);
+      
+      let a = cell.a;
+      let b = cell.b;
+      
+      let reaction = a * b * b;
+      
+      let newA = a + (dA * (lap.a - reaction) + feed * (1 - a)) * 0.9;
+      let newB = b + (dB * (lap.b - reaction) + (kill + killMod + 0.02) * b) * 0.9;
+      
+      newA = constrain(newA, 0, 1);
+      newB = constrain(newB, 0, 1);
+      
+      nextGrid[i][j].a = newA;
+      nextGrid[i][j].b = newB;
+    }
+  }
+  
+  // Swap grids
+  let temp = grid;
+  grid = nextGrid;
+  nextGrid = temp;
+  
+  t++;
+}
+
+function drawGrid() {
+  // Background
+  background(BG, BG * 0.15, BG * 0.1);
+  
+  noStroke();
+  
+  // Draw cells with organic coloring
+  for (let i = 0; i < WIDTH_CELLS; i++) {
+    for (let j = 0; j < HEIGHT_CELLS; j++) {
+      let cell = grid[i][j];
+      let b = cell.b;
+      
+      if (b > 0.01) {
+        let brightness = map(b, 0, 1, 80, 200);
+        brightness = constrain(brightness, 80, 200);
+        
+        // Red-orange coral coloring
+        let r = brightness;
+        let g = brightness * 0.25;
+        let gb = brightness * 0.1;
+        
+        fill(r, g, gb);
+        
+        // Vary cell size slightly for organic feel
+        let sizeMod = 1 + sin(i * 0.3 + j * 0.2 + t * 0.02) * 0.15;
+        let size = CELL_SIZE * sizeMod;
+        
+        let x = i * CELL_SIZE + CELL_SIZE / 2;
+        let y = j * CELL_SIZE + CELL_SIZE / 2;
+        
+        rect(x, y, size * 0.9, size * 0.9);
+      }
+    }
+  }
+  
+  // Add subtle glow overlay
+  drawGlow();
+}
+
+function drawGlow() {
+  // Soft vignette
+  let vignetteSize = min(width, height) * 1.2;
+  noFill();
+  for (let i = 0; i < 30; i++) {
+    let alpha = map(i, 0, 30, 0, 15);
+    stroke(BG, BG * 0.15, BG * 0.1, alpha);
+    strokeWeight(10);
+    ellipse(width/2, height/2, vignetteSize - i * 10, vignetteSize - i * 10);
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  
+  resetSketch();
+  
+  // Run several iterations to get interesting pattern
+  for (let i = 0; i < 100; i++) {
+    updateGrid();
+  }
+}
+
+function draw() {
+  // Update several steps per frame for faster evolution
+  for (let i = 0; i < 3; i++) {
+    updateGrid();
+  }
+  
+  drawGrid();
+  
+  // Click to add new coral seed
+  if (mouseIsPressed) {
+    let cellX = floor(mouseX / CELL_SIZE);
+    let cellY = floor(mouseY / CELL_SIZE);
+    addBlob(cellX, cellY, 5);
+  }
+}
+
+function mousePressed() {
+  // Add coral blob on click
+  let cellX = floor(mouseX / CELL_SIZE);
+  let cellY = floor(mouseY / CELL_SIZE);
+  addBlob(cellX, cellY, 6);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function keyPressed() {
+  if (key === 'r' || key === 'R') {
+    resetSketch();
+  }
+}
+</script>
+</body>
+</html>
