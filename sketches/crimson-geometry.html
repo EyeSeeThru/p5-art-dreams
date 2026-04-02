@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crimson Geometry</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #141414; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Crimson Geometry — overlapping geometric forms creating complex visual rhythms
+// Simple shapes (circles, triangles, squares) arranged in evolving patterns
+// The interplay of overlapping transparent shapes creates depth and complexity
+// Click to shift the composition
+// Background brightness 20, shapes brightness 100-200
+
+const BG = 20;
+const NUM_SHAPES = 25;
+const SHAPE_TYPES = ['circle', 'triangle', 'square', 'hexagon', 'line'];
+
+class GeoShape {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(30, 200);
+    this.rotation = random(TWO_PI);
+    this.rotSpeed = random(-0.01, 0.01);
+    this.type = random(SHAPE_TYPES);
+    this.brightness = random(100, 200);
+    this.alpha = random(30, 80);
+    this.driftX = random(-0.3, 0.3);
+    this.driftY = random(-0.3, 0.3);
+    this.phase = random(TWO_PI);
+    this.phaseSpeed = random(0.005, 0.02);
+    this.pulseAmount = random(0.1, 0.3);
+  }
+  
+  update() {
+    this.rotation += this.rotSpeed;
+    this.x += this.driftX;
+    this.y += this.driftY;
+    this.phase += this.phaseSpeed;
+    
+    // Bounce off edges
+    if (this.x < -this.size) this.x = width + this.size;
+    if (this.x > width + this.size) this.x = -this.size;
+    if (this.y < -this.size) this.y = height + this.size;
+    if (this.y > height + this.size) this.y = -this.size;
+    
+    // Pulse size
+    let pulse = sin(this.phase) * this.pulseAmount;
+    this.currentSize = this.size * (1 + pulse);
+  }
+  
+  draw() {
+    push();
+    translate(this.x, this.y);
+    rotate(this.rotation);
+    
+    let b = this.brightness;
+    let a = this.alpha;
+    
+    // Draw shape based on type
+    noStroke();
+    
+    // Glow
+    fill(b * 0.3, b * 0.1, b * 0.05, a * 0.3);
+    this.drawShape(this.currentSize * 1.5);
+    
+    // Outer
+    fill(b * 0.5, b * 0.15, b * 0.08, a * 0.5);
+    this.drawShape(this.currentSize * 1.2);
+    
+    // Main
+    fill(b, b * 0.25, b * 0.12, a);
+    this.drawShape(this.currentSize);
+    
+    // Inner highlight
+    fill(min(255, b + 40), min(255, b * 0.4), min(255, b * 0.2), a * 0.8);
+    this.drawShape(this.currentSize * 0.6);
+    
+    // Hot center
+    if (this.type === 'circle' || this.type === 'hexagon') {
+      fill(255, 200, 150, a * 0.6);
+      this.drawShape(this.currentSize * 0.2);
+    }
+    
+    pop();
+  }
+  
+  drawShape(size) {
+    switch(this.type) {
+      case 'circle':
+        ellipse(0, 0, size, size);
+        break;
+      case 'triangle':
+        let h = size * sqrt(3) / 2;
+        triangle(0, -h * 0.67, -size * 0.5, h * 0.33, size * 0.5, h * 0.33);
+        break;
+      case 'square':
+        rectMode(CENTER);
+        rect(0, 0, size * 0.85, size * 0.85);
+        break;
+      case 'hexagon':
+        this.drawPolygon(0, 0, size / 2, 6);
+        break;
+      case 'line':
+        strokeWeight(size * 0.15);
+        line(-size/2, 0, size/2, 0);
+        noStroke();
+        break;
+    }
+  }
+  
+  drawPolygon(x, y, radius, npoints) {
+    let angle = TWO_PI / npoints;
+    beginShape();
+    for (let a = 0; a < TWO_PI; a += angle) {
+      let sx = x + cos(a) * radius;
+      let sy = y + sin(a) * radius;
+      vertex(sx, sy);
+    }
+    endShape(CLOSE);
+  }
+}
+
+let shapes = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  
+  // Create shapes
+  for (let i = 0; i < NUM_SHAPES; i++) {
+    shapes.push(new GeoShape());
+  }
+}
+
+function draw() {
+  // Dark background with warmth
+  background(BG, BG * 0.15, BG * 0.1);
+  
+  // Update and draw shapes
+  for (let shape of shapes) {
+    shape.update();
+    shape.draw();
+  }
+  
+  // Subtle vignette
+  drawVignette();
+}
+
+function drawVignette() {
+  let vignetteSize = min(width, height) * 1.2;
+  noFill();
+  for (let i = 0; i < 50; i++) {
+    let alpha = map(i, 0, 50, 0, 25);
+    stroke(BG, BG * 0.15, BG * 0.1, alpha);
+    strokeWeight(12);
+    ellipse(width/2, height/2, vignetteSize - i * 12, vignetteSize - i * 12);
+  }
+}
+
+function mousePressed() {
+  // Shift several shapes toward click point
+  let count = floor(random(3, 8));
+  for (let i = 0; i < count; i++) {
+    let shape = random(shapes);
+    let angle = atan2(mouseY - shape.y, mouseX - shape.x);
+    let speed = random(2, 5);
+    shape.driftX = cos(angle) * speed;
+    shape.driftY = sin(angle) * speed;
+    shape.type = random(SHAPE_TYPES);
+    shape.size = random(30, 200);
+    shape.brightness = random(100, 200);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
