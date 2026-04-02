@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moire Pattern</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Moire Pattern — overlapping grid transformations creating interference
+// RED AND BLACK version - mathematical geometric patterns
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red rgb(100,100,100) minimum
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let angle1 = 0;
+let angle2 = 0;
+let scale1 = 1;
+let scale2 = 1;
+let time = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  background(BG_R, BG_G, BG_B);
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  time += 0.005;
+  
+  // Slowly animate the grids
+  angle1 = sin(time * 0.7) * 0.15;
+  angle2 = sin(time * 0.5) * 0.12 + 0.1;
+  scale1 = 1 + sin(time * 0.3) * 0.2;
+  scale2 = 1 + sin(time * 0.4) * 0.15;
+  
+  // Draw grid 1 - larger cells, dark red/maroon
+  drawGrid(width/2, height/2, angle1, scale1 * 80, {r: 80, g: 20, b: 20});
+  
+  // Draw grid 2 - smaller cells, deep crimson
+  drawGrid(width/2, height/2, angle2, scale2 * 60, {r: 140, g: 30, b: 30});
+  
+  // Draw grid 3 - medium, vivid red
+  drawGrid(width/2, height/2, -angle1 * 0.7, 70, {r: 180, g: 40, b: 40});
+  
+  // Draw concentric circles overlay
+  drawConcentricCircles();
+  
+  // Radial lines from center
+  drawRadialLines();
+  
+  // Vignette
+  drawVignette();
+}
+
+function drawGrid(cx, cy, angle, spacing, col) {
+  push();
+  translate(cx, cy);
+  rotate(angle);
+  
+  stroke(col.r, col.g, col.b, 50);
+  strokeWeight(1);
+  
+  let extent = max(width, height) * 1.5;
+  
+  // Vertical lines
+  for (let x = -extent; x <= extent; x += spacing) {
+    line(x, -extent, x, extent);
+  }
+  
+  // Horizontal lines
+  for (let y = -extent; y <= extent; y += spacing) {
+    line(-extent, y, extent, y);
+  }
+  
+  pop();
+}
+
+function drawConcentricCircles() {
+  push();
+  translate(width/2, height/2);
+  
+  noFill();
+  let numCircles = 20;
+  let spacing = 40;
+  
+  for (let i = 0; i < numCircles; i++) {
+    let r = 50 + i * spacing + sin(time * 2 + i * 0.3) * 10;
+    let alpha = map(i, 0, numCircles, 100, 30);
+    let bright = map(i, 0, numCircles, 180, 80);
+    stroke(bright, 30, 30, alpha);
+    strokeWeight(1.5);
+    ellipse(0, 0, r * 2, r * 2);
+  }
+  
+  pop();
+}
+
+function drawRadialLines() {
+  push();
+  translate(width/2, height/2);
+  
+  let numLines = 24;
+  let r = max(width, height);
+  
+  for (let i = 0; i < numLines; i++) {
+    let a = (TWO_PI / numLines) * i + time * 0.1;
+    let alpha = 40 + sin(time * 3 + i) * 20;
+    let bright = 120 + sin(time * 2 + i) * 40;
+    stroke(bright, 40, 40, alpha);
+    strokeWeight(1);
+    line(0, 0, cos(a) * r, sin(a) * r);
+  }
+  
+  pop();
+}
+
+function drawVignette() {
+  let vignetteSize = min(width, height) * 1.5;
+  noFill();
+  for (let i = 0; i < 40; i++) {
+    let alpha = map(i, 0, 40, 0, 20);
+    stroke(BG_R, BG_G, BG_B, alpha);
+    strokeWeight(30);
+    ellipse(width/2, height/2, vignetteSize - i * 30, vignetteSize - i * 30);
+  }
+}
+
+function mousePressed() {
+  // Click creates a burst effect
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
