@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blood Bloom</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Blood Bloom — organic tendrils branching outward, slow unfurling patterns
+// RED AND BLACK version - vivid crimson on near-black
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red rgb(100,100,100) minimum
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let branches = [];
+const NUM_BRANCHES = 12;
+const BRANCH_LENGTH = 200;
+
+class Branch {
+  constructor(x, y, angle, depth, parentHue) {
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.depth = depth;
+    this.parentHue = parentHue;
+    this.length = BRANCH_LENGTH / (depth * 0.5 + 1);
+    this.thickness = map(depth, 0, 8, 12, 1);
+    this.hue = parentHue + random(-8, 8);
+    this.phase = random(TWO_PI);
+    this.phaseSpeed = random(0.01, 0.03);
+    this.children = [];
+    this.grown = 0;
+    this.maxGrow = this.length;
+    this.hasSpawned = false;
+    this.spawnAngle = random(-0.5, 0.5);
+  }
+  
+  update() {
+    this.phase += this.phaseSpeed;
+    
+    if (this.grown < this.maxGrow) {
+      this.grown += 0.8;
+    }
+    
+    if (this.grown >= this.maxGrow * 0.7 && !this.hasSpawned && this.depth < 8) {
+      this.hasSpawned = true;
+      let numChildren = floor(random(1, 4));
+      for (let i = 0; i < numChildren; i++) {
+        let newAngle = this.angle + random(-0.6, 0.6) + this.spawnAngle;
+        let newX = this.x + cos(this.angle) * this.grown;
+        let newY = this.y + sin(this.angle) * this.grown;
+        this.children.push(new Branch(newX, newY, newAngle, this.depth + 1, this.hue));
+      }
+      branches.push(...this.children);
+    }
+  }
+  
+  draw() {
+    if (this.grown <= 0) return;
+    
+    let pulse = sin(this.phase) * 0.15 + 0.85;
+    let currentLength = min(this.grown, this.maxGrow);
+    
+    let endX = this.x + cos(this.angle) * currentLength;
+    let endY = this.y + sin(this.angle) * currentLength;
+    
+    // Vivid crimson with depth variation
+    let depthFactor = map(this.depth, 0, 8, 1, 0.4);
+    let r = 180 + (255 - 180) * depthFactor; // 180-255 (vivid red)
+    let g = 40 + 60 * (1 - depthFactor); // 40-100 (less green in deeper branches)
+    let b = 30 + 50 * (1 - depthFactor); // 30-80 (less blue in deeper branches)
+    let alpha = map(this.depth, 0, 8, 200, 80) * pulse;
+    let sw = this.thickness * pulse;
+    
+    // Outer glow - dark maroon
+    stroke(r * 0.5, g * 0.3, b * 0.3, alpha * 0.3);
+    strokeWeight(sw * 2.5);
+    line(this.x, this.y, endX, endY);
+    
+    // Main branch - vivid crimson
+    stroke(r, g, b, alpha);
+    strokeWeight(sw);
+    line(this.x, this.y, endX, endY);
+    
+    // Bright inner core - hot red/orange
+    stroke(255, 120, 60, alpha * 0.6);
+    strokeWeight(sw * 0.4);
+    line(this.x, this.y, endX, endY);
+    
+    for (let child of this.children) {
+      child.update();
+      child.draw();
+    }
+  }
+}
+
+class Bloom {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.angle = random(TWO_PI);
+    this.hue = random(0, 15);
+    let rootBranch = new Branch(x, y, this.angle, 0, this.hue);
+    branches.push(rootBranch);
+  }
+}
+
+let blooms = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  background(BG_R, BG_G, BG_B);
+  
+  for (let i = 0; i < 5; i++) {
+    let x = random(width * 0.2, width * 0.8);
+    let y = random(height * 0.2, height * 0.8);
+    blooms.push(new Bloom(x, y));
+  }
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  for (let i = branches.length - 1; i >= 0; i--) {
+    branches[i].update();
+    branches[i].draw();
+  }
+  
+  // Bloom centers with pulsing glow
+  noStroke();
+  for (let bloom of blooms) {
+    let pulse = sin(frameCount * 0.02 + bloom.angle) * 0.3 + 0.7;
+    // Outer glow - dark red
+    fill(80, 20, 10, 25 * pulse);
+    ellipse(bloom.x, bloom.y, 35 * pulse);
+    // Mid glow - crimson
+    fill(150, 40, 20, 40 * pulse);
+    ellipse(bloom.x, bloom.y, 18 * pulse);
+    // Core - vivid red
+    fill(220, 80, 40, 70 * pulse);
+    ellipse(bloom.x, bloom.y, 8 * pulse);
+  }
+  
+  drawVignette();
+}
+
+function drawVignette() {
+  let vignetteSize = min(width, height) * 1.4;
+  noFill();
+  for (let i = 0; i < 30; i++) {
+    let alpha = map(i, 0, 30, 0, 15);
+    stroke(BG_R, BG_G, BG_B, alpha);
+    strokeWeight(20);
+    ellipse(width/2, height/2, vignetteSize - i * 20, vignetteSize - i * 20);
+  }
+}
+
+function mousePressed() {
+  blooms.push(new Bloom(mouseX, mouseY));
+  while (blooms.length > 12) {
+    blooms.shift();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
