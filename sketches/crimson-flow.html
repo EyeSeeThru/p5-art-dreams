@@ -1,184 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crimson Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000000; overflow: hidden; }
+    html, body { overflow: hidden; background: #141414; width: 100%; height: 100%; }
     canvas { display: block; }
   </style>
 </head>
 <body>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script>
-// Crimson Flow — Reaction-diffusion in red and black
-// Painterly, dreamlike, organic
-// Inspired by Turing patterns - activator-substrate model
+// Crimson Flow — abstract flowing paint/ink in red and black
+// Thick brush strokes that drift and weave organically
+// Painterly, expressive, organic motion
+// Background brightness 20, strokes brightness 80-200
 
-let cols, rows;
-let state = [];
-let nextState = [];
+const BG = 20;
+const NUM_STROKES = 18;
 
-const DA = 1.0;
-const DB = 0.5;
-const f = 0.055;  // feed rate
-const k = 0.062;  // kill rate
+class BrushStroke {
+  constructor() {
+    this.reset();
+  }
+  
+  reset() {
+    this.points = [];
+    this.numPoints = floor(random(30, 80));
+    
+    // Start position
+    let startX = random(width);
+    let startY = random(height);
+    
+    // Build stroke path with Perlin noise influence
+    for (let i = 0; i < this.numPoints; i++) {
+      let t = i / this.numPoints;
+      
+      // Noise-based offset
+      let noiseScale = 0.008;
+      let noiseX = noise(startX * noiseScale + i * 0.1, startY * noiseScale) * 2 - 1;
+      let noiseY = noise(startX * noiseScale, startY * noiseScale + i * 0.1) * 2 - 1;
+      
+      let x = startX + noiseX * 100 + (i / this.numPoints) * random(-50, 50);
+      let y = startY + noiseY * 100 + (i / this.numPoints) * random(-50, 50);
+      
+      this.points.push({ x, y });
+    }
+    
+    // Stroke properties
+    this.thickness = random(8, 40);
+    this.brightness = random(80, 200);
+    this.speed = random(0.2, 0.8);
+    this.driftX = random(-0.3, 0.3);
+    this.driftY = random(-0.3, 0.3);
+    this.phase = random(TWO_PI);
+    this.phaseSpeed = random(0.005, 0.015);
+    this.hue = random(0, 40); // Red to orange-red range
+    this.alpha = random(40, 100);
+    this.age = 0;
+    this.maxAge = random(200, 500);
+    this.fadeIn = random(20, 40);
+    this.fadeOut = random(50, 100);
+  }
+  
+  update() {
+    this.age++;
+    this.phase += this.phaseSpeed;
+    
+    // Drift the entire stroke
+    let driftAmount = sin(this.phase) * 0.5;
+    for (let p of this.points) {
+      p.x += this.driftX + driftAmount;
+      p.y += this.driftY + driftAmount * 0.5;
+    }
+    
+    // Wrap around edges
+    for (let p of this.points) {
+      if (p.x < -50) p.x = width + 50;
+      if (p.x > width + 50) p.x = -50;
+      if (p.y < -50) p.y = height + 50;
+      if (p.y > height + 50) p.y = -50;
+    }
+    
+    // Reset when too old
+    if (this.age > this.maxAge) {
+      this.reset();
+    }
+  }
+  
+  draw() {
+    if (this.points.length < 2) return;
+    
+    // Calculate alpha based on age
+    let currentAlpha = this.alpha;
+    if (this.age < this.fadeIn) {
+      currentAlpha *= this.age / this.fadeIn;
+    } else if (this.age > this.maxAge - this.fadeOut) {
+      currentAlpha *= (this.maxAge - this.age) / this.fadeOut;
+    }
+    
+    let b = this.brightness;
+    let h = this.hue;
+    
+    // Draw brush stroke with varying thickness
+    noFill();
+    
+    // Glow layer
+    stroke(h * 0.3, h * 0.1, 0, currentAlpha * 0.2);
+    strokeWeight(this.thickness * 2);
+    this.drawStroke();
+    
+    // Body layer
+    stroke(h * 0.6, h * 0.2, 0, currentAlpha * 0.5);
+    strokeWeight(this.thickness * 1.2);
+    this.drawStroke();
+    
+    // Core layer
+    stroke(h, h * 0.3, 0, currentAlpha * 0.8);
+    strokeWeight(this.thickness * 0.6);
+    this.drawStroke();
+    
+    // Bright highlight on newer strokes
+    if (this.age < this.fadeIn * 2) {
+      let highlightAlpha = currentAlpha * (1 - this.age / (this.fadeIn * 2));
+      stroke(255, 200, 150, highlightAlpha);
+      strokeWeight(this.thickness * 0.3);
+      this.drawStroke();
+    }
+  }
+  
+  drawStroke() {
+    beginShape();
+    for (let i = 0; i < this.points.length; i++) {
+      let p = this.points[i];
+      
+      // Add slight curve to the line
+      if (i > 0 && i < this.points.length - 1) {
+        let prev = this.points[i - 1];
+        let next = this.points[i + 1];
+        let cx = (prev.x + next.x) / 2;
+        let cy = (prev.y + next.y) / 2;
+        quadraticVertex(prev.x, prev.y, cx, cy);
+      } else if (i === 0) {
+        curveVertex(p.x, p.y);
+      } else {
+        curveVertex(p.x, p.y);
+      }
+    }
+    endShape();
+  }
+}
 
-let t = 0;
+let strokes = [];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  pixelDensity(1);
-
-  cols = floor(width);
-  rows = floor(height);
-
-  // Initialize with some seed
-  for (let i = 0; i < cols; i++) {
-    state[i] = [];
-    nextState[i] = [];
-    for (let j = 0; j < rows; j++) {
-      // Start with all activator (A=1, B=0)
-      state[i][j] = { a: 1, b: 0 };
-      nextState[i][j] = { a: 1, b: 0 };
-    }
-  }
-
-  // Seed a central region with B (the catalyst)
-  let cx = floor(cols / 2);
-  let cy = floor(rows / 2);
-  let r = min(width, height) * 0.15;
-
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let d = dist(i, j, cx, cy);
-      if (d < r) {
-        let noiseVal = noise(i * 0.1, j * 0.1);
-        state[i][j].b = 0.8 + noiseVal * 0.2;
-        state[i][j].a = 1 - state[i][j].b;
-      }
-    }
+  colorMode(RGB, 255);
+  
+  // Create strokes
+  for (let i = 0; i < NUM_STROKES; i++) {
+    let stroke = new BrushStroke();
+    // Stagger ages so they don't all reset at once
+    stroke.age = floor(random(stroke.maxAge));
+    strokes.push(stroke);
   }
 }
 
 function draw() {
-  // Run several steps per frame
-  for (let step = 0; step < 8; step++) {
-    for (let i = 1; i < cols - 1; i++) {
-      for (let j = 1; j < rows - 1; j++) {
-        let s = state[i][j];
-        let a = s.a;
-        let b = s.b;
-
-        // Laplacian
-        let la = (state[i-1][j].a + state[i+1][j].a + state[i][j-1].a + state[i][j+1].a) - 4*a;
-        let lb = (state[i-1][j].b + state[i+1][j].b + state[i][j-1].b + state[i][j+1].b) - 4*b;
-
-        // Reaction-diffusion update
-        let newA = a + (DA * la - a * b * b + f * (1 - a));
-        let newB = b + (DB * lb + a * b * b - (k + f) * b);
-
-        newA = constrain(newA, 0, 1);
-        newB = constrain(newB, 0, 1);
-
-        nextState[i][j].a = newA;
-        nextState[i][j].b = newB;
-      }
-    }
-
-    // Swap
-    let temp = state;
-    state = nextState;
-    nextState = temp;
-
-    // Slowly inject fresh activator in corners
-    if (t % 50 === 0) {
-      for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 5; j++) {
-          if (random() < 0.3) {
-            state[i][j].a = 1;
-            state[i][j].b = 0;
-            state[cols-1-i][j].a = 1;
-            state[cols-1-i][j].b = 0;
-            state[i][rows-1-j].a = 1;
-            state[i][rows-1-j].b = 0;
-            state[cols-1-i][rows-1-j].a = 1;
-            state[cols-1-i][rows-1-j].b = 0;
-          }
-        }
-      }
-    }
+  // Dark background with warmth
+  background(BG, BG * 0.15, BG * 0.1);
+  
+  // Update and draw strokes
+  for (let stroke of strokes) {
+    stroke.update();
+    stroke.draw();
   }
+  
+  // Subtle vignette
+  drawVignette();
+}
 
-  t++;
-
-  // Draw
-  loadPixels();
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let idx = (i + j * cols) * 4;
-      let s = state[i][j];
-
-      // Map to red-black palette
-      // B high -> dark red/maroon
-      // A high -> black or dark with red undertones
-      let b = s.b;
-      let a = s.a;
-
-      // Create a richer palette
-      let r, g, bl;
-
-      if (b > 0.3) {
-        // High B: deep crimson/maroon
-        r = 120 + b * 100;
-        g = 10 + b * 20;
-        bl = 20 + b * 30;
-      } else if (a > 0.7) {
-        // High A: near black with subtle red undertone
-        r = 15 + (1-a) * 40;
-        g = 5 + (1-a) * 15;
-        bl = 10 + (1-a) * 20;
-      } else {
-        // Transition: dark red
-        r = 60 + b * 80;
-        g = 8 + b * 15;
-        bl = 15 + b * 20;
-      }
-
-      pixels[idx] = r;
-      pixels[idx+1] = g;
-      pixels[idx+2] = bl;
-      pixels[idx+3] = 255;
-    }
+function drawVignette() {
+  let vignetteSize = min(width, height) * 1.2;
+  noFill();
+  for (let i = 0; i < 50; i++) {
+    let alpha = map(i, 0, 50, 0, 20);
+    stroke(BG, BG * 0.15, BG * 0.1, alpha);
+    strokeWeight(15);
+    ellipse(width/2, height/2, vignetteSize - i * 15, vignetteSize - i * 15);
   }
-  updatePixels();
+}
 
-  if (t % 500 === 0) {
-    console.log('running...', t);
+function mousePressed() {
+  // Add new stroke at mouse position
+  for (let i = 0; i < 3; i++) {
+    let stroke = new BrushStroke();
+    stroke.points = [];
+    stroke.numPoints = floor(random(30, 80));
+    
+    let startX = mouseX + random(-30, 30);
+    let startY = mouseY + random(-30, 30);
+    
+    for (let j = 0; j < stroke.numPoints; j++) {
+      let t = j / stroke.numPoints;
+      let noiseScale = 0.008;
+      let noiseX = noise(startX * noiseScale + j * 0.1, startY * noiseScale) * 2 - 1;
+      let noiseY = noise(startX * noiseScale, startY * noiseScale + j * 0.1) * 2 - 1;
+      
+      stroke.points.push({
+        x: startX + noiseX * 100 + t * random(-30, 30),
+        y: startY + noiseY * 100 + t * random(-30, 30)
+      });
+    }
+    
+    stroke.age = 0;
+    stroke.hue = random(0, 40);
+    strokes.push(stroke);
+  }
+  
+  // Remove old strokes if too many
+  while (strokes.length > NUM_STROKES * 2) {
+    strokes.shift();
   }
 }
 
 function windowResized() {
-  // Keep original simulation, just resize display
-}
-
-function mousePressed() {
-  // Inject B at mouse position
-  let cx = mouseX;
-  let cy = mouseY;
-  let r = 30;
-
-  for (let i = -r; i <= r; i++) {
-    for (let j = -r; j <= r; j++) {
-      let x = (cx + i + cols) % cols;
-      let y = (cy + j + rows) % rows;
-      if (dist(0, 0, i, j) < r) {
-        state[x][y].b = 0.9;
-        state[x][y].a = 0.1;
-      }
-    }
-  }
+  resizeCanvas(windowWidth, windowHeight);
 }
 </script>
 </body>
