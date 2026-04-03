@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Double Gyre</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Double Gyre — time-varying incompressible flow demonstrating Lagrangian chaos
+// RED AND BLACK version - divergence-free velocity field visualization
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let particles = [];
+let numParticles = 800;
+let time = 0;
+let mode = 0; // 0: particles, 1: divergence, 2: streamlines
+
+const A = 0.1;
+const epsilon = 0.25;
+const f1 = 1.0;
+const f2 = 2.0;
+const omega = 2 * PI * 0.2;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      age: random(500),
+      maxAge: random(300, 800),
+      hue: random(5, 25)
+    });
+  }
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  let dt = 0.5;
+  time += 0.02;
+  
+  if (mode === 0) {
+    drawParticles();
+  } else if (mode === 1) {
+    drawDivergence();
+  } else {
+    drawStreamlines();
+  }
+  
+  // Draw parameters
+  fill(10, 30, 70);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text("Double Gyre Flow — ε=" + epsilon + " ω=" + (omega / PI).toFixed(2) + "π", 15, 15);
+  
+  fill(10, 30, 80);
+  let modeName = mode === 0 ? "Particle Advection" : mode === 1 ? "Divergence Map" : "Streamlines";
+  text("Mode: " + modeName + " — Click to cycle", 15, 32);
+}
+
+function drawParticles() {
+  noStroke();
+  
+  for (let p of particles) {
+    let [u, v] = getVelocity(p.x, p.y);
+    
+    p.x += u * dt;
+    p.y += v * dt;
+    p.age++;
+    
+    if (p.x < 0 || p.x > width || p.y < 0 || p.y > height || p.age > p.maxAge) {
+      p.x = random(width);
+      p.y = random(height);
+      p.age = 0;
+      p.maxAge = random(300, 800);
+      p.hue = random(5, 25);
+    }
+    
+    let ageFactor = sin(p.age / p.maxAge * PI);
+    let alpha = map(ageFactor, 0, 1, 15, 70);
+    let bright = map(ageFactor, 0, 1, 40, 100);
+    
+    fill(p.hue, 75, bright, alpha);
+    circle(p.x, p.y, 3);
+  }
+  
+  // Draw glowing cores for young particles
+  for (let p of particles) {
+    if (p.age < 50) {
+      let youngFactor = 1 - p.age / 50;
+      fill(p.hue, 60, 100, youngFactor * 50);
+      circle(p.x, p.y, 5 + youngFactor * 3);
+    }
+  }
+}
+
+function drawDivergence() {
+  // Divergence map: should be ~zero everywhere (incompressible)
+  loadPixels();
+  
+  let scale = 6;
+  for (let ix = 0; ix < width; ix += scale) {
+    for (let iy = 0; iy < height; iy += scale) {
+      let [u1, v1] = getVelocity(ix, iy);
+      let [u2, v2] = getVelocity(ix + 1, iy);
+      let [u3, v3] = getVelocity(ix, iy + 1);
+      
+      let div = (u2 - u1) + (v3 - v1);
+      
+      // Red tones for divergence visualization
+      let bright = map(abs(div), 0, 0.01, 15, 60);
+      let sat = map(abs(div), 0, 0.01, 20, 70);
+      
+      let idx = (iy * width + ix) * 4;
+      colorMode(RGB, 255);
+      let c = color(
+        map(div, -0.01, 0.01, 60, 25),
+        map(abs(div), 0, 0.01, 15, 25),
+        map(abs(div), 0, 0.01, 15, 25)
+      );
+      pixels[idx] = red(c);
+      pixels[idx + 1] = green(c);
+      pixels[idx + 2] = blue(c);
+      pixels[idx + 3] = 255;
+    }
+  }
+  updatePixels();
+  
+  colorMode(HSB, 360, 100, 100, 100);
+}
+
+function drawStreamlines() {
+  strokeWeight(1);
+  
+  for (let startX = 50; startX < width; startX += 80) {
+    for (let startY = 50; startY < height; startY += 80) {
+      let px = startX;
+      let py = startY;
+      
+      stroke(10, 50, 50, 35);
+      
+      beginShape();
+      for (let step = 0; step < 200; step++) {
+        let [u, v] = getVelocity(px, py);
+        px += u * 2;
+        py += v * 2;
+        
+        if (px < 0 || px > width || py < 0 || py > height) break;
+        vertex(px, py);
+      }
+      endShape();
+    }
+  }
+  
+  drawFlowArrows();
+}
+
+function drawFlowArrows() {
+  let spacing = 120;
+  stroke(10, 40, 70, 50);
+  strokeWeight(1);
+  fill(10, 40, 70, 50);
+  
+  for (let x = spacing / 2; x < width; x += spacing) {
+    for (let y = spacing / 2; y < height; y += spacing) {
+      let [u, v] = getVelocity(x, y);
+      let mag = sqrt(u * u + v * v);
+      
+      if (mag > 0.01) {
+        let nx = u / mag;
+        let ny = v / mag;
+        let arrowSize = 15;
+        
+        let endX = x + nx * arrowSize;
+        let endY = y + ny * arrowSize;
+        
+        line(x, y, endX, endY);
+        
+        let angle = atan2(ny, nx);
+        push();
+        translate(endX, endY);
+        rotate(angle);
+        triangle(0, 0, -8, -4, -8, 4);
+        pop();
+      }
+    }
+  }
+}
+
+function getVelocity(px, py) {
+  let x = px / width;
+  let y = py / height;
+  
+  let eps = epsilon * sin(omega * time);
+  
+  let psi = A * sin(PI * f1 * x) * sin(PI * f2 * y) + eps * x * x;
+  
+  let dpsi_dy = A * sin(PI * f1 * x) * PI * f2 * cos(PI * f2 * y);
+  let dpsi_dx = A * PI * f1 * cos(PI * f1 * x) * sin(PI * f2 * y) + 2 * eps * x;
+  
+  let u = -dpsi_dy * 50;
+  let v = dpsi_dx * 50;
+  
+  return [u, v];
+}
+
+function mousePressed() {
+  mode = (mode + 1) % 3;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
