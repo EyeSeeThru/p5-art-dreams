@@ -24,6 +24,7 @@ let particles = [];
 let numParticles = 800;
 let time = 0;
 let mode = 0; // 0: particles, 1: divergence, 2: streamlines
+let dt = 0.5;
 
 const A = 0.1;
 const epsilon = 0.25;
@@ -49,7 +50,7 @@ function setup() {
 function draw() {
   background(BG_R, BG_G, BG_B);
   
-  let dt = 0.5;
+  dt = 0.5;
   time += 0.02;
   
   if (mode === 0) {
