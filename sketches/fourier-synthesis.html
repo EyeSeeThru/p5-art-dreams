@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fourier Synthesis</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Fourier Synthesis — building complex waveforms from harmonic series
+// RED AND BLACK version - spectral analysis visualization
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let harmonics = [];
+let numHarmonics = 15;
+let time = 0;
+let mode = 0; // 0: synthesis, 1: decomposition, 2: harmonics
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  // Initialize harmonic amplitudes
+  for (let i = 0; i < numHarmonics; i++) {
+    if (i === 0) {
+      harmonics[i] = { amp: 0.5, phase: 0, targetAmp: 0.5 };
+    } else if (i === 1) {
+      harmonics[i] = { amp: 0.3, phase: 0, targetAmp: 0.3 };
+    } else if (i % 2 === 1) {
+      harmonics[i] = { amp: 0.15 / i, phase: PI/4, targetAmp: 0.15 / i };
+    } else {
+      harmonics[i] = { amp: 0, phase: 0, targetAmp: 0 };
+    }
+  }
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  time += 0.02;
+  
+  // Smooth amplitude transitions
+  for (let i = 0; i < numHarmonics; i++) {
+    harmonics[i].amp += (harmonics[i].targetAmp - harmonics[i].amp) * 0.05;
+  }
+  
+  // Draw based on mode
+  if (mode === 0) {
+    drawSynthesis();
+  } else if (mode === 1) {
+    drawDecomposition();
+  } else {
+    drawHarmonics();
+  }
+  
+  // Draw mode label
+  fill(10, 30, 80);
+  textSize(14);
+  textAlign(RIGHT, TOP);
+  let modeName = mode === 0 ? "Synthesis" : mode === 1 ? "Decomposition" : "Harmonics";
+  text("Fourier Series — " + modeName + " — Click to cycle", width - 20, 20);
+}
+
+function drawSynthesis() {
+  // Draw the composite waveform with glow layers
+  for (let layer = 0; layer < 3; layer++) {
+    let alpha = layer === 0 ? 15 : layer === 1 ? 30 : 80;
+    let weight = layer === 0 ? 6 : layer === 1 ? 3 : 1;
+    stroke(5, 85, 95, alpha);
+    strokeWeight(weight);
+    noFill();
+    
+    beginShape();
+    for (let x = 0; x < width; x++) {
+      let t = map(x, 0, width, 0, TWO_PI * 2);
+      let y = getFourierValue(t);
+      let screenY = map(y, -1.5, 1.5, height * 0.6, height * 0.2);
+      vertex(x, screenY);
+    }
+    endShape();
+  }
+  
+  // Draw individual harmonics as subtle lines
+  for (let h = 1; h < min(5, numHarmonics); h++) {
+    stroke(15, 60, 80, 25);
+    strokeWeight(1);
+    noFill();
+    
+    beginShape();
+    for (let x = 0; x < width; x++) {
+      let t = map(x, 0, width, 0, TWO_PI * 2);
+      let y = harmonics[h].amp * sin(h * t + harmonics[h].phase);
+      let screenY = map(y, -1.5, 1.5, height * 0.6, height * 0.2);
+      vertex(x, screenY);
+    }
+    endShape();
+  }
+  
+  // Draw harmonic bars on the right
+  drawHarmonicBars(width - 100, height * 0.2, 80, height * 0.5);
+}
+
+function drawDecomposition() {
+  let waveY = height * 0.35;
+  
+  // Draw the input waveform (sawtooth-like) - dim red
+  strokeWeight(2);
+  stroke(10, 70, 70, 50);
+  noFill();
+  
+  beginShape();
+  for (let x = 0; x < width * 0.7; x++) {
+    let t = map(x, 0, width * 0.7, 0, TWO_PI * 2);
+    let y = 0;
+    for (let n = 1; n <= 20; n++) {
+      y += Math.pow(-1, n+1) * sin(n * t) / n;
+    }
+    y = y * 0.5;
+    let screenY = waveY + y * 80;
+    vertex(x, screenY);
+  }
+  endShape();
+  
+  // Arrow showing decomposition
+  drawArrow(width * 0.72, waveY, width * 0.78, waveY);
+  
+  // Draw harmonic bars
+  let barsX = width * 0.82;
+  let barsY = height * 0.15;
+  
+  for (let n = 1; n < numHarmonics; n++) {
+    let targetAmp = 1.0 / n;
+    harmonics[n].targetAmp = targetAmp;
+    
+    let barY = barsY + n * 20;
+    let barWidth = map(targetAmp, 0, 1, 0, 60);
+    
+    // Bar - vivid red
+    fill(5, 85, 90, 80);
+    noStroke();
+    rect(barsX, barY, barWidth, 15, 3);
+    
+    // Glow
+    fill(5, 85, 40, 30);
+    rect(barsX - 2, barY - 2, barWidth + 4, 19, 5);
+    
+    // Label
+    fill(10, 30, 70);
+    textSize(10);
+    textAlign(RIGHT, CENTER);
+    text("n=" + n, barsX - 5, barY + 7);
+  }
+  
+  // Draw reconstructed wave - bright red
+  stroke(5, 85, 95, 90);
+  strokeWeight(2);
+  noFill();
+  
+  beginShape();
+  for (let x = 0; x < width * 0.65; x++) {
+    let t = map(x, 0, width * 0.65, 0, TWO_PI * 2);
+    let y = getFourierValue(t);
+    let screenY = waveY + y * 80;
+    vertex(x, screenY);
+  }
+  endShape();
+  
+  textSize(12);
+  fill(10, 30, 70);
+  textAlign(CENTER, TOP);
+  text("Original", width * 0.35, waveY + 100);
+  text("Reconstructed", width * 0.35, waveY + 115);
+}
+
+function drawHarmonics() {
+  let centerX = width / 2;
+  let centerY = height / 2;
+  let baseRadius = min(width, height) * 0.15;
+  
+  for (let h = numHarmonics - 1; h >= 1; h--) {
+    let amp = harmonics[h].amp;
+    if (amp < 0.01) continue;
+    
+    let radius = baseRadius * h * 0.8;
+    let phase = time * h + harmonics[h].phase;
+    
+    // Draw harmonic as rotating radius - red gradient based on h
+    let hueVal = 5 + h * 1.5; // Red to slightly orange
+    let endX = centerX + cos(phase) * radius;
+    let endY = centerY + sin(phase) * radius;
+    
+    // Line from center to edge
+    stroke(hueVal, 60, 80, 35);
+    strokeWeight(1);
+    line(centerX, centerY, endX, endY);
+    
+    // Dot at end - brighter red
+    fill(hueVal, 80, 95, 100);
+    noStroke();
+    circle(endX, endY, 8);
+    
+    // Draw contribution to total at bottom
+    let contributionY = height * 0.75 + (h - 1) * 15;
+    let contribX = centerX + cos(phase) * amp * baseRadius * 3;
+    
+    fill(hueVal, 80, 90, 80);
+    circle(contribX, contributionY, 6);
+  }
+  
+  // Draw composite at bottom - brightest red
+  stroke(5, 85, 100, 100);
+  strokeWeight(2);
+  noFill();
+  
+  beginShape();
+  for (let x = 0; x < width; x++) {
+    let t = map(x, 0, width, 0, TWO_PI * 2) + time;
+    let y = getFourierValue(t);
+    let screenY = map(y, -1.5, 1.5, height * 0.9, height * 0.75);
+    vertex(x, screenY);
+  }
+  endShape();
+}
+
+function drawHarmonicBars(x, y, barWidth, totalHeight) {
+  for (let h = 1; h < numHarmonics; h++) {
+    let barY = y + h * (totalHeight / numHarmonics);
+    let amp = harmonics[h].amp;
+    
+    // Bar - red with brightness varying by amplitude
+    fill(5 + h * 1.5, 80, 70 + amp * 30, 85);
+    noStroke();
+    rect(x, barY, barWidth * amp * 3, 12, 3);
+    
+    // Glow
+    fill(5 + h * 1.5, 70, 40, 25);
+    rect(x - 2, barY - 2, barWidth * amp * 3 + 4, 16, 5);
+  }
+}
+
+function drawArrow(x1, y1, x2, y2) {
+  stroke(10, 30, 70);
+  strokeWeight(2);
+  line(x1, y1, x2, y2);
+  
+  let angle = atan2(y2 - y1, x2 - x1);
+  fill(10, 30, 70);
+  noStroke();
+  push();
+  translate(x2, y2);
+  rotate(angle);
+  triangle(0, 0, -10, -5, -10, 5);
+  pop();
+}
+
+function getFourierValue(t) {
+  let sum = 0;
+  for (let h = 0; h < numHarmonics; h++) {
+    sum += harmonics[h].amp * sin(h * t + harmonics[h].phase);
+  }
+  return sum;
+}
+
+function mousePressed() {
+  mode = (mode + 1) % 3;
+  
+  if (mode === 0) {
+    // Square wave approximation
+    for (let h = 0; h < numHarmonics; h++) {
+      if (h === 0) harmonics[h].targetAmp = 0.5;
+      else if (h % 2 === 1) harmonics[h].targetAmp = 0.4 / h;
+      else harmonics[h].targetAmp = 0;
+    }
+  } else if (mode === 1) {
+    // Sawtooth
+    for (let h = 0; h < numHarmonics; h++) {
+      if (h === 0) harmonics[h].targetAmp = 0;
+      else harmonics[h].targetAmp = 0.5 / h;
+    }
+  } else {
+    // Triangle wave
+    for (let h = 0; h < numHarmonics; h++) {
+      if (h === 0) harmonics[h].targetAmp = 0;
+      else if (h % 2 === 1) {
+        let sign = Math.floor((h - 1) / 2) % 2 === 0 ? 1 : -1;
+        harmonics[h].targetAmp = sign * 0.4 / (h * h);
+      } else harmonics[h].targetAmp = 0;
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
