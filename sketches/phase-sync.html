@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase Sync</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Phase Sync — Kuramoto-style coupled oscillator synchronization
+// RED AND BLACK version - oscillators gradually synchronize phases through coupling
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red rgb(100,100,100) minimum
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let oscillators = [];
+let numOscillators = 60;
+let couplingStrength = 0.8;
+let naturalFreqSpread = 0.05;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  background(BG_R, BG_G, BG_B);
+  
+  // Create oscillators arranged in a grid/circle
+  let centerX = width / 2;
+  let centerY = height / 2;
+  let radius = min(width, height) * 0.35;
+  
+  for (let i = 0; i < numOscillators; i++) {
+    let angle = (TWO_PI / numOscillators) * i;
+    let r = radius * (0.5 + 0.5 * (i % 3) / 2);
+    
+    oscillators.push({
+      x: centerX + cos(angle) * r,
+      y: centerY + sin(angle) * r,
+      phase: random(TWO_PI),  // Start with random phases
+      naturalFreq: random(0.02 - naturalFreqSpread, 0.02 + naturalFreqSpread),
+      amp: 1.0,
+      neighbors: []
+    });
+  }
+  
+  // Set up neighbors (each oscillator couples to nearby ones)
+  for (let i = 0; i < oscillators.length; i++) {
+    for (let j = i + 1; j < oscillators.length; j++) {
+      let d = dist(oscillators[i].x, oscillators[i].y, oscillators[j].x, oscillators[j].y);
+      if (d < radius * 0.6) {
+        oscillators[i].neighbors.push(j);
+        oscillators[j].neighbors.push(i);
+      }
+    }
+  }
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  // Draw connections first (showing coupling)
+  strokeWeight(1);
+  for (let i = 0; i < oscillators.length; i++) {
+    let o = oscillators[i];
+    for (let n of o.neighbors) {
+      let other = oscillators[n];
+      // Connection color based on phase difference
+      let phaseDiff = abs(o.phase - other.phase);
+      let sync = cos(phaseDiff); // 1 = in phase, -1 = out of phase
+      
+      // Red version: bright red when synced, dark maroon when not
+      let alpha = map(sync, -1, 1, 8, 50);
+      let r = 60 + (sync + 1) * 80;
+      let g = 15 + (sync + 1) * 30;
+      let b = 15 + (sync + 1) * 20;
+      
+      stroke(r, g, b, alpha);
+      line(o.x, o.y, other.x, other.y);
+    }
+  }
+  
+  // Calculate order parameter (measure of synchronization)
+  let orderParam = 0;
+  let avgPhase = 0;
+  
+  for (let o of oscillators) {
+    orderParam += cos(o.phase);
+    avgPhase += sin(o.phase);
+  }
+  orderParam /= oscillators.length;
+  avgPhase /= oscillators.length;
+  let syncLevel = sqrt(orderParam * orderParam + avgPhase * avgPhase);
+  
+  // Update oscillator phases
+  for (let i = 0; i < oscillators.length; i++) {
+    let o = oscillators[i];
+    
+    // Kuramoto model: dθ/dt = ω + (K/N) * Σsin(θ_j - θ_i)
+    let coupling = 0;
+    for (let n of o.neighbors) {
+      coupling += sin(oscillators[n].phase - o.phase);
+    }
+    coupling = (couplingStrength / o.neighbors.length) * coupling;
+    
+    o.phase += o.naturalFreq + coupling;
+    
+    // Keep phase in [0, 2PI]
+    o.phase = o.phase % TWO_PI;
+    
+    // Amplitude breathing
+    o.amp = 0.8 + 0.2 * sin(o.phase * 2);
+  }
+  
+  // Draw oscillators
+  noStroke();
+  for (let i = 0; i < oscillators.length; i++) {
+    let o = oscillators[i];
+    
+    // Red color based on phase and sync level
+    // Higher sync = brighter red
+    let baseRed = 80 + syncLevel * 100;
+    let saturation = 60 + syncLevel * 40;
+    
+    // Outer glow - red
+    fill(baseRed, 20, 20, 80);
+    ellipse(o.x, o.y, 12 * o.amp, 12 * o.amp);
+    
+    // Inner core - bright red
+    fill(min(255, baseRed + 60), min(255, 40), min(255, 40));
+    ellipse(o.x, o.y, 6 * o.amp, 6 * o.amp);
+    
+    // Highlight - warm red/pink
+    fill(255, 120, 100, 150);
+    ellipse(o.x - 1, o.y - 1, 3 * o.amp, 3 * o.amp);
+  }
+  
+  // Draw order parameter indicator
+  drawSyncIndicator(syncLevel);
+}
+
+function drawSyncIndicator(syncLevel) {
+  // Draw a small indicator showing synchronization level
+  let x = 30;
+  let y = 30;
+  let size = 40;
+  
+  // Background
+  noStroke();
+  fill(BG_R + 5, BG_G + 5, BG_B + 5, 200);
+  rect(x, y, size, size, 5);
+  
+  // Sync level bar background
+  fill(BG_R + 15, BG_G + 15, BG_B + 15);
+  rect(x + 5, y + 5, size - 10, size - 10, 3);
+  
+  // Filled portion - red gradient
+  let fillWidth = (size - 10) * syncLevel;
+  let barR = 80 + syncLevel * 120;
+  let barG = 20 + syncLevel * 40;
+  let barB = 20;
+  fill(barR, barG, barB);
+  rect(x + 5, y + 5, fillWidth, size - 10, 3);
+  
+  // Label
+  fill(150, 150, 150);
+  textSize(10);
+  textAlign(LEFT, TOP);
+  text("SYNC", x, y + size + 5);
+}
+
+function mousePressed() {
+  // Perturb the system - nudge phases randomly
+  for (let o of oscillators) {
+    o.phase += random(-0.5, 0.5);
+    o.naturalFreq = random(0.02 - naturalFreqSpread, 0.02 + naturalFreqSpread);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
