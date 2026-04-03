@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DLA Cluster</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// DLA Cluster — Diffusion-Limited Aggregation fractal growth
+// RED AND BLACK version - diffusion-driven fractal formation
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let cols, rows;
+let scale = 3;
+let grid;
+let particles = [];
+let numParticles = 30;
+let particleRadius = 1.5;
+let seedX, seedY;
+let phase = 0;
+let growthTimer = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+  
+  grid = [];
+  for (let i = 0; i < cols; i++) {
+    grid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = 0;
+    }
+  }
+  
+  seedX = floor(cols / 2);
+  seedY = floor(rows * 0.85);
+  grid[seedX][seedY] = 1;
+  
+  for (let i = 0; i < numParticles; i++) {
+    spawnParticle();
+  }
+}
+
+function spawnParticle() {
+  let side = floor(random(4));
+  let x, y;
+  
+  if (side === 0) {
+    x = random(cols);
+    y = 5;
+  } else if (side === 1) {
+    x = random(cols);
+    y = rows - 5;
+  } else if (side === 2) {
+    x = 5;
+    y = random(rows);
+  } else {
+    x = cols - 5;
+    y = random(rows);
+  }
+  
+  particles.push({
+    x: x,
+    y: y,
+    stuck: false
+  });
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  if (phase === 0) {
+    updateParticles();
+    growthTimer++;
+    
+    let clusterSize = countCluster();
+    if (clusterSize > 2000 || growthTimer > 3600) {
+      phase = 1;
+    }
+  }
+  
+  drawCluster();
+  drawParticles();
+  
+  fill(10, 30, 80);
+  textSize(12);
+  textAlign(RIGHT, TOP);
+  let clusterSize = countCluster();
+  let status = phase === 0 ? "Growing" : "Complete";
+  text("DLA Cluster — " + clusterSize + " particles — " + status, width - 15, 15);
+  
+  fill(10, 30, 70);
+  text("Click to reset", width - 15, 32);
+}
+
+function updateParticles() {
+  for (let p of particles) {
+    if (p.stuck) continue;
+    
+    let dx = random(-1, 1);
+    let dy = random(-1, 1.2);
+    
+    let newX = p.x + dx;
+    let newY = p.y + dy;
+    
+    if (newX < 1 || newX >= cols - 1 || newY < 1 || newY >= rows - 1) {
+      p.x = random(cols);
+      p.y = 5;
+      continue;
+    }
+    
+    if (grid[floor(newX)][floor(newY)] === 1 ||
+        grid[floor(newX + 0.5)][floor(newY + 0.5)] === 1 ||
+        grid[floor(newX - 0.5)][floor(newY - 0.5)] === 1 ||
+        grid[floor(newX + 0.5)][floor(newY - 0.5)] === 1 ||
+        grid[floor(newX - 0.5)][floor(newY + 0.5)] === 1) {
+      p.stuck = true;
+      grid[floor(p.x)][floor(p.y)] = 1;
+      spawnParticle();
+    } else {
+      p.x = newX;
+      p.y = newY;
+    }
+  }
+}
+
+function drawCluster() {
+  noStroke();
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j] === 1) {
+        let x = i * scale;
+        let y = j * scale;
+        
+        let dist = dist2D(i, j, seedX, seedY);
+        let maxDist = 200;
+        let t = constrain(dist / maxDist, 0, 1);
+        
+        // Red color gradient: bright at center, dimmer at edges
+        let hue = map(t, 0, 1, 5, 20);
+        let sat = map(t, 0, 1, 70, 50);
+        let bright = map(t, 0, 1, 90, 50);
+        
+        let neighbors = countNeighbors(i, j);
+        if (neighbors <= 2) {
+          // Tip - bright
+          bright = 100;
+          sat = 75;
+          
+          // Glow effect
+          fill(hue, sat * 0.7, bright * 0.8, 15);
+          rect(x - 3, y - 3, scale + 6, scale + 6);
+        }
+        
+        fill(hue, sat, bright, 90);
+        rect(x, y, scale, scale);
+      }
+    }
+  }
+}
+
+function drawParticles() {
+  noStroke();
+  
+  for (let p of particles) {
+    if (p.stuck) continue;
+    
+    let x = p.x * scale;
+    let y = p.y * scale;
+    
+    fill(15, 60, 80, 50);
+    circle(x, y, particleRadius * 3);
+    
+    fill(10, 50, 95, 70);
+    circle(x, y, particleRadius * 1.5);
+  }
+}
+
+function countNeighbors(ix, iy) {
+  let count = 0;
+  for (let di = -1; di <= 1; di++) {
+    for (let dj = -1; dj <= 1; dj++) {
+      if (di === 0 && dj === 0) continue;
+      let ni = ix + di;
+      let nj = iy + dj;
+      if (ni >= 0 && ni < cols && nj >= 0 && nj < rows) {
+        if (grid[ni][nj] === 1) count++;
+      }
+    }
+  }
+  return count;
+}
+
+function countCluster() {
+  let count = 0;
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (grid[i][j] === 1) count++;
+    }
+  }
+  return count;
+}
+
+function dist2D(x1, y1, x2, y2) {
+  return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
+function mousePressed() {
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      grid[i][j] = 0;
+    }
+  }
+  
+  seedX = floor(cols / 2);
+  seedY = floor(rows * 0.85);
+  grid[seedX][seedY] = 1;
+  
+  particles = [];
+  for (let i = 0; i < numParticles; i++) {
+    spawnParticle();
+  }
+  
+  growthTimer = 0;
+  phase = 0;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+}
+</script>
+</body>
+</html>
