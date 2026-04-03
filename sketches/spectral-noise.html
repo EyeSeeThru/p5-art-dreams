@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spectral Noise</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Spectral Noise — visualizing frequency content of procedural noise
+// RED AND BLACK version - spectral analysis of noise fields
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let cols, rows;
+let scale = 4;
+let time = 0;
+let mode = 0; // 0: spectral noise, 1: frequency bars, 2: wave decomposition
+
+let noiseZ = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+  
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  time += 0.01;
+  noiseZ += 0.005;
+  
+  if (mode === 0) {
+    drawSpectralNoise();
+  } else if (mode === 1) {
+    drawFrequencyBars();
+  } else {
+    drawWaveDecomposition();
+  }
+  
+  // Label
+  fill(10, 30, 80);
+  textSize(14);
+  textAlign(RIGHT, TOP);
+  let modeName = mode === 0 ? "Spectral Noise" : mode === 1 ? "Frequency Bars" : "Wave Decomposition";
+  text("Spectral Analysis — " + modeName + " — Click to cycle", width - 20, 20);
+}
+
+function drawSpectralNoise() {
+  // Draw each cell as a mini spectral visualization
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      let x = i * scale;
+      let y = j * scale;
+      
+      // Get noise value and its local variation
+      let n = noise(i * 0.05, j * 0.05, noiseZ);
+      
+      // Compute local gradient (spectral content)
+      let nRight = noise(i * 0.05 + 0.1, j * 0.05, noiseZ);
+      let nDown = noise(i * 0.05, j * 0.05 + 0.1, noiseZ);
+      let gradient = dist(n, 0.5, nRight, nDown) * 5;
+      
+      // High frequency content = sharp transitions
+      let spectralEntropy = abs(n - 0.5) * gradient;
+      let brightness = map(spectralEntropy, 0, 1, 20, 90);
+      
+      // Hue: low values = deep red, high values = orange-red
+      let hue = map(n, 0, 1, 5, 25);
+      
+      fill(hue, 75, brightness, 90);
+      rect(x, y, scale, scale);
+    }
+  }
+  
+  // Add glowing particles at high-spectral-change locations
+  for (let k = 0; k < 25; k++) {
+    let px = random(width);
+    let py = random(height);
+    let pn = noise(px * 0.01, py * 0.01, noiseZ);
+    let pnR = noise(px * 0.01 + 0.2, py * 0.01, noiseZ);
+    let pnD = noise(px * 0.01, py * 0.01 + 0.2, noiseZ);
+    let change = abs(pn - pnR) + abs(pn - pnD);
+    
+    if (change > 0.15) {
+      let pHue = map(change, 0, 0.5, 5, 20);
+      let pBright = map(change, 0.15, 0.5, 70, 100);
+      fill(pHue, 80, pBright, 70);
+      circle(px, py, change * 30);
+    }
+  }
+}
+
+function drawFrequencyBars() {
+  let barWidth = 20;
+  let numBars = 40;
+  let centerY = height / 2;
+  
+  for (let b = 0; b < numBars; b++) {
+    let freq = b / numBars;
+    let amp = computeSpectralAmplitude(freq, time);
+    
+    let barHeight = amp * height * 0.6;
+    
+    // Hue: low freq = deep red, high freq = orange
+    let hue = map(b, 0, numBars, 5, 25);
+    
+    // Glow effect
+    fill(hue, 60, 40, 20);
+    rect(b * (barWidth + 5) + width * 0.1, centerY - barHeight/2 - 5, barWidth + 10, barHeight + 10, 8);
+    
+    // Main bar
+    fill(hue, 75, 85, 90);
+    rect(b * (barWidth + 5) + width * 0.1, centerY - barHeight/2, barWidth, barHeight, 5);
+    
+    // Bright peak
+    if (amp > 0.3) {
+      fill(hue, 50, 100, 100);
+      let peakH = barHeight * 0.2;
+      rect(b * (barWidth + 5) + width * 0.1 + 3, centerY - barHeight/2, barWidth - 6, peakH, 3);
+    }
+  }
+  
+  // Draw waveform outline
+  stroke(10, 60, 90, 70);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let x = 0; x < width * 0.8; x++) {
+    let t = map(x, 0, width * 0.8, 0, TWO_PI * 3);
+    let y = getCompositeWave(t) * 50;
+    vertex(width * 0.1 + x, centerY + y);
+  }
+  endShape();
+}
+
+function drawWaveDecomposition() {
+  let waveY = height * 0.35;
+  
+  // Draw base wave (composite) - dim red
+  stroke(15, 60, 60, 40);
+  strokeWeight(1.5);
+  noFill();
+  beginShape();
+  for (let x = 0; x < width * 0.6; x++) {
+    let t = map(x, 0, width * 0.6, 0, TWO_PI * 2);
+    let y = getCompositeWave(t + time * 2);
+    let screenY = waveY + y * 60;
+    vertex(width * 0.15 + x, screenY);
+  }
+  endShape();
+  
+  // Draw component waves (harmonics)
+  // Colors: varying red-orange tones
+  let hues = [5, 10, 15, 20]; // Different red-orange hues
+  let sats = [70, 70, 65, 60];
+  let amps = [0.5, 0.25, 0.12, 0.06];
+  
+  for (let h = 0; h < 4; h++) {
+    let hHue = hues[h];
+    let hSat = sats[h];
+    let amp = amps[h];
+    
+    stroke(hHue, hSat, 70, 35);
+    strokeWeight(1);
+    noFill();
+    beginShape();
+    for (let x = 0; x < width * 0.6; x++) {
+      let t = map(x, 0, width * 0.6, 0, TWO_PI * 2) + time;
+      let y = amp * sin((h + 1) * t);
+      let screenY = waveY + y * 60;
+      vertex(width * 0.15 + x, screenY);
+    }
+    endShape();
+    
+    // Label
+    fill(hHue, hSat, 70, 70);
+    textSize(10);
+    textAlign(LEFT, CENTER);
+    let xPos = width * 0.78;
+    let yPos = waveY - (h - 1.5) * 25;
+    text("f" + (h + 1), xPos, yPos);
+    
+    // Amplitude bar
+    fill(hHue, hSat, 50, 60);
+    noStroke();
+    rect(xPos + 15, yPos - amp * 30, 5, amp * 60, 2);
+  }
+  
+  // Draw reconstructed - bright red
+  stroke(5, 80, 100, 90);
+  strokeWeight(2.5);
+  noFill();
+  beginShape();
+  for (let x = 0; x < width * 0.6; x++) {
+    let t = map(x, 0, width * 0.6, 0, TWO_PI * 2) + time;
+    let y = getCompositeWave(t);
+    let screenY = waveY + y * 60;
+    vertex(width * 0.15 + x, screenY);
+  }
+  endShape();
+  
+  textSize(12);
+  fill(10, 30, 70);
+  textAlign(CENTER, TOP);
+  text("Composite", width * 0.4, waveY + 80);
+}
+
+function computeSpectralAmplitude(freq, t) {
+  let amp = 0;
+  
+  // Fundamental
+  amp += 0.5 * (0.5 + 0.5 * sin(t * 2));
+  
+  // Decaying harmonics
+  amp += 0.25 * sin(freq * 10 + t) * (1 - freq);
+  amp += 0.12 * sin(freq * 20 + t * 1.5);
+  amp += 0.06 * sin(freq * 40 + t * 2);
+  
+  // Random spikes
+  if (noise(freq * 50, t) > 0.7) {
+    amp += 0.3;
+  }
+  
+  return constrain(amp, 0, 1);
+}
+
+function getCompositeWave(t) {
+  return 0.5 * sin(t) + 
+         0.25 * sin(2 * t) + 
+         0.12 * sin(3 * t) + 
+         0.06 * sin(4 * t);
+}
+
+function mousePressed() {
+  mode = (mode + 1) % 3;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cols = floor(width / scale);
+  rows = floor(height / scale);
+}
+</script>
+</body>
+</html>
