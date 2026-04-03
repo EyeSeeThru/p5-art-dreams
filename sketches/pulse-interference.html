@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse Interference</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Pulse Interference — multiple pulse sources creating interference patterns
+// RED AND BLACK version - mathematical interference patterns
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red rgb(100,100,100) minimum
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+let time = 0;
+let emitters = [];
+let numEmitters = 5;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255);
+  background(BG_R, BG_G, BG_B);
+  
+  // Create emitters in a pattern
+  let cx = width / 2;
+  let cy = height / 2;
+  let spread = min(width, height) * 0.3;
+  
+  for (let i = 0; i < numEmitters; i++) {
+    let angle = (TWO_PI / numEmitters) * i;
+    let r = spread * 0.5 + (i % 2) * spread * 0.2;
+    emitters.push({
+      x: cx + cos(angle) * r,
+      y: cy + sin(angle) * r,
+      phase: random(TWO_PI),
+      freq: random(0.02, 0.04),
+      amp: random(80, 120)
+    });
+  }
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  time += 0.02;
+  
+  // Draw interference pattern
+  loadPixels();
+  
+  let step = 2; // Sample every 2 pixels for performance
+  
+  for (let x = 0; x < width; x += step) {
+    for (let y = 0; y < height; y += step) {
+      let totalAmp = 0;
+      
+      for (let e of emitters) {
+        let d = dist(x, y, e.x, e.y);
+        let wave = sin(d * e.freq - time + e.phase) * e.amp;
+        totalAmp += wave;
+      }
+      
+      // Map amplitude to red color
+      // Positive interference = brighter red
+      // Negative interference = darker maroon
+      let normalized = map(totalAmp, -200, 200, 0, 1);
+      
+      let r, g, b;
+      
+      if (normalized > 0.5) {
+        // Constructive interference - vivid red
+        let t = map(normalized, 0.5, 1, 0, 1);
+        r = 150 + t * 105;
+        g = 30 + t * 50;
+        b = 30 + t * 30;
+      } else {
+        // Destructive interference - dark maroon
+        let t = map(normalized, 0, 0.5, 0, 1);
+        r = 40 + t * 110;
+        g = 10 + t * 20;
+        b = 10 + t * 20;
+      }
+      
+      // Set pixel
+      for (let dx = 0; dx < step && x + dx < width; dx++) {
+        for (let dy = 0; dy < step && y + dy < height; dy++) {
+          let idx = ((y + dy) * width + (x + dx)) * 4;
+          pixels[idx] = r;
+          pixels[idx + 1] = g;
+          pixels[idx + 2] = b;
+        }
+      }
+    }
+  }
+  
+  updatePixels();
+  
+  // Draw emitter points
+  noStroke();
+  for (let e of emitters) {
+    let pulse = (sin(time + e.phase) + 1) * 0.5;
+    let size = 6 + pulse * 4;
+    
+    // Outer glow
+    fill(200, 50, 50, 100);
+    ellipse(e.x, e.y, size * 2, size * 2);
+    
+    // Inner point - bright red
+    fill(220, 80, 80);
+    ellipse(e.x, e.y, size, size);
+    
+    // Core - white/red
+    fill(255, 120, 120);
+    ellipse(e.x, e.y, size * 0.5, size * 0.5);
+  }
+  
+  // Draw subtle grid overlay
+  drawGrid();
+}
+
+function drawGrid() {
+  stroke(BG_R + 20, BG_G + 20, BG_B + 20, 15);
+  strokeWeight(1);
+  
+  let gridSize = 80;
+  
+  for (let x = 0; x < width; x += gridSize) {
+    line(x, 0, x, height);
+  }
+  for (let y = 0; y < height; y += gridSize) {
+    line(0, y, width, y);
+  }
+}
+
+function mousePressed() {
+  // Add a new emitter at mouse position
+  if (emitters.length < 12) {
+    emitters.push({
+      x: mouseX,
+      y: mouseY,
+      phase: random(TWO_PI),
+      freq: random(0.02, 0.04),
+      amp: random(80, 120)
+    });
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
