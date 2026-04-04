@@ -42,22 +42,22 @@ function initGrid() {
   grid = [];
   nextGrid = [];
   
-  for (let x = 0; x < GRID_W; x++) {
+  for (let x = 0; x < gridW; x++) {
     grid[x] = [];
     nextGrid[x] = [];
-    for (let y = 0; y < GRID_H; y++) {
+    for (let y = 0; y < gridH; y++) {
       grid[x][y] = 0;
       nextGrid[x][y] = 0;
     }
   }
   
   // Initialize with Gaussian blob in center
-  let cx = floor(GRID_W / 2);
-  let cy = floor(GRID_H / 2);
+  let cx = floor(gridW / 2);
+  let cy = floor(gridH / 2);
   let sigma = 8;
   
-  for (let x = 0; x < GRID_W; x++) {
-    for (let y = 0; y < GRID_H; y++) {
+  for (let x = 0; x < gridW; x++) {
+    for (let y = 0; y < gridH; y++) {
       let dx = x - cx;
       let dy = y - cy;
       let d2 = dx * dx + dy * dy;
@@ -70,22 +70,22 @@ function initGrid() {
 }
 
 function diffuse() {
-  for (let x = 0; x < GRID_W; x++) {
-    for (let y = 0; y < GRID_H; y++) {
+  for (let x = 0; x < gridW; x++) {
+    for (let y = 0; y < gridH; y++) {
       nextGrid[x][y] = 0;
     }
   }
   
-  for (let x = 0; x < GRID_W; x++) {
-    for (let y = 0; y < GRID_H; y++) {
+  for (let x = 0; x < gridW; x++) {
+    for (let y = 0; y < gridH; y++) {
       if (grid[x][y] === 1) {
         let dirs = [
           [1, 0], [-1, 0], [0, 1], [0, -1],
           [1, 1], [-1, -1], [1, -1], [-1, 1]
         ];
         let d = dirs[floor(random(dirs.length))];
-        let nx = (x + d[0] + GRID_W) % GRID_W;
-        let ny = (y + d[1] + GRID_H) % GRID_H;
+        let nx = (x + d[0] + gridW) % gridW;
+        let ny = (y + d[1] + gridH) % gridH;
         nextGrid[nx][ny] = 1;
       }
     }
@@ -98,9 +98,9 @@ function diffuse() {
 
 function calculateDensityProfile() {
   let profile = [];
-  for (let x = 0; x < GRID_W; x++) {
+  for (let x = 0; x < gridW; x++) {
     let count = 0;
-    for (let y = 0; y < GRID_H; y++) {
+    for (let y = 0; y < gridH; y++) {
       count += grid[x][y];
     }
     profile.push(count);
@@ -114,8 +114,8 @@ function draw() {
   diffuse();
   
   noStroke();
-  for (let x = 0; x < GRID_W; x++) {
-    for (let y = 0; y < GRID_H; y++) {
+  for (let x = 0; x < gridW; x++) {
+    for (let y = 0; y < gridH; y++) {
       if (grid[x][y] === 1) {
         let px = x * CELL_SIZE;
         let py = y * CELL_SIZE;
@@ -132,7 +132,7 @@ function draw() {
     let graphH = 60;
     let graphY = height - graphH - 10;
     let graphX = 10;
-    let graphW = min(GRID_W * CELL_SIZE * 0.5, 400);
+    let graphW = min(gridW * CELL_SIZE * 0.5, 400);
     
     fill(0, 0, 20, 80);
     noStroke();
@@ -141,10 +141,10 @@ function draw() {
     noStroke();
     for (let i = 0; i < profile.length; i++) {
       let barH = (profile[i] / maxD) * (graphH - 10);
-      let bx = graphX + (i / GRID_W) * graphW;
+      let bx = graphX + (i / gridW) * graphW;
       // Profile bar - red
       fill(10, 60, 85, 90);
-      rect(bx, graphY + graphH - barH - 5, graphW / GRID_W, barH);
+      rect(bx, graphY + graphH - barH - 5, graphW / gridW, barH);
     }
     
     // Theoretical Gaussian in amber/gold
@@ -157,7 +157,7 @@ function draw() {
     for (let i = 0; i < profile.length; i++) {
       let t = (i - cx) / sigma;
       let g = exp(-0.5 * t * t);
-      let bx = graphX + (i / GRID_W) * graphW;
+      let bx = graphX + (i / gridW) * graphW;
       let by = graphY + graphH - 5 - g * (graphH - 15);
       vertex(bx, by);
     }
@@ -184,9 +184,9 @@ function draw() {
   text("Click to reset", 15, 15);
   
   let variance = 0;
-  let mean = totalDensity / GRID_W;
+  let mean = totalDensity / gridW;
   for (let i = 0; i < profile.length; i++) {
-    variance += (i - GRID_W/2) * (i - GRID_W/2) * profile[i];
+    variance += (i - gridW/2) * (i - gridW/2) * profile[i];
   }
   variance /= totalDensity;
   
