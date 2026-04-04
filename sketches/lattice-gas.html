@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lattice Gas Automaton</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Lattice Gas Automaton — Diffusion and Central Limit Theorem
+// RED AND BLACK version
+// Background: rgb(25,25,25) minimum
+// Particles: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+const GRID_W = 120;
+const GRID_H = 80;
+const CELL_SIZE = 8;
+
+let grid = [];
+let nextGrid = [];
+let densityHistory = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight());
+  colorMode(HSB, 360, 100, 100, 100);
+  noSmooth();
+  
+  initGrid();
+}
+
+function initGrid() {
+  GRID_W = floor(width / CELL_SIZE);
+  GRID_H = floor(height / CELL_SIZE);
+  
+  grid = [];
+  nextGrid = [];
+  
+  for (let x = 0; x < GRID_W; x++) {
+    grid[x] = [];
+    nextGrid[x] = [];
+    for (let y = 0; y < GRID_H; y++) {
+      grid[x][y] = 0;
+      nextGrid[x][y] = 0;
+    }
+  }
+  
+  // Initialize with Gaussian blob in center
+  let cx = floor(GRID_W / 2);
+  let cy = floor(GRID_H / 2);
+  let sigma = 8;
+  
+  for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < GRID_H; y++) {
+      let dx = x - cx;
+      let dy = y - cy;
+      let d2 = dx * dx + dy * dy;
+      let prob = exp(-d2 / (2 * sigma * sigma));
+      grid[x][y] = (random() < prob) ? 1 : 0;
+    }
+  }
+  
+  densityHistory = [];
+}
+
+function diffuse() {
+  for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < GRID_H; y++) {
+      nextGrid[x][y] = 0;
+    }
+  }
+  
+  for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < GRID_H; y++) {
+      if (grid[x][y] === 1) {
+        let dirs = [
+          [1, 0], [-1, 0], [0, 1], [0, -1],
+          [1, 1], [-1, -1], [1, -1], [-1, 1]
+        ];
+        let d = dirs[floor(random(dirs.length))];
+        let nx = (x + d[0] + GRID_W) % GRID_W;
+        let ny = (y + d[1] + GRID_H) % GRID_H;
+        nextGrid[nx][ny] = 1;
+      }
+    }
+  }
+  
+  let temp = grid;
+  grid = nextGrid;
+  nextGrid = temp;
+}
+
+function calculateDensityProfile() {
+  let profile = [];
+  for (let x = 0; x < GRID_W; x++) {
+    let count = 0;
+    for (let y = 0; y < GRID_H; y++) {
+      count += grid[x][y];
+    }
+    profile.push(count);
+  }
+  return profile;
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  diffuse();
+  
+  noStroke();
+  for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < GRID_H; y++) {
+      if (grid[x][y] === 1) {
+        let px = x * CELL_SIZE;
+        let py = y * CELL_SIZE;
+        // Particle - vivid red
+        fill(10, 80, 95, 95);
+        rect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+      }
+    }
+  }
+  
+  let profile = calculateDensityProfile();
+  let maxD = max(profile);
+  if (maxD > 0) {
+    let graphH = 60;
+    let graphY = height - graphH - 10;
+    let graphX = 10;
+    let graphW = min(GRID_W * CELL_SIZE * 0.5, 400);
+    
+    fill(0, 0, 20, 80);
+    noStroke();
+    rect(graphX - 2, graphY - 2, graphW + 4, graphH + 4);
+    
+    noStroke();
+    for (let i = 0; i < profile.length; i++) {
+      let barH = (profile[i] / maxD) * (graphH - 10);
+      let bx = graphX + (i / GRID_W) * graphW;
+      // Profile bar - red
+      fill(10, 60, 85, 90);
+      rect(bx, graphY + graphH - barH - 5, graphW / GRID_W, barH);
+    }
+    
+    // Theoretical Gaussian in amber/gold
+    let cx = profile.length / 2;
+    let sigma = sqrt(densityHistory.length + 1) * 3;
+    stroke(30, 70, 90, 60);
+    strokeWeight(2);
+    noFill();
+    beginShape();
+    for (let i = 0; i < profile.length; i++) {
+      let t = (i - cx) / sigma;
+      let g = exp(-0.5 * t * t);
+      let bx = graphX + (i / GRID_W) * graphW;
+      let by = graphY + graphH - 5 - g * (graphH - 15);
+      vertex(bx, by);
+    }
+    endShape();
+    
+    noStroke();
+    fill(10, 40, 75);
+    textSize(10);
+    textAlign(LEFT, TOP);
+    text("Density Profile (red=actual, gold=theoretical Gaussian)", graphX, graphY - 14);
+  }
+  
+  let totalDensity = profile.reduce((a, b) => a + b, 0);
+  densityHistory.push(totalDensity);
+  if (densityHistory.length > 500) densityHistory.shift();
+  
+  fill(10, 40, 80);
+  textSize(12);
+  textAlign(RIGHT, TOP);
+  text("Lattice Gas Automaton — Particles: " + totalDensity + " — Time: " + densityHistory.length, width - 15, 15);
+  
+  fill(10, 40, 60);
+  textAlign(LEFT, TOP);
+  text("Click to reset", 15, 15);
+  
+  let variance = 0;
+  let mean = totalDensity / GRID_W;
+  for (let i = 0; i < profile.length; i++) {
+    variance += (i - GRID_W/2) * (i - GRID_W/2) * profile[i];
+  }
+  variance /= totalDensity;
+  
+  fill(10, 30, 65);
+  text("Variance: " + nf(variance, 2, 1) + " (grows linearly with time for diffusion)", 15, 32);
+}
+
+function mousePressed() {
+  initGrid();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  initGrid();
+}
+</script>
+</body>
+</html>
