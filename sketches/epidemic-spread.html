@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Epidemic Dynamics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Epidemic Dynamics — SIR model on a network
+// RED AND BLACK version
+// Background: rgb(25,25,25) minimum
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const BG_R = 25, BG_G = 25, BG_B = 25;
+
+const NUM_NODES = 80;
+const CONNECTIVITY = 6;
+const REWIRE_PROB = 0.04;
+const INFECT_PROB = 0.4;
+const RECOVER_PROB = 0.03;
+
+let nodes = [];
+let edges = [];
+let susceptible = 0;
+let infected = 0;
+let recovered = 0;
+let historyS = [];
+let historyI = [];
+let historyR = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight());
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  initNetwork();
+}
+
+function initNetwork() {
+  nodes = [];
+  edges = [];
+  historyS = [];
+  historyI = [];
+  historyR = [];
+  
+  for (let i = 0; i < NUM_NODES; i++) {
+    let angle = map(i, 0, NUM_NODES, 0, TWO_PI);
+    let radius = min(width, height) * 0.35;
+    nodes.push({
+      id: i,
+      x: width / 2 + cos(angle) * radius,
+      y: height / 2 + sin(angle) * radius,
+      state: 'S',
+      infectedTime: 0
+    });
+  }
+  
+  for (let i = 0; i < NUM_NODES; i++) {
+    for (let j = 1; j <= CONNECTIVITY / 2; j++) {
+      let neighbor = (i + j) % NUM_NODES;
+      
+      if (random() < REWIRE_PROB) {
+        let newTarget;
+        do {
+          newTarget = floor(random(NUM_NODES));
+        } while (newTarget === i || isConnected(i, newTarget));
+        edges.push([i, newTarget]);
+      } else {
+        edges.push([i, neighbor]);
+      }
+    }
+  }
+  
+  let initialInfected = floor(random(3, 6));
+  for (let i = 0; i < NUM_NODES; i++) {
+    nodes[i].state = 'S';
+  }
+  for (let i = 0; i < initialInfected; i++) {
+    let idx = floor(random(NUM_NODES));
+    nodes[idx].state = 'I';
+    nodes[idx].infectedTime = 0;
+  }
+  
+  updateCounts();
+}
+
+function isConnected(a, b) {
+  for (let e of edges) {
+    if ((e[0] === a && e[1] === b) || (e[0] === b && e[1] === a)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getNeighbors(nodeId) {
+  let neighbors = [];
+  for (let e of edges) {
+    if (e[0] === nodeId) neighbors.push(e[1]);
+    if (e[1] === nodeId) neighbors.push(e[0]);
+  }
+  return neighbors;
+}
+
+function updateCounts() {
+  susceptible = 0;
+  infected = 0;
+  recovered = 0;
+  for (let n of nodes) {
+    if (n.state === 'S') susceptible++;
+    else if (n.state === 'I') infected++;
+    else recovered++;
+  }
+}
+
+function step() {
+  let newStates = [];
+  
+  for (let n of nodes) {
+    if (n.state === 'S') {
+      let neighbors = getNeighbors(n.id);
+      let infectedNeighbors = neighbors.filter(id => nodes[id].state === 'I');
+      let gotInfected = false;
+      for (let infId of infectedNeighbors) {
+        if (random() < INFECT_PROB) {
+          gotInfected = true;
+          break;
+        }
+      }
+      newStates.push(gotInfected ? 'I' : 'S');
+    } else if (n.state === 'I') {
+      n.infectedTime++;
+      newStates.push(random() < RECOVER_PROB ? 'R' : 'I');
+    } else {
+      newStates.push('R');
+    }
+  }
+  
+  for (let i = 0; i < nodes.length; i++) {
+    nodes[i].state = newStates[i];
+  }
+  
+  updateCounts();
+  
+  historyS.push(susceptible);
+  historyI.push(infected);
+  historyR.push(recovered);
+  
+  if (historyS.length > 400) {
+    historyS.shift();
+    historyI.shift();
+    historyR.shift();
+  }
+}
+
+function draw() {
+  background(BG_R, BG_G, BG_B);
+  
+  for (let i = 0; i < 3; i++) {
+    step();
+  }
+  
+  // Draw edges - dim red
+  stroke(10, 30, 35, 40);
+  strokeWeight(1);
+  for (let e of edges) {
+    let n1 = nodes[e[0]];
+    let n2 = nodes[e[1]];
+    line(n1.x, n1.y, n2.x, n2.y);
+  }
+  
+  // Draw nodes
+  noStroke();
+  for (let n of nodes) {
+    if (n.state === 'S') {
+      // Susceptible - dark red
+      fill(10, 50, 45, 85);
+    } else if (n.state === 'I') {
+      // Infected - bright vivid red
+      fill(10, 90, 100, 95);
+    } else {
+      // Recovered - medium red
+      fill(10, 60, 70, 85);
+    }
+    
+    let sz = 8;
+    if (n.state === 'I') sz = 10;
+    ellipse(n.x, n.y, sz, sz);
+  }
+  
+  // Draw SIR history graph
+  let graphX = 15;
+  let graphY = height - 110;
+  let graphW = min(width - 30, 400);
+  let graphH = 80;
+  
+  fill(0, 0, 15, 80);
+  noStroke();
+  rect(graphX - 2, graphY - 2, graphW + 4, graphH + 4);
+  
+  let maxVal = max(susceptible, infected, recovered, 1);
+  
+  // S curve - dark red
+  stroke(10, 50, 70);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let i = 0; i < historyS.length; i++) {
+    let x = graphX + (i / 400) * graphW;
+    let y = graphY + graphH - (historyS[i] / maxVal) * (graphH - 10);
+    vertex(x, y);
+  }
+  endShape();
+  
+  // I curve - bright vivid red
+  stroke(10, 90, 100);
+  beginShape();
+  for (let i = 0; i < historyI.length; i++) {
+    let x = graphX + (i / 400) * graphW;
+    let y = graphY + graphH - (historyI[i] / maxVal) * (graphH - 10);
+    vertex(x, y);
+  }
+  endShape();
+  
+  // R curve - medium red
+  stroke(10, 60, 75);
+  beginShape();
+  for (let i = 0; i < historyR.length; i++) {
+    let x = graphX + (i / 400) * graphW;
+    let y = graphY + graphH - (historyR[i] / maxVal) * (graphH - 10);
+    vertex(x, y);
+  }
+  endShape();
+  
+  // Labels
+  noStroke();
+  fill(10, 50, 60);
+  textSize(10);
+  textAlign(LEFT, TOP);
+  text("S (dark red)", graphX + 5, graphY + 5);
+  fill(10, 80, 90);
+  text("I (bright)", graphX + 85, graphY + 5);
+  fill(10, 60, 70);
+  text("R (medium)", graphX + 145, graphY + 5);
+  
+  fill(10, 40, 80);
+  textSize(12);
+  textAlign(RIGHT, TOP);
+  text("Epidemic Dynamics — SIR Model on Small-World Network", width - 15, 15);
+  text("S: " + susceptible + "  I: " + infected + "  R: " + recovered, width - 15, 32);
+  
+  let R0 = (INFECT_PROB / RECOVER_PROB) * CONNECTIVITY;
+  fill(10, 35, 65);
+  textAlign(LEFT, TOP);
+  text("R0 ≈ " + nf(R0, 1, 2) + " (if R0 > 1, epidemic likely)", 15, 50);
+  text("Click to reset", 15, 65);
+}
+
+function mousePressed() {
+  initNetwork();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  initNetwork();
+}
+</script>
+</body>
+</html>
