@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traffic Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Traffic Flow — Nagel-Schreckenberg cellular automaton
+// RED AND BLACK version
+// Background: min rgb(25,25,25)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const ROAD_LENGTH = 100;
+const NUM_LANES = 6;
+const MAX_VELOCITY = 5;
+const P_SLOWDOWN = 0.15;
+const DENSITY = 0.35;
+
+let cars = [];
+let road = [];
+let stats = { flow: 0, jams: 0, avgVel: 0 };
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noSmooth();
+  initRoad();
+}
+
+function initRoad() {
+  road = [];
+  for (let l = 0; l < NUM_LANES; l++) {
+    road[l] = [];
+    for (let i = 0; i < ROAD_LENGTH; i++) {
+      road[l][i] = -1;
+    }
+  }
+  
+  cars = [];
+  let carId = 0;
+  for (let l = 0; l < NUM_LANES; l++) {
+    for (let i = 0; i < ROAD_LENGTH; i++) {
+      if (random() < DENSITY) {
+        cars.push({
+          lane: l,
+          pos: i,
+          vel: floor(random(MAX_VELOCITY + 1)),
+          id: carId++
+        });
+        road[l][i] = carId - 1;
+      }
+    }
+  }
+}
+
+function getGap(lane, pos, vel) {
+  let gap = 0;
+  let nextPos = (pos + 1) % ROAD_LENGTH;
+  while (nextPos !== pos && road[lane][nextPos] === -1) {
+    gap++;
+    nextPos = (nextPos + 1) % ROAD_LENGTH;
+    if (gap > ROAD_LENGTH) break;
+  }
+  return gap;
+}
+
+function step() {
+  let newRoad = [];
+  for (let l = 0; l < NUM_LANES; l++) {
+    newRoad[l] = [];
+    for (let i = 0; i < ROAD_LENGTH; i++) {
+      newRoad[l][i] = -1;
+    }
+  }
+  
+  let shuffled = [...cars].sort(() => random() - 0.5);
+  
+  for (let car of shuffled) {
+    // Rule 1: accelerate
+    car.vel = min(car.vel + 1, MAX_VELOCITY);
+    
+    // Rule 2: brake if too close
+    let gap = getGap(car.lane, car.pos, car.vel);
+    if (gap < car.vel) {
+      car.vel = max(0, gap - 1);
+    }
+    
+    // Rule 3: random slowdown
+    if (random() < P_SLOWDOWN && car.vel > 0) {
+      car.vel--;
+    }
+    
+    // Rule 4: move forward
+    let newPos = (car.pos + car.vel) % ROAD_LENGTH;
+    if (newRoad[car.lane][newPos] === -1) {
+      car.pos = newPos;
+      newRoad[car.lane][newPos] = car.id;
+    } else {
+      newRoad[car.lane][car.pos] = car.id;
+    }
+  }
+  
+  road = newRoad;
+  
+  let totalVel = cars.reduce((s, c) => s + c.vel, 0);
+  stats.avgVel = totalVel / cars.length;
+  stats.flow = totalVel / ROAD_LENGTH;
+  
+  stats.jams = 0;
+  for (let l = 0; l < NUM_LANES; l++) {
+    let stopped = 0;
+    for (let i = 0; i < ROAD_LENGTH; i++) {
+      let hasCar = cars.some(c => c.lane === l && c.pos === i);
+      if (hasCar) {
+        let car = cars.find(c => c.lane === l && c.pos === i);
+        if (car.vel === 0) stopped++;
+        else stopped = 0;
+      } else {
+        stopped = 0;
+      }
+      if (stopped >= 3) stats.jams++;
+    }
+  }
+}
+
+function drawRoad() {
+  background(25, 25, 25);
+  
+  let cellW = width / ROAD_LENGTH;
+  let cellH = height / NUM_LANES;
+  
+  // Draw road lanes
+  for (let l = 0; l < NUM_LANES; l++) {
+    // Lane separator
+    stroke(10, 20, 15);
+    strokeWeight(1);
+    let y = l * cellH;
+    line(0, y, width, y);
+    
+    // Cars - RED version
+    noStroke();
+    for (let car of cars) {
+      if (car.lane === l) {
+        let x = car.pos * cellW + cellW / 2;
+        let cy = l * cellH + cellH / 2;
+        
+        // Car color based on velocity - RED
+        let bri = map(car.vel, 0, MAX_VELOCITY, 35, 95); // dim to vivid
+        let sat = map(car.vel, 0, MAX_VELOCITY, 40, 85);
+        fill(10, sat, bri);
+        
+        let carW = cellW * 0.8;
+        let carH = cellH * 0.7;
+        rect(x - carW/2, cy - carH/2, carW, carH, 2);
+        
+        // Velocity indicator
+        if (car.vel > 0) {
+          fill(10, sat - 20, bri + 5, 70);
+          let indicatorW = (car.vel / MAX_VELOCITY) * carW * 0.5;
+          rect(x - indicatorW/2, cy - 2, indicatorW, 4, 1);
+        }
+      }
+    }
+  }
+  
+  // Road edges
+  stroke(10, 30, 20);
+  strokeWeight(2);
+  line(0, 0, width, 0);
+  line(0, height - 1, width, height - 1);
+  
+  // Stats - RED text
+  noStroke();
+  fill(10, 40, 75);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text("Traffic Flow — Nagel-Schreckenberg CA", 10, 10);
+  text("Density: " + DENSITY.toFixed(2) + " | Max velocity: " + MAX_VELOCITY + " | Slowdown prob: " + P_SLOWDOWN, 10, 26);
+  
+  fill(10, 50, 90);
+  textAlign(RIGHT, TOP);
+  text("Avg velocity: " + stats.avgVel.toFixed(2) + " | Flow: " + stats.flow.toFixed(2) + " | Jams: " + stats.jams, width - 10, 10);
+  
+  // Phase indicator
+  textAlign(LEFT, BOTTOM);
+  let phase = stats.flow > 2.5 ? "FREE FLOW" : stats.flow > 1.5 ? "SYNCHRONIZED" : "CONGESTED";
+  fill(10, 60, 95);
+  text("Phase: " + phase, 10, height - 10);
+  
+  fill(10, 30, 60);
+  textAlign(RIGHT, BOTTOM);
+  text("Click to reset", width - 10, height - 10);
+  
+  // Speed legend - RED
+  let legendX = width - 100;
+  let legendY = 50;
+  fill(10, 30, 70);
+  textSize(10);
+  textAlign(LEFT, TOP);
+  text("Speed:", legendX, legendY);
+  for (let v = 0; v <= MAX_VELOCITY; v++) {
+    let bri = map(v, 0, MAX_VELOCITY, 35, 95);
+    let sat = map(v, 0, MAX_VELOCITY, 40, 85);
+    fill(10, sat, bri);
+    rect(legendX, legendY + 15 + v * 12, 15, 10, 2);
+    fill(10, sat - 20, bri + 5);
+    text(v, legendX + 20, legendY + 15 + v * 12);
+  }
+}
+
+function draw() {
+  step();
+  step();
+  step();
+  drawRoad();
+}
+
+function mousePressed() {
+  initRoad();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
