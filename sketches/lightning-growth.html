@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lightning Growth</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Lightning Growth — Dielectric breakdown model
+// RED AND BLACK version
+// Background: min rgb(25,25,25)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const GRID_W = 80;
+const GRID_H = 60;
+const CELL_SIZE = 10;
+
+let grid = [];
+let current = [];
+let voltage = 5;
+let threshold = 0.4;
+let exponent = 2.0;
+
+function setup() {
+  createCanvas(GRID_W * CELL_SIZE, GRID_H * CELL_SIZE);
+  noSmooth();
+  
+  initGrid();
+}
+
+function initGrid() {
+  grid = [];
+  current = [];
+  for (let y = 0; y < GRID_H; y++) {
+    grid[y] = [];
+    current[y] = [];
+    for (let x = 0; x < GRID_W; x++) {
+      grid[y][x] = 0;
+      current[y][x] = 0;
+    }
+  }
+  
+  // Start discharge from bottom center
+  let startX = floor(GRID_W / 2);
+  grid[GRID_H - 1][startX] = 1;
+  current[GRID_H - 1][startX] = 1;
+  current[GRID_H - 2][startX] = 1;
+}
+
+function getNeighbors(x, y) {
+  let neighbors = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      let nx = x + dx;
+      let ny = y + dy;
+      if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+        neighbors.push([nx, ny]);
+      }
+    }
+  }
+  return neighbors;
+}
+
+function computePotential() {
+  // Compute potential field using Laplace equation (simplified iteration)
+  let newVoltage = [];
+  for (let y = 0; y < GRID_H; y++) {
+    newVoltage[y] = [];
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] === 1) {
+        newVoltage[y][x] = 0;
+      } else if (y === GRID_H - 1) {
+        // Bottom electrode (grounded except at discharge point)
+        let startX = floor(GRID_W / 2);
+        newVoltage[y][x] = (x === startX) ? 0.5 : 1;
+      } else if (y === 0) {
+        // Top electrode (high voltage)
+        newVoltage[y][x] = 0;
+      } else {
+        // Laplace relaxation (simplified)
+        let sum = 0;
+        let count = 0;
+        let n = getNeighbors(x, y);
+        for (let [nx, ny] of n) {
+          if (grid[ny][nx] === 0) {
+            sum += newVoltage[ny] !== undefined && newVoltage[ny][nx] !== undefined ? newVoltage[ny][nx] : voltage;
+            count++;
+          }
+        }
+        newVoltage[y][x] = count > 0 ? sum / count : 0.5;
+      }
+    }
+  }
+  return newVoltage;
+}
+
+function growDischarge(voltageField) {
+  let growthSites = [];
+  
+  // Find all growth frontier sites (adjacent to current)
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] === 1) {
+        let n = getNeighbors(x, y);
+        for (let [nx, ny] of n) {
+          if (grid[ny][nx] === 0) {
+            let v = voltageField[ny][nx];
+            let prob = pow(v - threshold, exponent);
+            if (prob > 0) {
+              growthSites.push([nx, ny, prob]);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Grow with probability weighted by field strength
+  if (growthSites.length > 0) {
+    growthSites.sort((a, b) => b[2] - a[2]);
+    
+    let toGrow = min(floor(random(2, 5)), growthSites.length);
+    for (let i = 0; i < toGrow; i++) {
+      let totalProb = growthSites.reduce((sum, g) => sum + g[2], 0);
+      let r = random(totalProb);
+      let cumsum = 0;
+      for (let [nx, ny, prob] of growthSites) {
+        cumsum += prob;
+        if (r <= cumsum) {
+          grid[ny][nx] = 1;
+          current[ny][nx] = 1;
+          break;
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  background(25, 25, 25);
+  
+  let voltageField = computePotential();
+  growDischarge(voltageField);
+  
+  let totalCurrent = 0;
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (current[y][x] === 1) totalCurrent++;
+    }
+  }
+  
+  if (totalCurrent > 1500 || frameCount % 600 === 0) {
+    initGrid();
+  }
+  
+  // Draw voltage field as background - dim red
+  noStroke();
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      let v = voltageField[y][x];
+      if (grid[y][x] === 0) {
+        // Potential field visualization - dim red
+        let b = map(v, 0, 1, 0, 20);
+        fill(10, 30, b);
+        rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
+    }
+  }
+  
+  // Draw current (discharge) - vivid red
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (current[y][x] === 1) {
+        let neighbors = getNeighbors(x, y);
+        let unburnt = neighbors.filter(([nx, ny]) => current[ny][nx] === 0).length;
+        let brightness = map(unburnt, 0, 8, 70, 100);
+        let sat = map(unburnt, 0, 8, 50, 90);
+        
+        fill(10, sat, brightness);
+        rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
+    }
+  }
+  
+  // Add glow effect with bright core
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (current[y][x] === 1) {
+        let neighbors = getNeighbors(x, y);
+        let unburnt = neighbors.filter(([nx, ny]) => current[ny][nx] === 0).length;
+        if (unburnt > 0) {
+          // Bright hot core
+          fill(10, 20, 100);
+          let cx = x * CELL_SIZE + CELL_SIZE / 2;
+          let cy = y * CELL_SIZE + CELL_SIZE / 2;
+          ellipse(cx, cy, 3, 3);
+        }
+      }
+    }
+  }
+  
+  // Labels
+  fill(10, 40, 80);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("Lightning Growth — Dielectric Breakdown Model", 8, 8);
+  text("∇²φ = 0 potential field, probabilistic branching", 8, 22);
+  text("Click to reset", 8, 36);
+}
+
+function mousePressed() {
+  initGrid();
+}
+</script>
+</body>
+</html>
