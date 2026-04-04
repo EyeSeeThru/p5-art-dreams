@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Granular Convection</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Granular Convection — Brazil nut effect simulation
+// RED AND BLACK version
+// Background: min rgb(25,25,25)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const COLS = 40;
+const ROWS = 50;
+const CELL_SIZE = 12;
+
+let particles = [];
+let largeParticles = [];
+let convectionCount = 0;
+
+function setup() {
+  createCanvas(COLS * CELL_SIZE, ROWS * CELL_SIZE);
+  noSmooth();
+  initParticles();
+}
+
+function initParticles() {
+  particles = [];
+  largeParticles = [];
+  convectionCount = 0;
+  
+  // Create small particles grid
+  for (let y = 0; y < ROWS - 3; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (random() < 0.75) {
+        particles.push({
+          x: x,
+          y: y,
+          size: random(0.5, 0.9),
+          bri: random(25, 45) // Dim red for small particles
+        });
+      }
+    }
+  }
+  
+  // Add large particles (Brazil nuts) - VIVID RED
+  for (let i = 0; i < 8; i++) {
+    let x = floor(random(COLS));
+    let y = floor(random(ROWS / 2, ROWS - 2));
+    largeParticles.push({
+      x: x,
+      y: y,
+      size: 1.8,
+      bri: random(75, 95), // Vivid red
+      sat: random(70, 90),
+      fallVel: 0
+    });
+  }
+}
+
+function shake() {
+  let shakeStrength = 0.4;
+  
+  for (let p of particles) {
+    if (random() < shakeStrength) {
+      let newY = p.y - random(0.2, 0.8);
+      let newX = p.x + random(-0.5, 0.5);
+      
+      newX = constrain(floor(newX), 0, COLS - 1);
+      newY = constrain(round(newY), 0, ROWS - 2);
+      
+      let occupied = particles.some(other => 
+        other !== p && floor(other.x) === newX && floor(other.y) === newY
+      ) || largeParticles.some(lp => 
+        floor(lp.x) === newX && floor(lp.y) === newY
+      );
+      
+      if (!occupied) {
+        p.y = newY;
+        p.x = newX;
+      }
+    }
+    
+    let below = p.y + 1;
+    if (below < ROWS - 1) {
+      let supported = particles.some(other => 
+        other !== p && floor(other.x) === floor(p.x) && floor(other.y) === below
+      ) || largeParticles.some(lp => 
+        floor(lp.x) === floor(p.x) && floor(lp.y) === below
+      );
+      
+      if (!supported && random() < 0.6) {
+        p.y = below;
+      }
+    }
+  }
+  
+  for (let lp of largeParticles) {
+    lp.fallVel += 0.1;
+    lp.fallVel *= 0.9;
+    let newY = lp.y + lp.fallVel;
+    
+    let canFall = true;
+    
+    for (let p of particles) {
+      if (floor(p.x) === floor(lp.x) && floor(p.y) === floor(newY + 1)) {
+        if (random() < 0.3) {
+          canFall = false;
+          lp.y -= 0.3;
+          lp.fallVel = 0;
+          convectionCount++;
+        }
+      }
+    }
+    
+    for (let other of largeParticles) {
+      if (other !== lp) {
+        let d = dist(lp.x, lp.y, other.x, other.y);
+        if (d < 2) {
+          canFall = false;
+        }
+      }
+    }
+    
+    if (canFall && newY < ROWS - 1) {
+      lp.y = newY;
+    }
+    
+    if (random() < 0.05) {
+      let pushX = random() < 0.5 ? -1 : 1;
+      let newX = lp.x + pushX;
+      if (newX >= 0 && newX < COLS) {
+        let blocked = particles.some(p => 
+          floor(p.x) === floor(newX) && floor(p.y) === floor(lp.y)
+        ) || largeParticles.some(other => 
+          other !== lp && floor(other.x) === floor(newX) && floor(other.y) === floor(lp.y)
+        );
+        if (!blocked) {
+          lp.x = newX;
+        }
+      }
+    }
+  }
+  
+  for (let p of particles) {
+    p.x = constrain(p.x, 0, COLS - 1);
+    p.y = constrain(p.y, 0, ROWS - 2);
+  }
+  
+  for (let lp of largeParticles) {
+    lp.x = constrain(lp.x, 1, COLS - 2);
+    lp.y = constrain(lp.y, 1, ROWS - 2);
+  }
+}
+
+function draw() {
+  background(25, 25, 25);
+  
+  shake();
+  shake();
+  shake();
+  
+  // Draw small particles - DIM red
+  noStroke();
+  for (let p of particles) {
+    fill(10, 30, p.bri);
+    let cx = p.x * CELL_SIZE + CELL_SIZE / 2;
+    let cy = p.y * CELL_SIZE + CELL_SIZE / 2;
+    let sz = p.size * CELL_SIZE * 0.8;
+    ellipse(cx, cy, sz, sz);
+  }
+  
+  // Draw large particles (Brazil nuts) - VIVID RED
+  for (let lp of largeParticles) {
+    fill(10, lp.sat, lp.bri);
+    let cx = lp.x * CELL_SIZE + CELL_SIZE / 2;
+    let cy = lp.y * CELL_SIZE + CELL_SIZE / 2;
+    let sz = lp.size * CELL_SIZE * 0.8;
+    ellipse(cx, cy, sz, sz);
+    
+    // Add highlight - brighter core
+    fill(10, lp.sat - 20, lp.bri + 5, 60);
+    ellipse(cx - sz * 0.15, cy - sz * 0.15, sz * 0.3, sz * 0.3);
+  }
+  
+  // Draw container walls
+  stroke(10, 20, 40);
+  strokeWeight(2);
+  noFill();
+  rect(0, 0, width, height);
+  
+  // Labels
+  noStroke();
+  fill(10, 30, 70);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("Granular Convection — Brazil Nut Effect", 8, 8);
+  text("Large particles rise through agitated granular media", 8, 22);
+  text("Mechanisms: kinetic sieving + convection rolls + buoyancy reversal", 8, 36);
+  
+  fill(10, 20, 50);
+  textAlign(RIGHT, TOP);
+  text("Click to reset", width - 8, 8);
+  
+  // Stats
+  fill(10, 40, 60);
+  textAlign(LEFT, BOTTOM);
+  let avgLargeY = largeParticles.reduce((s, lp) => s + lp.y, 0) / largeParticles.length;
+  text("Avg large particle Y: " + avgLargeY.toFixed(1), 8, height - 8);
+}
+
+function mousePressed() {
+  initParticles();
+}
+</script>
+</body>
+</html>
