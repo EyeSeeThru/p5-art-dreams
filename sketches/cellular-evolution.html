@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cellular Evolution</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Cellular Evolution — Artificial life simulation
+// RED AND BLACK version
+// Background: min rgb(25,25,25)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+const POP_SIZE = 60;
+const GENOME_LEN = 32;
+const MUTATION_RATE = 0.08;
+const CROSSOVER_RATE = 0.3;
+
+let organisms = [];
+let resources = [];
+let generation = 0;
+let avgFitness = 0;
+let historyAvg = [];
+let historyBest = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight());
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  initPopulation();
+  initResources();
+}
+
+function initPopulation() {
+  organisms = [];
+  for (let i = 0; i < POP_SIZE; i++) {
+    organisms.push(createOrganism(random(width), random(height)));
+  }
+}
+
+function createOrganism(x, y, dna) {
+  let genome = [];
+  if (dna) {
+    genome = [...dna];
+  } else {
+    for (let i = 0; i < GENOME_LEN; i++) {
+      genome.push(random(0, 256));
+    }
+  }
+  
+  return {
+    x: x,
+    y: y,
+    vx: random(-1, 1),
+    vy: random(-1, 1),
+    genome: genome,
+    fitness: 0,
+    age: 0,
+    hue: 10 // Red hue
+  };
+}
+
+function initResources() {
+  resources = [];
+  for (let i = 0; i < 40; i++) {
+    resources.push({
+      x: random(width),
+      y: random(height),
+      energy: random(50, 150),
+      hue: 10
+    });
+  }
+}
+
+function fitness(organism) {
+  let energyScore = organism.fitness;
+  let age = max(1, organism.age);
+  return energyScore / sqrt(age);
+}
+
+function crossover(parent1, parent2) {
+  let childGenome = [];
+  for (let i = 0; i < GENOME_LEN; i++) {
+    if (random() < CROSSOVER_RATE) {
+      childGenome.push(parent1.genome[i]);
+    } else {
+      childGenome.push(parent2.genome[i]);
+    }
+  }
+  return childGenome;
+}
+
+function mutate(genome) {
+  for (let i = 0; i < GENOME_LEN; i++) {
+    if (random() < MUTATION_RATE) {
+      genome[i] = constrain(genome[i] + random(-20, 20), 0, 255);
+    }
+  }
+  return genome;
+}
+
+function reproduce() {
+  let totalFitness = 0;
+  for (let org of organisms) {
+    org.fitnessVal = max(0.1, fitness(org));
+    totalFitness += org.fitnessVal;
+  }
+  
+  let newPopulation = [];
+  for (let i = 0; i < POP_SIZE; i++) {
+    let r = random(totalFitness);
+    let cumsum = 0;
+    let parent1, parent2;
+    
+    for (let org of organisms) {
+      cumsum += org.fitnessVal;
+      if (r <= cumsum) {
+        parent1 = org;
+        break;
+      }
+    }
+    
+    r = random(totalFitness);
+    cumsum = 0;
+    for (let org of organisms) {
+      cumsum += org.fitnessVal;
+      if (r <= cumsum) {
+        parent2 = org;
+        break;
+      }
+    }
+    
+    if (!parent1) parent1 = organisms[floor(random(POP_SIZE))];
+    if (!parent2) parent2 = organisms[floor(random(POP_SIZE))];
+    
+    let childGenome = crossover(parent1, parent2);
+    childGenome = mutate(childGenome);
+    
+    let child = createOrganism(random(width), random(height), childGenome);
+    newPopulation.push(child);
+  }
+  
+  organisms = newPopulation;
+  generation++;
+}
+
+function updateOrganisms() {
+  let totalFitness = 0;
+  let bestFitness = 0;
+  
+  for (let org of organisms) {
+    let speedGene = org.genome[0] / 255;
+    let turnGene = org.genome[1] / 255;
+    let senseGene = org.genome[2] / 255;
+    
+    let speed = map(speedGene, 0, 1, 0.5, 2.5);
+    let turnRate = map(turnGene, 0, 1, 0.02, 0.15);
+    let senseDist = map(senseGene, 0, 1, 20, 100);
+    
+    let nearestResource = null;
+    let nearestDist = Infinity;
+    
+    for (let res of resources) {
+      let d = dist(org.x, org.y, res.x, res.y);
+      if (d < nearestDist && d < senseDist) {
+        nearestDist = d;
+        nearestResource = res;
+      }
+    }
+    
+    if (nearestResource) {
+      let angle = atan2(nearestResource.y - org.y, nearestResource.x - org.x);
+      let currentAngle = atan2(org.vy, org.vx);
+      let diff = angle - currentAngle;
+      while (diff > PI) diff -= TWO_PI;
+      while (diff < -PI) diff += TWO_PI;
+      currentAngle += diff * turnRate;
+      
+      org.vx = cos(currentAngle) * speed;
+      org.vy = sin(currentAngle) * speed;
+      
+      if (nearestDist < 10) {
+        org.fitness += nearestResource.energy;
+        nearestResource.energy -= 30;
+        if (nearestResource.energy <= 0) {
+          nearestResource.x = random(width);
+          nearestResource.y = random(height);
+          nearestResource.energy = random(50, 150);
+        }
+      }
+    } else {
+      org.vx += random(-0.1, 0.1);
+      org.vy += random(-0.1, 0.1);
+      
+      let spd = sqrt(org.vx * org.vx + org.vy * org.vy);
+      if (spd > speed) {
+        org.vx = (org.vx / spd) * speed;
+        org.vy = (org.vy / spd) * speed;
+      }
+    }
+    
+    org.x += org.vx;
+    org.y += org.vy;
+    org.age++;
+    
+    if (org.x < 0) org.x = width;
+    if (org.x > width) org.x = 0;
+    if (org.y < 0) org.y = height;
+    if (org.y > height) org.y = 0;
+    
+    org.fitness = max(0, org.fitness - 0.1);
+    totalFitness += org.fitness;
+    bestFitness = max(bestFitness, org.fitness);
+  }
+  
+  avgFitness = totalFitness / organisms.length;
+  historyAvg.push(avgFitness);
+  historyBest.push(bestFitness);
+  if (historyAvg.length > 200) {
+    historyAvg.shift();
+    historyBest.shift();
+  }
+}
+
+function draw() {
+  background(25, 25, 25);
+  
+  // Draw resources - dim red
+  for (let res of resources) {
+    noStroke();
+    fill(10, 40, 40, 60);
+    let sz = map(res.energy, 0, 150, 3, 12);
+    ellipse(res.x, res.y, sz, sz);
+  }
+  
+  updateOrganisms();
+  
+  // Draw organisms - vivid red
+  noStroke();
+  for (let org of organisms) {
+    let b = map(org.fitness, 0, 100, 60, 95);
+    let s = map(org.fitness, 0, 100, 40, 80);
+    fill(10, s, b, 80);
+    let sz = map(org.age, 0, 500, 3, 8);
+    ellipse(org.x, org.y, sz, sz);
+    
+    // Direction indicator for high fitness
+    if (org.fitness > 50) {
+      stroke(10, 30, 70, 40);
+      strokeWeight(1);
+      let len = 10;
+      line(org.x, org.y, org.x + org.vx * len, org.y + org.vy * len);
+    }
+  }
+  
+  // Draw fitness history
+  let graphX = 15;
+  let graphY = height - 80;
+  let graphW = min(width - 30, 300);
+  let graphH = 60;
+  
+  fill(0, 0, 15, 70);
+  noStroke();
+  rect(graphX - 2, graphY - 2, graphW + 4, graphH + 4);
+  
+  // Average fitness - medium red
+  stroke(10, 50, 70);
+  strokeWeight(1.5);
+  noFill();
+  beginShape();
+  for (let i = 0; i < historyAvg.length; i++) {
+    let x = graphX + (i / 200) * graphW;
+    let y = graphY + graphH - (historyAvg[i] / 150) * (graphH - 5);
+    vertex(x, y);
+  }
+  endShape();
+  
+  // Best fitness - bright red
+  stroke(10, 70, 90);
+  beginShape();
+  for (let i = 0; i < historyBest.length; i++) {
+    let x = graphX + (i / 200) * graphW;
+    let y = graphY + graphH - (historyBest[i] / 150) * (graphH - 5);
+    vertex(x, y);
+  }
+  endShape();
+  
+  // Labels
+  noStroke();
+  fill(10, 40, 60);
+  textSize(10);
+  textAlign(LEFT, TOP);
+  text("Avg (medium) vs Best (bright) Fitness", graphX + 5, graphY + 5);
+  
+  fill(10, 30, 80);
+  textSize(11);
+  textAlign(RIGHT, TOP);
+  text("Cellular Evolution — Genetic Algorithm", width - 15, 15);
+  text("Generation: " + generation + "  Pop: " + POP_SIZE, width - 15, 30);
+  
+  if (frameCount % 300 === 0 && generation > 0) {
+    reproduce();
+  }
+  
+  if (generation === 0 && frameCount % 60 === 0) {
+    reproduce();
+  }
+  
+  text("Click to reset", 15, 45);
+}
+
+function mousePressed() {
+  generation = 0;
+  historyAvg = [];
+  historyBest = [];
+  initPopulation();
+  initResources();
+}
+</script>
+</body>
+</html>
