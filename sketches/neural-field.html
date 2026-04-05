@@ -3,200 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Neural Field — FitzHugh-Nagumo Waves</title>
+  <title>Neural Field</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      background: #000008; 
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
     canvas { display: block; }
   </style>
 </head>
 <body>
 <script>
-// FitzHugh-Nagumo Neural Field — Traveling Wave Patterns
-// Coupled excitable media demonstrating pattern formation
+// Neural Field — Turing Patterns in Neural Tissue
+// RED AND BLACK version
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// Mathematical concept: Amari-S Griffith neural field model
 
-let cols, rows;
-let u, v;
-let du, dv;
-const a = 0.5;
-const b = 0.7;
-const c = 0.8;
-const dt = 0.05;
-const dx = 1.0;
-const diffusion = 0.5;
+let field = [];
+let nextField = [];
+let width = 100;
+let height = 100;
+let scale = 6;
 let t = 0;
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  colorMode(HSB, 360, 100, 100, 1);
-  noStroke();
-  
-  cols = floor(width / 4);
-  rows = floor(height / 4);
-  
-  u = [];
-  v = [];
-  du = [];
-  dv = [];
-  
-  for (let i = 0; i < cols; i++) {
-    u[i] = [];
-    v[i] = [];
-    du[i] = [];
-    dv[i] = [];
-    for (let j = 0; j < rows; j++) {
-      u[i][j] = random(-0.5, 0.5);
-      v[i][j] = random(-0.2, 0.2);
-    }
-  }
-  
-  // Seed initial excitation wave
-  seedWave();
+// Neural field parameters
+const tau = 1.0;
+const beta = 10;
+const theta = 0;
+
+function kernel(x, y) {
+  let r = Math.sqrt(x*x + y*y);
+  let sigmaE = 8;
+  let sigmaI = 20;
+  let A_E = 1.0;
+  let A_I = 0.5;
+  return A_E * Math.exp(-r*r/(2*sigmaE*sigmaE)) - A_I * Math.exp(-r*r/(2*sigmaI*sigmaI));
 }
 
-function seedWave() {
-  // Create a circular wave of excitation
-  let cx = floor(cols / 2);
-  let cy = floor(rows / 2);
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let d = dist(i, j, cx, cy);
-      if (d < 5) {
-        u[i][j] = 1.5;
-        v[i][j] = 0.0;
-      }
+let kernel2D = [];
+
+function initKernel() {
+  kernel2D = [];
+  let kSize = 25;
+  for (let dy = -kSize; dy <= kSize; dy++) {
+    let row = [];
+    for (let dx = -kSize; dx <= kSize; dx++) {
+      row.push(kernel(dx, dy));
     }
+    kernel2D.push(row);
   }
-  
-  // Add secondary seeds periodically
-  let seedPositions = [
-    [floor(cols * 0.2), floor(rows * 0.3)],
-    [floor(cols * 0.8), floor(rows * 0.7)],
-    [floor(cols * 0.3), floor(rows * 0.8)]
-  ];
-  
-  for (let [sx, sy] of seedPositions) {
-    for (let i = 0; i < cols; i++) {
-      for (let j = 0; j < rows; j++) {
-        let d = dist(i, j, sx, sy);
-        if (d < 3) {
-          u[i][j] = 1.2;
-          v[i][j] = 0.1;
+}
+
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-beta * (x - theta)));
+}
+
+function initField() {
+  field = [];
+  for (let y = 0; y < height; y++) {
+    let row = [];
+    for (let x = 0; x < width; x++) {
+      row.push(Math.random() * 2 - 1);
+    }
+    field.push(row);
+  }
+  nextField = field.map(row => [...row]);
+}
+
+function updateField() {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      let kSize = 12;
+      
+      for (let dy = -kSize; dy <= kSize; dy++) {
+        for (let dx = -kSize; dx <= kSize; dx++) {
+          let nx = x + dx;
+          let ny = y + dy;
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            let kVal = kernel2D[dy + 12][dx + 12];
+            sum += kVal * sigmoid(field[ny][nx]);
+          }
         }
       }
+      
+      let du = (-field[y][x] + sum) / tau;
+      nextField[y][x] = field[y][x] + du * 0.5;
     }
   }
-}
-
-function computeLaplacian(field, x, y) {
-  let left  = field[(x - 1 + cols) % cols][y];
-  let right = field[(x + 1) % cols][y];
-  let up    = field[x][(y - 1 + rows) % rows];
-  let down  = field[x][(y + 1) % rows];
-  let center = field[x][y];
   
-  return (left + right + up + down - 4 * center) / (dx * dx);
-}
-
-function f(u) {
-  return u - u * u * u / 3;
-}
-
-function fhn(u, v, laplacianU) {
-  let dudt = c * (u - u * u * u / 3 - v) + diffusion * laplacianU;
-  let dvdt = -(u - a - b * v) / c;
-  return [dudt, dvdt];
+  [field, nextField] = [nextField, field];
 }
 
 function draw() {
-  background(0, 0, 0.02, 0.3);
+  background(0, 0, 0);
   
-  // Re-seed occasionally for perpetual activity
-  if (frameCount % 300 === 0) {
-    let x = floor(random(cols));
-    let y = floor(random(rows));
-    for (let i = -3; i <= 3; i++) {
-      for (let j = -3; j <= 3; j++) {
-        let xi = (x + i + cols) % cols;
-        let yj = (y + j + rows) % rows;
-        u[xi][yj] = 1.0 + random(-0.2, 0.2);
-        v[xi][yj] = random(-0.1, 0.1);
-      }
-    }
+  for (let i = 0; i < 3; i++) {
+    updateField();
   }
   
-  // Compute laplacian and update
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let lap = computeLaplacian(u, i, j);
-      let [dudt, dvdt] = fhn(u[i][j], v[i][j], lap);
-      du[i][j] = dudt;
-      dv[i][j] = dvdt;
-    }
-  }
-  
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      u[i][j] += du[i][j] * dt;
-      v[i][j] += dv[i][j] * dt;
-      
-      // Clamp values
-      u[i][j] = constrain(u[i][j], -2, 2);
-      v[i][j] = constrain(v[i][j], -1, 1);
-    }
-  }
-  
-  // Render
   loadPixels();
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let val = map(u[i][j], -1, 1.5, 0, 1);
-      val = constrain(val, 0, 1);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let val = field[y][x];
+      let activity = Math.max(0, val);
+      let inhibition = Math.min(0, -val);
       
-      // Excited = warm, recovery = cool
-      let hue;
-      if (u[i][j] > 0.5) {
-        hue = map(u[i][j], 0.5, 1.5, 300, 360) % 360; // magenta to red
-      } else if (u[i][j] > 0) {
-        hue = 240; // cyan
-      } else {
-        hue = 200; // blue
-      }
+      let px = (x * scale) * 4;
+      let py = (y * scale) * 4;
       
-      let sat = map(abs(u[i][j]), 0, 1, 30, 100);
-      let bri = map(val, 0, 1, 5, 95);
+      // RED: vivid red for activity, dim red for inhibition
+      let r = 10;
+      let g = Math.floor(activity * 50) + Math.floor(inhibition * 10);
+      let b = Math.floor(activity * 30) + Math.floor(inhibition * 5);
       
-      let px = i * 4;
-      let py = j * 4;
-      let c = color(hue, sat, bri, 1);
-      
-      for (let dx = 0; dx < 4; dx++) {
-        for (let dy = 0; dy < 4; dy++) {
-          let idx = 4 * ((py + dy) * width + (px + dx));
-          pixels[idx]     = red(c);
-          pixels[idx + 1] = green(c);
-          pixels[idx + 2] = blue(c);
-          pixels[idx + 3] = 255;
+      for (let sy = 0; sy < scale; sy++) {
+        for (let sx = 0; sx < scale; sx++) {
+          let idx = 4 * ((y * scale + sy) * (width * scale) + (x * scale + sx));
+          pixels[idx] = r;
+          pixels[idx+1] = g;
+          pixels[idx+2] = b;
+          pixels[idx+3] = 255;
         }
       }
     }
   }
   updatePixels();
   
-  t += dt;
+  noStroke();
+  fill(10, 60, 85);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("Neural Field — Turing Patterns in Cortical Tissue", 10, 10);
+  text("Amari-S Griffith model: u_t = -u + W * f(u)", 10, 24);
+  text("Excitatory center, inhibitory surround (Mexican hat kernel)", 10, 38);
+  text("Bienenstock-Cooper-Munro theory: activity contrasts develop", 10, 52);
+  
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Click to perturb | +/- adjusts kernel", width - 10, 10);
+  
+  t++;
+  
+  fill(10, 60, 75);
+  textAlign(LEFT, BOTTOM);
+  text("Neural Field: pattern formation in biological neural networks", 10, height - 10);
 }
 
-function windowResized() {
-  // Preserve state on resize — restart
-  setup();
+function mousePressed() {
+  let mx = Math.floor(mouseX / scale);
+  let my = Math.floor(mouseY / scale);
+  if (mx >= 0 && mx < width && my >= 0 && my < height) {
+    field[my][mx] = 2;
+  }
 }
 </script>
 </body>
