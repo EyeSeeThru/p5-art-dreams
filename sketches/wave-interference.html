@@ -3,143 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wave Interference — p5.js Art</title>
+  <title>Wave Interference</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #0a0a0f; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
     canvas { display: block; }
   </style>
 </head>
 <body>
 <script>
-// Wave Interference — Constructive and destructive wave patterns
-// Exploration of superposition principle with animated wave sources
+// Wave Interference — Double-Slit Experiment Demonstration
+// RED AND BLACK version
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
 
-const sources = [];
 let t = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  pixelDensity(1);
-  
-  // Initialize wave sources at random positions
-  for (let i = 0; i < 5; i++) {
-    sources.push({
-      x: random(width * 0.2, width * 0.8),
-      y: random(height * 0.2, height * 0.8),
-      freq: random(0.02, 0.05),
-      amp: random(80, 150),
-      phase: random(TWO_PI),
-      speed: random(0.8, 1.5)
-    });
-  }
 }
 
 function draw() {
-  background(10, 10, 15);
+  // Pure black background
+  background(0, 0, 0);
   
-  loadPixels();
+  let wavelength = 15;
+  let slitSeparation = 80;
   
-  // Calculate wave interference for each pixel
-  for (let x = 0; x < width; x += 2) {
-    for (let y = 0; y < height; y += 2) {
-      let totalWave = 0;
-      
-      for (let s of sources) {
-        let d = dist(x, y, s.x, s.y);
-        let wave = sin(d * s.freq - t * s.speed + s.phase) * s.amp;
-        wave *= exp(-d * 0.003); // decay with distance
-        totalWave += wave;
-      }
-      
-      // Map wave amplitude to color
-      let normalized = map(totalWave, -300, 300, 0, 1);
-      
-      // Interference color palette
-      let r, g, b;
-      
-      // Deep blues and cyans for negative (destructive)
-      // Warm oranges and magentas for positive (constructive)
-      if (totalWave > 0) {
-        let n = constrain(totalWave / 200, 0, 1);
-        r = lerp(255, 30, n);
-        g = lerp(120, 20, n);
-        b = lerp(80, 50, n);
-      } else {
-        let n = constrain(-totalWave / 200, 0, 1);
-        r = lerp(20, 80, n);
-        g = lerp(40, 150, n);
-        b = lerp(60, 220, n);
-      }
-      
-      // Add glow effect
-      let glow = sin(normalized * PI) * 50;
-      
-      // Set pixels (with downsampling for performance)
-      for (let dx = 0; dx < 2 && x + dx < width; dx++) {
-        for (let dy = 0; dy < 2 && y + dy < height; dy++) {
-          let idx = 4 * ((y + dy) * width + (x + dx));
-          pixels[idx] = constrain(r + glow * 0.3, 0, 255);
-          pixels[idx + 1] = constrain(g + glow * 0.2, 0, 255);
-          pixels[idx + 2] = constrain(b + glow * 0.1, 0, 255);
-          pixels[idx + 3] = 255;
-        }
-      }
-    }
-  }
+  let mode = floor(t / 400) % 3;
   
-  updatePixels();
-  
-  // Draw source points with pulsing glow
-  for (let s of sources) {
-    let pulse = sin(t * 0.1 + s.phase) * 0.3 + 0.7;
+  if (mode === 0) {
+    // Mode 1: Interference pattern on screen
+    let screenX = width * 0.8;
+    let screenY = height / 2;
     
-    // Outer glow
+    // Draw screen
     noStroke();
-    for (let r = 60; r > 0; r -= 10) {
-      let alpha = map(r, 0, 60, 80, 0) * pulse;
-      fill(255, 200, 150, alpha);
-      ellipse(s.x, s.y, r, r);
+    fill(10, 30, 50);
+    rect(screenX - 5, screenY - 150, 10, 300);
+    
+    // Draw slits - VIVID RED
+    fill(10, 70, 80);
+    ellipse(width * 0.2, height/2 - slitSeparation/2, 8, 8);
+    ellipse(width * 0.2, height/2 + slitSeparation/2, 8, 8);
+    
+    // Draw rays - dim red
+    stroke(10, 30, 40, 50);
+    strokeWeight(1);
+    line(width * 0.2, height/2 - slitSeparation/2, screenX, screenY - 100);
+    line(width * 0.2, height/2 + slitSeparation/2, screenX, screenY + 100);
+    
+    // Calculate interference pattern - RED
+    noStroke();
+    for (let y = 0; y < 300; y++) {
+      let screenPos = (y - 150) / 100;
+      let pathDiff = slitSeparation * screenPos;
+      let phase = (2 * Math.PI * pathDiff) / wavelength;
+      let intensity = Math.cos(phase/2) * Math.cos(phase/2);
+      
+      let brightness = intensity * 100;
+      fill(10, 60, brightness + 30);
+      rect(screenX, screenY - 150 + y, 8, 1);
     }
     
-    // Core
-    fill(255, 240, 220);
-    ellipse(s.x, s.y, 12 * pulse, 12 * pulse);
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Wave Interference — Double Slit", 10, 10);
+    text("I ∝ cos²(π d sin(θ) / λ)", 10, 24);
+    text("Constructive: path difference = mλ | Destructive: path difference = (m+½)λ", 10, 38);
+    text("Demonstrates wave nature of light", 10, 52);
+    
+  } else if (mode === 1) {
+    // Mode 2: Ripple tank
+    let centerX = width / 2;
+    let centerY = height / 2;
+    
+    let src1X = centerX - 60;
+    let src1Y = centerY;
+    let src2X = centerX + 60;
+    let src2Y = centerY;
+    
+    // Draw wave field - RED
+    for (let x = 0; x < width; x += 4) {
+      for (let y = 0; y < height; y += 4) {
+        let d1 = Math.sqrt((x - src1X)**2 + (y - src1Y)**2);
+        let d2 = Math.sqrt((x - src2X)**2 + (y - src2Y)**2);
+        
+        let phase1 = (d1 / wavelength) * 2 * Math.PI + t * 0.05;
+        let phase2 = (d2 / wavelength) * 2 * Math.PI + t * 0.05;
+        
+        let wave1 = Math.sin(phase1);
+        let wave2 = Math.sin(phase2);
+        let combined = (wave1 + wave2) / 2;
+        
+        let intensity = Math.abs(combined);
+        fill(10, 40 + intensity * 30, 30 + intensity * 40);
+        rect(x, y, 4, 4);
+      }
+    }
+    
+    // Draw sources - VIVID RED
+    fill(10, 70, 85);
+    noStroke();
+    ellipse(src1X, src1Y, 10, 10);
+    ellipse(src2X, src2Y, 10, 10);
+    
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Wave Superposition — Ripple Tank", 10, 10);
+    text("Two coherent sources with overlapping wavefronts", 10, 24);
+    text("Constructive (bright) and destructive (dark) interference", 10, 38);
+    
+  } else {
+    // Mode 3: Single slit diffraction
+    let slitWidth = 40;
+    
+    // Draw slit - VIVID RED
+    fill(10, 70, 80);
+    noStroke();
+    for (let y = height/2 - slitWidth/2; y <= height/2 + slitWidth/2; y += 5) {
+      ellipse(width * 0.15, y, 4, 4);
+    }
+    
+    // Draw screen
+    fill(10, 30, 50);
+    rect(width * 0.85 - 5, height/2 - 150, 10, 300);
+    
+    // Single slit diffraction - RED
+    noStroke();
+    for (let y = 0; y < 300; y++) {
+      let screenPos = (y - 150) / 80;
+      let beta = (Math.PI * slitWidth * screenPos) / wavelength;
+      let sinc = beta === 0 ? 1 : Math.sin(beta) / beta;
+      let intensity = sinc * sinc;
+      
+      let brightness = intensity * 100;
+      fill(10, 60, brightness + 30);
+      rect(width * 0.85, height/2 - 150 + y, 8, 1);
+    }
+    
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Single Slit Diffraction — sinc² Pattern", 10, 10);
+    text("β = (π a sin(θ)) / λ, I = sin²(β)/β²", 10, 24);
+    text("Central maximum widest, side minima at β = mπ", 10, 38);
   }
   
-  t += 0.05;
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Modes cycle automatically", width - 10, 10);
   
-  // Subtle vignette
-  noStroke();
-  for (let i = 0; i < 50; i++) {
-    let alpha = map(i, 0, 50, 0, 100);
-    fill(0, alpha);
-    rect(0, 0, width, i);
-    rect(0, height - i, width, i);
-    rect(0, 0, i, height);
-    rect(width - i, 0, i, height);
-  }
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  // Reposition sources on resize
-  setup();
-}
-
-function mousePressed() {
-  // Add new wave source on click
-  if (sources.length < 12) {
-    sources.push({
-      x: mouseX,
-      y: mouseY,
-      freq: random(0.02, 0.05),
-      amp: random(80, 150),
-      phase: random(TWO_PI),
-      speed: random(0.8, 1.5)
-    });
-  }
+  fill(10, 60, 75);
+  textAlign(LEFT, BOTTOM);
+  text("Wave Interference: the double-slit experiment that revealed wave-particle duality", 10, height - 10);
+  
+  t++;
 }
 </script>
 </body>
