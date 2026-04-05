@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Henon Map</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Henon Map — Strange Attractor with Period-Doubling Route to Chaos
+// RED AND BLACK version
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// Mathematical concept: 2D dissipative map
+// x_{n+1} = 1 - a*x_n^2 + b*y_n
+// y_{n+1} = x_n
+// Classic parameters: a = 1.4, b = 0.3
+// Shows period-doubling cascade, strange geometry, fractal-like structure
+
+let x = 0.1;
+let y = 0.1;
+const a = 1.4;
+const b = 0.3;
+let points = [];
+const maxPoints = 5000;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  initHenon();
+}
+
+function initHenon() {
+  x = 0.1;
+  y = 0.1;
+  points = [];
+  t = 0;
+}
+
+function iterateHenon() {
+  // Henon map iteration
+  let xNew = 1 - a * x * x + b * y;
+  let yNew = x;
+  x = xNew;
+  y = yNew;
+  points.push({ x: x, y: y });
+  if (points.length > maxPoints) {
+    points.shift();
+  }
+}
+
+function draw() {
+  // Pure black background
+  background(0, 0, 0);
+  
+  let mode = floor(t / 300) % 3;
+  
+  if (mode === 0) {
+    // Mode 1: Strange attractor with density visualization
+    // Iterate many steps
+    for (let i = 0; i < 10; i++) {
+      iterateHenon();
+    }
+    
+    // Map points to screen
+    let centerX = width / 2;
+    let centerY = height / 2;
+    let scaleX = width * 0.25;
+    let scaleY = height * 0.25;
+    
+    // Draw density with particles - RED VERSION
+    for (let i = 0; i < points.length; i++) {
+      let p = points[i];
+      let screenX = centerX + p.x * scaleX;
+      let screenY = centerY + p.y * scaleY;
+      
+      // RED: vivid red gradient based on position and density
+      let density = i / points.length;
+      stroke(10, 70 + density * 30, 60 + density * 40);
+      strokeWeight(1.5);
+      point(screenX, screenY);
+    }
+    
+    // Labels
+    noStroke();
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Henon Map — Strange Attractor", 10, 10);
+    text("a = " + a + ", b = " + b + " (classic parameters)", 10, 24);
+    text("x_{n+1} = 1 - ax_n^2 + by_n, y_{n+1} = x_n", 10, 38);
+    text("Dissipative chaos: area contracts by factor b each iteration", 10, 52);
+    
+  } else if (mode === 1) {
+    // Mode 2: Bifurcation diagram (x values vs parameter variation)
+    let diagramHeight = height - 80;
+    let numParams = 200;
+    
+    // Vary a from 0.8 to 1.4
+    for (let p = 0; p < numParams; p++) {
+      let aVal = 0.8 + (p / numParams) * 0.6;
+      let xVal = 0.1;
+      let yVal = 0.1;
+      
+      // Iterate to settle
+      for (let i = 0; i < 200; i++) {
+        let xNew = 1 - aVal * xVal * xVal + b * yVal;
+        let yNew = xVal;
+        xVal = xNew;
+        yVal = yNew;
+      }
+      
+      // Record next 50 x values
+      for (let i = 0; i < 50; i++) {
+        let xNew = 1 - aVal * xVal * xVal + b * yVal;
+        let yNew = xVal;
+        xVal = xNew;
+        yVal = yNew;
+        
+        let screenX = (p / numParams) * width;
+        let screenY = diagramHeight - xVal * diagramHeight * 1.5 + 40;
+        
+        stroke(10, 60, 50);
+        point(screenX, screenY);
+      }
+    }
+    
+    // Labels
+    noStroke();
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Henon Map — Bifurcation Diagram", 10, 10);
+    text("a varies from 0.8 (left) to 1.4 (right) — period-doubling to chaos", 10, 24);
+    text("Stable points → period-2 → period-4 → chaos", 10, 38);
+    
+  } else {
+    // Mode 3: Phase space with trajectory history
+    // Reset and show multiple trajectories
+    let trajectories = [];
+    for (let t = 0; t < 5; t++) {
+      let tx = random(-0.5, 0.5);
+      let ty = random(-0.3, 0.3);
+      let traj = [];
+      for (let i = 0; i < 300; i++) {
+        let xNew = 1 - a * tx * tx + b * ty;
+        let yNew = tx;
+        tx = xNew;
+        ty = yNew;
+        traj.push({ x: tx, y: ty });
+      }
+      trajectories.push(traj);
+    }
+    
+    let centerX = width / 2;
+    let centerY = height / 2;
+    let scaleX = width * 0.35;
+    let scaleY = height * 0.35;
+    
+    // Draw trajectories with different brightness - RED VERSION
+    let brightnesses = [80, 90, 70, 95, 85];
+    for (let t = 0; t < trajectories.length; t++) {
+      let traj = trajectories[t];
+      for (let i = 0; i < traj.length; i++) {
+        let p = traj[i];
+        let screenX = centerX + p.x * scaleX;
+        let screenY = centerY + p.y * scaleY;
+        
+        // Fade with age
+        let alpha = map(i, 0, traj.length, 30, 100);
+        stroke(10, 70, brightnesses[t], alpha);
+        strokeWeight(1);
+        point(screenX, screenY);
+      }
+    }
+    
+    // Labels
+    noStroke();
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Henon Map — Multiple Trajectories", 10, 10);
+    text("5 trajectories from different starting points converge to attractor", 10, 24);
+    text("Sensitive dependence on initial conditions", 10, 38);
+  }
+  
+  t++;
+  
+  // Legend
+  noStroke();
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Click to reinitialize | Modes cycle automatically", width - 10, 10);
+  
+  // Info
+  fill(10, 60, 75);
+  textAlign(LEFT, BOTTOM);
+  text("Henon Map: the classic strange attractor and period-doubling route to chaos", 10, height - 10);
+}
+
+function mousePressed() {
+  initHenon();
+}
+</script>
+</body>
+</html>
