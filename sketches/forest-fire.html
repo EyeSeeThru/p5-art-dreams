@@ -3,178 +3,198 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forest Fire — p5.js</title>
+  <title>Forest Fire</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0a; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
     canvas { display: block; }
   </style>
 </head>
 <body>
 <script>
-// Forest Fire Cellular Automaton
-// A probabilistic cellular automaton simulating forest fire spread
+// Forest Fire — Self-organized criticality model
+// RED AND BLACK version
+// Background: min rgb(25,25,25)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// Mathematical concept: power-law distributed avalanches from simple rules
 
-const CELL_SIZE = 4;
-const PROB_IGNITE = 0.00005;      // Lightning/spontaneous ignition
-const PROB_BURN = 0.3;            // Fire spread probability
-const PROB_TREE = 0.01;           // Tree regrowth
+const GRID_SIZE = 80;
+const P_GROWTH = 0.01;
+const P_LIGHTNING = 0.0001;
 
-const EMPTY = 0;
-const TREE = 1;
-const BURNING = 2;
-
-let grid;
-let cols, rows;
-let t = 0;
+let grid = [];
+let burning = [];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  cols = floor(width / CELL_SIZE);
-  rows = floor(height / CELL_SIZE);
+  colorMode(HSB, 360, 100, 100, 100);
+  noSmooth();
+  initGrid();
+}
+
+function initGrid() {
+  grid = [];
+  burning = [];
+  for (let y = 0; y < GRID_SIZE; y++) {
+    grid[y] = [];
+    for (let x = 0; x < GRID_SIZE; x++) {
+      grid[y][x] = random() < 0.5 ? 1 : 0;
+    }
+  }
+}
+
+function growTrees() {
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      if (grid[y][x] === 0 && random() < P_GROWTH) {
+        grid[y][x] = 1;
+      }
+    }
+  }
+}
+
+function lightningStrike() {
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      if (grid[y][x] === 1 && random() < P_LIGHTNING) {
+        burning.push({ x: x, y: y, age: 0 });
+        grid[y][x] = 2;
+      }
+    }
+  }
+}
+
+function spreadFire() {
+  let newBurning = [];
   
-  grid = create2DArray(cols, rows);
-  
-  // Initialize with random forest
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      grid[i][j] = random() < 0.65 ? TREE : EMPTY;
+  for (let b of burning) {
+    b.age++;
+    
+    let neighbors = [
+      { x: b.x - 1, y: b.y },
+      { x: b.x + 1, y: b.y },
+      { x: b.x, y: b.y - 1 },
+      { x: b.x, y: b.y + 1 }
+    ];
+    
+    for (let n of neighbors) {
+      if (n.x >= 0 && n.x < GRID_SIZE && n.y >= 0 && n.y < GRID_SIZE) {
+        if (grid[n.y][n.x] === 1) {
+          grid[n.y][n.x] = 2;
+          newBurning.push({ x: n.x, y: n.y, age: 0 });
+        }
+      }
+    }
+    
+    if (b.age < 10) {
+      newBurning.push(b);
+    } else {
+      grid[b.y][b.x] = 0;
     }
   }
   
-  // Start a few fires
-  for (let i = 0; i < 5; i++) {
-    let x = floor(random(cols));
-    let y = floor(random(rows));
-    grid[x][y] = BURNING;
-  }
-  
-  noStroke();
-  frameRate(15);
+  burning = newBurning;
 }
 
-function create2DArray(cols, rows) {
-  let arr = new Array(cols);
-  for (let i = 0; i < cols; i++) {
-    arr[i] = new Array(rows);
+function drawGrid() {
+  let cellW = width / GRID_SIZE;
+  let cellH = height / GRID_SIZE;
+  
+  noStroke();
+  
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      let cx = x * cellW;
+      let cy = y * cellH;
+      
+      if (grid[y][x] === 0) {
+        // Empty - dark red-brown
+        fill(10, 40, 12);
+      } else if (grid[y][x] === 1) {
+        // Tree - RED gradient based on local density
+        let neighbors = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            let nx = x + dx;
+            let ny = y + dy;
+            if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+              if (grid[ny][nx] === 1) neighbors++;
+            }
+          }
+        }
+        let bri = map(neighbors, 0, 9, 35, 75);
+        let sat = map(neighbors, 0, 9, 50, 80);
+        fill(10, sat, bri);
+      } else if (grid[y][x] === 2) {
+        // Burning - VIVID RED
+        let bri = map(b.age, 0, 10, 95, 70);
+        fill(10, 85, bri);
+      }
+      
+      rect(cx + 0.5, cy + 0.5, cellW - 1, cellH - 1);
+    }
   }
-  return arr;
 }
 
 function draw() {
-  background(10, 8, 6);
+  background(25, 25, 25);
   
-  let nextGrid = create2DArray(cols, rows);
+  for (let i = 0; i < 3; i++) {
+    growTrees();
+    lightningStrike();
+    spreadFire();
+  }
   
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let state = grid[i][j];
-      
-      if (state === BURNING) {
-        // Burning cells become empty
-        nextGrid[i][j] = EMPTY;
-      } else if (state === EMPTY) {
-        // Empty cells can grow trees
-        nextGrid[i][j] = random() < PROB_TREE ? TREE : EMPTY;
-      } else if (state === TREE) {
-        // Check if tree catches fire
-        let burning = false;
-        
-        // Check 8 neighbors
-        for (let di = -1; di <= 1; di++) {
-          for (let dj = -1; dj <= 1; dj++) {
-            if (di === 0 && dj === 0) continue;
-            let ni = (i + di + cols) % cols;
-            let nj = (j + dj + rows) % rows;
-            if (grid[ni][nj] === BURNING) {
-              if (random() < PROB_BURN) {
-                burning = true;
-                break;
-              }
-            }
-          }
-          if (burning) break;
-        }
-        
-        // Lightning strike
-        if (random() < PROB_IGNITE) burning = true;
-        
-        nextGrid[i][j] = burning ? BURNING : TREE;
-      }
+  drawGrid();
+  
+  // Stats
+  let treeCount = 0;
+  let fireCount = 0;
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      if (grid[y][x] === 1) treeCount++;
+      if (grid[y][x] === 2) fireCount++;
     }
   }
   
-  grid = nextGrid;
+  // UI - RED
+  noStroke();
+  fill(10, 40, 85);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("Forest Fire — Self-Organized Criticality", 10, 10);
+  text("Trees: " + treeCount + " | Burning: " + fireCount + " | Growth: " + P_GROWTH + " | Lightning: " + P_LIGHTNING, 10, 24);
   
-  // Render with glow
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      let x = i * CELL_SIZE;
-      let y = j * CELL_SIZE;
-      
-      if (grid[i][j] === TREE) {
-        // Tree color with slight variation
-        let noiseVal = noise(i * 0.1 + t * 0.01, j * 0.1);
-        let green = map(noiseVal, 0, 1, 80, 160);
-        let blue = map(noiseVal, 0, 1, 20, 60);
-        fill(20, green + 40, blue);
-        fill(20, green + 40, blue);
-        rect(x, y, CELL_SIZE, CELL_SIZE);
-      } else if (grid[i][j] === BURNING) {
-        // Fire with color cycling
-        let flicker = random();
-        let r = 255;
-        let g = map(flicker, 0, 1, 50, 180);
-        let b = 0;
-        
-        // Add glow effect
-        for (let gx = -1; gx <= 1; gx++) {
-          for (let gy = -1; gy <= 1; gy++) {
-            if (gx === 0 && gy === 0) continue;
-            let nx = x + gx * CELL_SIZE * 2;
-            let ny = y + gy * CELL_SIZE * 2;
-            fill(r, g * 0.3, b, 30);
-            rect(nx, ny, CELL_SIZE, CELL_SIZE);
-          }
-        }
-        
-        fill(r, g, b);
-        rect(x, y, CELL_SIZE, CELL_SIZE);
-      }
-    }
-  }
+  fill(10, 30, 70);
+  textAlign(RIGHT, TOP);
+  text("Click to reset", width - 10, 10);
   
-  // Draw stats
-  fill(255);
-  textSize(12);
-  text('Forest Fire CA — p5.js', 10, 20);
+  // Legend
+  let legendX = width - 90;
+  let legendY = 40;
+  textAlign(LEFT, TOP);
+  fill(10, 30, 60);
+  text("Legend:", legendX, legendY);
   
-  t++;
+  fill(10, 40, 12);
+  rect(legendX, legendY + 15, 12, 12);
+  fill(10, 30, 60);
+  text("Empty", legendX + 18, legendY + 15);
   
-  // Occasionally restart fires
-  if (frameCount % 30 === 0 && countBurning() < 3) {
-    for (let i = 0; i < 3; i++) {
-      let x = floor(random(cols));
-      let y = floor(random(rows));
-      if (grid[x][y] === TREE) {
-        grid[x][y] = BURNING;
-      }
-    }
-  }
+  fill(10, 60, 55);
+  rect(legendX, legendY + 32, 12, 12);
+  fill(10, 30, 60);
+  text("Tree", legendX + 18, legendY + 32);
+  
+  fill(10, 85, 95);
+  rect(legendX, legendY + 49, 12, 12);
+  fill(10, 30, 60);
+  text("Avalanche", legendX + 18, legendY + 49);
 }
 
-function countBurning() {
-  let count = 0;
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      if (grid[i][j] === BURNING) count++;
-    }
-  }
-  return count;
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+function mousePressed() {
+  initGrid();
 }
 </script>
 </body>
