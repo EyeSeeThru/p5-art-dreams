@@ -96,6 +96,12 @@ function updateField() {
   [field, nextField] = [nextField, field];
 }
 
+function setup() {
+  createCanvas(fw * scale, fh * scale);
+  initKernel();
+  initField();
+}
+
 function draw() {
   background(0, 0, 0);
   
