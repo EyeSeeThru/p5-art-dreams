@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Network</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #191919; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Spring Network — Disordered materials, jamming, and fracture
+// RED AND BLACK version
+// Background: min rgb(25,25,25)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// Mathematical concept: force chains, jamming transition, catastrophic failure in disordered systems
+
+const NUM_NODES = 150;
+const GRID_COLS = 15;
+const GRID_ROWS = 10;
+const SPRING_STIFFNESS = 0.3;
+const DAMPING = 0.85;
+const GRAVITY = 0.02;
+const COMPRESSION_RATE = 0.002;
+const FAILURE_THRESHOLD = 2.0;
+
+let nodes = [];
+let springs = [];
+let plates = [];
+let topPlate, bottomPlate;
+let compression = 0;
+let maxForce = 0;
+let failed = false;
+let failedCount = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  initNetwork();
+}
+
+function initNetwork() {
+  nodes = [];
+  springs = [];
+  compression = 0;
+  maxForce = 0;
+  failed = false;
+  failedCount = 0;
+  
+  let spacing = min(width, height) * 0.7 / max(GRID_COLS, GRID_ROWS);
+  let startX = (width - (GRID_COLS - 1) * spacing) / 2;
+  let startY = (height - (GRID_ROWS - 1) * spacing) / 2;
+  
+  // Create nodes in a grid with random offsets
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      let x = startX + col * spacing + random(-spacing * 0.2, spacing * 0.2);
+      let y = startY + row * spacing + random(-spacing * 0.2, spacing * 0.2);
+      let node = {
+        x: x,
+        y: y,
+        vx: 0,
+        vy: 0,
+        fx: 0,
+        fy: 0,
+        stiffness: random(0.7, 1.3),
+        isPinned: false
+      };
+      
+      // Pin top and bottom rows
+      if (row === 0 || row === GRID_ROWS - 1) {
+        node.isPinned = true;
+      }
+      
+      nodes.push(node);
+    }
+  }
+  
+  // Create springs between neighbors
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      let idx = row * GRID_COLS + col;
+      
+      // Connect to right neighbor
+      if (col < GRID_COLS - 1) {
+        let rightIdx = row * GRID_COLS + (col + 1);
+        addSpring(idx, rightIdx);
+      }
+      
+      // Connect to bottom neighbor
+      if (row < GRID_ROWS - 1) {
+        let bottomIdx = (row + 1) * GRID_COLS + col;
+        addSpring(idx, bottomIdx);
+      }
+      
+      // Diagonal springs for stability
+      if (col < GRID_COLS - 1 && row < GRID_ROWS - 1) {
+        let diagIdx = (row + 1) * GRID_COLS + (col + 1);
+        addSpring(idx, diagIdx);
+      }
+    }
+  }
+  
+  // Create compression plates
+  topPlate = {
+    y: nodes[0].y - spacing * 0.5,
+    vy: 0
+  };
+  
+  bottomPlate = {
+    y: nodes[(GRID_ROWS - 1) * GRID_COLS].y + spacing * 0.5,
+    vy: 0
+  };
+}
+
+function addSpring(idx1, idx2) {
+  let n1 = nodes[idx1];
+  let n2 = nodes[idx2];
+  let restLength = dist(n1.x, n1.y, n2.x, n2.y);
+  springs.push({
+    n1: idx1,
+    n2: idx2,
+    restLength: restLength,
+    stiffness: SPRING_STIFFNESS * random(0.5, 1.5),
+    broken: false,
+    force: 0
+  });
+}
+
+function applyForces() {
+  // Apply spring forces
+  for (let spring of springs) {
+    if (spring.broken) continue;
+    
+    let n1 = nodes[spring.n1];
+    let n2 = nodes[spring.n2];
+    
+    let dx = n2.x - n1.x;
+    let dy = n2.y - n1.y;
+    let d = mag(dx, dy);
+    
+    if (d === 0) d = 0.001;
+    
+    let stretch = d - spring.restLength;
+    let force = spring.stiffness * stretch;
+    
+    // Limit force to prevent explosion
+    force = constrain(force, -5, 5);
+    spring.force = abs(force);
+    
+    let fx = (dx / d) * force;
+    let fy = (dy / d) * force;
+    
+    if (!n1.isPinned) {
+      n1.fx += fx;
+      n1.fy += fy;
+    }
+    if (!n2.isPinned) {
+      n2.fx -= fx;
+      n2.fy -= fy;
+    }
+  }
+  
+  // Apply gravity
+  for (let node of nodes) {
+    if (!node.isPinned) {
+      node.fy += GRAVITY;
+    }
+  }
+}
+
+function integrate() {
+  for (let node of nodes) {
+    if (node.isPinned) continue;
+    
+    node.vx = (node.vx + node.fx) * DAMPING;
+    node.vy = (node.vy + node.fy) * DAMPING;
+    
+    // Limit velocity
+    let speed = mag(node.vx, node.vy);
+    if (speed > 5) {
+      node.vx = (node.vx / speed) * 5;
+      node.vy = (node.vy / speed) * 5;
+    }
+    
+    node.x += node.vx;
+    node.y += node.vy;
+    
+    // Boundary constraints
+    if (node.x < 20) { node.x = 20; node.vx *= -0.5; }
+    if (node.x > width - 20) { node.x = width - 20; node.vx *= -0.5; }
+    
+    node.fx = 0;
+    node.fy = 0;
+  }
+}
+
+function applyPlates() {
+  // Move top plate down (compression)
+  if (!failed) {
+    topPlate.y += COMPRESSION_RATE;
+    compression += COMPRESSION_RATE;
+  }
+  
+  // Bottom plate stays fixed, but nodes bounce off
+  let bottomY = bottomPlate.y;
+  
+  for (let node of nodes) {
+    // Top plate collision
+    if (node.y < topPlate.y) {
+      node.y = topPlate.y;
+      node.vy = abs(node.vy) * 0.3;
+    }
+    
+    // Bottom plate collision
+    if (node.y > bottomY) {
+      node.y = bottomY;
+      node.vy = -abs(node.vy) * 0.3;
+    }
+  }
+}
+
+function checkFailures() {
+  if (failed) return;
+  
+  failedCount = 0;
+  maxForce = 0;
+  
+  for (let spring of springs) {
+    if (spring.broken) {
+      failedCount++;
+      continue;
+    }
+    
+    maxForce = max(maxForce, spring.force);
+    
+    // Break spring if force exceeds threshold
+    if (spring.force > FAILURE_THRESHOLD) {
+      spring.broken = true;
+      failedCount++;
+    }
+  }
+  
+  // System fails if too many springs broken
+  if (failedCount > springs.length * 0.3) {
+    failed = true;
+  }
+}
+
+function drawSprings() {
+  for (let spring of springs) {
+    if (spring.broken) {
+      // Draw broken spring as faint line
+      let n1 = nodes[spring.n1];
+      let n2 = nodes[spring.n2];
+      stroke(10, 20, 20, 30);
+      strokeWeight(0.5);
+      line(n1.x, n1.y, n2.x, n2.y);
+    } else {
+      // Draw active spring - color by force (RED version)
+      let n1 = nodes[spring.n1];
+      let n2 = nodes[spring.n2];
+      
+      let t = map(spring.force, 0, FAILURE_THRESHOLD, 0, 1);
+      t = constrain(t, 0, 1);
+      
+      // Dim red for low force, vivid red for high force (force chains)
+      let hue = 10; // Always red
+      let sat = map(t, 0, 1, 40, 85);
+      let bri = map(t, 0, 1, 35, 95);
+      
+      stroke(hue, sat, bri);
+      strokeWeight(map(t, 0, 1, 1, 3));
+      line(n1.x, n1.y, n2.x, n2.y);
+    }
+  }
+}
+
+function drawNodes() {
+  noStroke();
+  for (let node of nodes) {
+    let speed = mag(node.vx, node.vy);
+    let bri = map(speed, 0, 3, 50, 90);
+    let sat = map(speed, 0, 3, 30, 70);
+    fill(10, sat, bri);
+    ellipse(node.x, node.y, 6, 6);
+  }
+}
+
+function drawPlates() {
+  // Top plate (moving) - dark red
+  noStroke();
+  fill(10, 30, 25);
+  rect(0, topPlate.y - 3, width, 6);
+  
+  // Compression indicator - RED
+  fill(10, 30, 60);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("Compression: " + compression.toFixed(1), 10, 10);
+  text("Springs broken: " + failedCount + " / " + springs.length, 10, 24);
+  text("Max force: " + maxForce.toFixed(3), 10, 38);
+  
+  if (failed) {
+    fill(10, 80, 90);
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    text("SYSTEM FAILED", width / 2, height / 2);
+    textSize(12);
+    fill(10, 40, 70);
+    text("Click to restart", width / 2, height / 2 + 30);
+  }
+}
+
+function draw() {
+  background(25, 25, 25);
+  
+  if (!failed) {
+    applyPlates();
+  }
+  
+  // Multiple iterations for stability
+  for (let i = 0; i < 3; i++) {
+    applyForces();
+    integrate();
+  }
+  checkFailures();
+  
+  drawSprings();
+  drawNodes();
+  drawPlates();
+}
+
+function mousePressed() {
+  initNetwork();
+}
+</script>
+</body>
+</html>
