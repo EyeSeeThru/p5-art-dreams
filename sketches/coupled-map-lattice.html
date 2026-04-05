@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coupled Map Lattice</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Coupled Map Lattice — Spatiotemporal chaos and pattern formation
+// RED AND BLACK version
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// Mathematical concept: 1D chain of logistic maps with nearest-neighbor coupling
+// x_{n+1,i} = (1-ε)*f(x_{n,i}) + (ε/2)*[f(x_{n,i-1}) + f(x_{n,i+1})]
+// Where f(x) = 4*x*(1-x) is the chaotic logistic map
+// Shows pattern formation, synchronization, and space-time chaos
+
+let N = 200;
+let lattice = [];
+let nextLattice = [];
+let epsilon = 0.15; // Coupling strength
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  initLattice();
+}
+
+function initLattice() {
+  N = floor(width / 6);
+  lattice = [];
+  nextLattice = [];
+  
+  for (let i = 0; i < N; i++) {
+    // Initialize with random values, some spatial structure
+    if (i < N / 4 || i > 3 * N / 4) {
+      lattice.push(random(0.6, 0.9)); // High values on edges
+    } else {
+      lattice.push(random(0.1, 0.4)); // Low values in middle
+    }
+    nextLattice.push(0);
+  }
+}
+
+function logisticMap(x) {
+  return 4 * x * (1 - x);
+}
+
+function iterateLattice() {
+  for (let i = 0; i < N; i++) {
+    let left = lattice[(i - 1 + N) % N];
+    let right = lattice[(i + 1) % N];
+    let center = lattice[i];
+    
+    // Coupled map lattice update
+    nextLattice[i] = (1 - epsilon) * logisticMap(center) + 
+                      (epsilon / 2) * (logisticMap(left) + logisticMap(right));
+  }
+  
+  // Swap buffers
+  for (let i = 0; i < N; i++) {
+    lattice[i] = nextLattice[i];
+  }
+  t++;
+}
+
+function draw() {
+  // Pure black background
+  background(0, 0, 0);
+  
+  let cellWidth = width / N;
+  let mode = floor(t / 150) % 3;
+  
+  if (mode === 0) {
+    // Mode 1: Spatial pattern over time (space as x, time as y scrolling up)
+    let y = height - (t % 150) * (height / 150) - 1;
+    if (y >= 0 && y < height) {
+      for (let i = 0; i < N; i++) {
+        let val = lattice[i];
+        // RED VERSION: vivid red gradient for spatial values
+        // Low values = dim red, high values = vivid bright red
+        stroke(10, 70 + val * 30, 60 + val * 40);
+        strokeWeight(cellWidth + 1);
+        point(i * cellWidth + cellWidth / 2, y);
+      }
+    }
+    
+    // Iterate multiple steps for visible evolution
+    for (let iter = 0; iter < 5; iter++) {
+      iterateLattice();
+    }
+    
+    // Labels
+    noStroke();
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Coupled Map Lattice — Spatial Pattern Evolution", 10, 10);
+    text("ε = " + epsilon.toFixed(2) + " (coupling strength)", 10, 24);
+    text("Logistic map f(x) = 4x(1-x) with nearest-neighbor coupling", 10, 38);
+    text("Space horizontal, time scrolling up", 10, 52);
+    
+  } else if (mode === 1) {
+    // Mode 2: Current spatial distribution as bar chart
+    for (let i = 0; i < N; i++) {
+      let val = lattice[i];
+      let barHeight = val * (height - 100);
+      
+      // RED bars: dim for low, vivid red for high
+      noStroke();
+      fill(10, 70 + val * 25, 50 + val * 50);
+      rect(i * cellWidth, height - barHeight, cellWidth - 1, barHeight);
+    }
+    
+    iterateLattice();
+    
+    noStroke();
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Coupled Map Lattice — Spatial Distribution", 10, 10);
+    text("ε = " + epsilon.toFixed(2) + " (coupling strength)", 10, 24);
+    text("Pattern formation from initial inhomogeneity", 10, 38);
+    
+  } else {
+    // Mode 3: Space-time diagram (fixed view)
+    let historyHeight = 200;
+    let history = [];
+    for (let i = 0; i < 50; i++) {
+      history.push(lattice.slice());
+      iterateLattice();
+    }
+    
+    // Draw space-time history
+    background(0, 0, 0);
+    for (let h = 0; h < history.length; h++) {
+      let y = height - historyHeight + h * (historyHeight / history.length);
+      for (let i = 0; i < N; i++) {
+        let val = history[h][i];
+        // RED: vivid red gradient
+        stroke(10, 70 + val * 25, 50 + val * 50);
+        strokeWeight(2);
+        point(i * (width / N) + (width / N) / 2, y);
+      }
+    }
+    
+    noStroke();
+    fill(10, 60, 85);
+    textSize(11);
+    textAlign(LEFT, TOP);
+    text("Coupled Map Lattice — Space-Time Diagram", 10, 10);
+    text("ε = " + epsilon.toFixed(2) + " (coupling strength)", 10, 24);
+    text("Last 50 iterations shown", 10, 38);
+  }
+  
+  // Legend and controls
+  noStroke();
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Click to reinitialize | +/- adjusts coupling", width - 10, 10);
+  
+  // Info
+  fill(10, 60, 75);
+  textAlign(LEFT, BOTTOM);
+  text("Coupled Map Lattice: pattern formation in spatially extended chaotic systems", 10, height - 10);
+}
+
+function mousePressed() {
+  initLattice();
+  t = 0;
+}
+
+function keyPressed() {
+  if (key === '+' || key === '=') {
+    epsilon = min(epsilon + 0.02, 0.5);
+  } else if (key === '-' || key === '_') {
+    epsilon = max(epsilon - 0.02, 0);
+  }
+}
+</script>
+</body>
+</html>
