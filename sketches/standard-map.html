@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standard Map</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Standard Map (Chirikov Map) — Conservative chaos and KAM tori
+// RED AND BLACK version
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// Mathematical concept: kicked rotor system demonstrating transition from regular to chaotic motion
+// Phase space: islands of stability (KAM tori) embedded in chaotic sea
+
+const NUM_PARTICLES = 3000;
+const K = 0.95; // Chirikov parameter
+let particles = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  initParticles();
+}
+
+function initParticles() {
+  particles = [];
+  
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    let theta = random(Math.PI * 2);
+    let p;
+    
+    if (i < NUM_PARTICLES / 4) {
+      // Resonant islands (regular orbits at specific p values)
+      p = Math.PI; // Main resonance
+    } else if (i < NUM_PARTICLES / 2) {
+      // Other resonances
+      p = Math.PI * 0.5;
+    } else {
+      // Fully chaotic
+      p = random(0, Math.PI * 2);
+    }
+    
+    particles.push({ theta: theta, p: p, isRegular: i < NUM_PARTICLES / 2 });
+  }
+}
+
+function standardMap(theta, p) {
+  p = p + K * Math.sin(theta);
+  theta = theta + p;
+  
+  theta = theta % (2 * Math.PI);
+  if (theta < 0) theta += 2 * Math.PI;
+  
+  p = p % (2 * Math.PI);
+  if (p < 0) p += 2 * Math.PI;
+  
+  return { theta: theta, p: p };
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  // Iterate particles
+  let stepsPerFrame = 5;
+  for (let particle of particles) {
+    for (let i = 0; i < stepsPerFrame; i++) {
+      let result = standardMap(particle.theta, particle.p);
+      particle.theta = result.theta;
+      particle.p = result.p;
+    }
+    
+    // Draw particle
+    let x = (particle.theta / (2 * Math.PI)) * width;
+    let y = (particle.p / (2 * Math.PI)) * height;
+    
+    if (particle.isRegular) {
+      // KAM tori (regular) - bright vivid red
+      stroke(10, 80, 95);
+      strokeWeight(1.5);
+    } else {
+      // Chaotic sea - dimmer red
+      stroke(10, 35, 55);
+      strokeWeight(0.8);
+    }
+    point(x, y);
+  }
+  
+  // Labels
+  noStroke();
+  fill(10, 60, 85);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("Standard Map (Chirikov Map) — Conservative Chaos", 10, 10);
+  text("K = " + K.toFixed(2) + " (K < 0.97: regular, K > 1: chaotic)", 10, 24);
+  text("Phase space: theta (horizontal) vs momentum p (vertical)", 10, 38);
+  text("Bright islands = KAM tori, Dim background = chaotic sea", 10, 52);
+  
+  fill(10, 40, 70);
+  textAlign(RIGHT, TOP);
+  text("Click to reinitialize", width - 10, 10);
+  
+  // Legend
+  let legendX = width - 90;
+  let legendY = height - 60;
+  fill(10, 80, 95);
+  rect(legendX, legendY, 12, 12);
+  fill(10, 60, 85);
+  textAlign(LEFT, TOP);
+  text("KAM tori (regular)", legendX + 18, legendY);
+  
+  fill(10, 35, 55);
+  rect(legendX, legendY + 18, 12, 12);
+  fill(10, 60, 85);
+  text("Chaotic sea", legendX + 18, legendY + 18);
+}
+
+function mousePressed() {
+  initParticles();
+}
+</script>
+</body>
+</html>
