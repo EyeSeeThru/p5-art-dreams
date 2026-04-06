@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greenberg-Hastings Model — Excitable Media</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Greenberg-Hastings Model — Excitable Media on a 2D Lattice
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// State 0 = black (quiescent), state 1 = bright red (excited), state 2+ = dim red (refractory)
+
+let grid = [];
+let nextGrid = [];
+let gridSize = 120;
+let cellSize;
+let t = 0;
+let a = 0.04;      // probability quiescent -> excited
+let maxRef = 6;    // refractory period length
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cellSize = max(4, floor(width / gridSize));
+  
+  for (let i = 0; i < gridSize; i++) {
+    grid[i] = [];
+    nextGrid[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j] = 0;
+      nextGrid[i][j] = 0;
+    }
+  }
+  
+  initWaves();
+}
+
+function initWaves() {
+  let cx = floor(gridSize / 2);
+  let cy = floor(gridSize / 2);
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let d = dist(i, j, cx, cy);
+      if (d < 5) {
+        grid[i][j] = 1;
+      } else {
+        grid[i][j] = 0;
+      }
+    }
+  }
+}
+
+function initSpirals() {
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j] = 0;
+    }
+  }
+  
+  let cx = floor(gridSize / 2);
+  let cy = floor(gridSize / 2);
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let d = dist(i, j, cx, cy);
+      let angle = atan2(j - cy, i - cx);
+      if (d > 10 && d < 20) {
+        grid[i][j] = floor(map(angle, -Math.PI, Math.PI, 1, maxRef));
+      }
+    }
+  }
+}
+
+function initRandom() {
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      if (random() < 0.3) {
+        grid[i][j] = 1;
+      } else {
+        grid[i][j] = 0;
+      }
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  let displayMode = floor(t / 500) % 3;
+  
+  // Evolve
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      evolveCell(i, j);
+    }
+  }
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j] = nextGrid[i][j];
+    }
+  }
+  
+  drawGrid();
+  
+  fill(10, 60, 85);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  
+  if (displayMode === 0) {
+    text("Greenberg-Hastings — Target Waves", 10, 10);
+    text("Excitable media: waves propagate outward", 10, 26);
+    text("Click to add excited cells", 10, 42);
+  } else if (displayMode === 1) {
+    text("Greenberg-Hastings — Spiral Waves", 10, 10);
+    text("Spiral waves in excitable medium", 10, 26);
+    text("Space to reinitialize", 10, 42);
+  } else {
+    text("Greenberg-Hastings — Random Init", 10, 10);
+    text("Complex patterns from random conditions", 10, 26);
+    text("Click to add excited cells", 10, 42);
+  }
+  
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Mode " + (displayMode + 1) + "/3 — cycles automatically", width - 10, 10);
+  
+  t++;
+}
+
+function evolveCell(i, j) {
+  let state = grid[i][j];
+  
+  if (state === 0) {
+    let neighborExcited = false;
+    for (let di = -1; di <= 1; di++) {
+      for (let dj = -1; dj <= 1; dj++) {
+        if (di === 0 && dj === 0) continue;
+        let ni = (i + di + gridSize) % gridSize;
+        let nj = (j + dj + gridSize) % gridSize;
+        if (grid[ni][nj] === 1) {
+          neighborExcited = true;
+          break;
+        }
+      }
+      if (neighborExcited) break;
+    }
+    
+    if (neighborExcited && random() < a) {
+      nextGrid[i][j] = 1;
+    } else {
+      nextGrid[i][j] = 0;
+    }
+    
+  } else if (state === 1) {
+    nextGrid[i][j] = 2;
+  } else if (state >= 2 && state < maxRef) {
+    nextGrid[i][j] = state + 1;
+  } else {
+    nextGrid[i][j] = 0;
+  }
+}
+
+function drawGrid() {
+  noStroke();
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let state = grid[i][j];
+      
+      // Red palette
+      if (state === 0) {
+        // Quiescent - black
+        fill(0, 0, 0);
+      } else if (state === 1) {
+        // Excited - bright red
+        fill(5, 80, 95);
+      } else {
+        // Refractory - varying red
+        let bright = map(state, 2, maxRef, 60, 20);
+        fill(5, 50, bright);
+      }
+      
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+}
+
+function mousePressed() {
+  let ci = floor(mouseX / cellSize);
+  let cj = floor(mouseY / cellSize);
+  
+  for (let di = -3; di <= 3; di++) {
+    for (let dj = -3; dj <= 3; dj++) {
+      let ni = (ci + di + gridSize) % gridSize;
+      let nj = (cj + dj + gridSize) % gridSize;
+      if (dist(di, dj, 0, 0) < 3) {
+        grid[ni][nj] = 1;
+      }
+    }
+  }
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    let displayMode = floor(t / 500) % 3;
+    if (displayMode === 0) {
+      initWaves();
+    } else if (displayMode === 1) {
+      initSpirals();
+    } else {
+      initRandom();
+    }
+  }
+}
+</script>
+</body>
+</html>
