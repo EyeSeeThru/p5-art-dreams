@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vortex Dynamics — 2D Point Vortices</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Vortex Dynamics — 2D Point Vortices with Biot-Savart Kernel
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// CCW vortices: brighter red, CW vortices: dimmer red
+
+let vortices = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  for (let i = 0; i < 5; i++) {
+    let x = random(0.2, 0.8) * width;
+    let y = random(0.2, 0.8) * height;
+    let circ = random() > 0.5 ? 1 : -1;
+    vortices.push({ x, y, circ, trail: [] });
+  }
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  let mode = floor(t / 400) % 3;
+  
+  if (mode === 0) {
+    updateVortices();
+    drawVortices();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Vortex Dynamics — Biot-Savart Interaction", 10, 10);
+    text("Bright = CCW, Dim = CW", 10, 26);
+    text("Same sign ATTRACT, opposite REPEL", 10, 42);
+    text("Click to add vortices", 10, 58);
+    
+  } else if (mode === 1) {
+    if (vortices.length === 0 || mode !== 1) {
+      vortices = [];
+      let cx = width / 2;
+      let cy = height / 2;
+      let d = 60;
+      vortices.push({ x: cx - d/2, y: cy, circ: 1, trail: [] });
+      vortices.push({ x: cx + d/2, y: cy, circ: -1, trail: [] });
+    }
+    updateVortices();
+    drawVortices();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Vortex Pairs — Leeward Motion", 10, 10);
+    text("Dipole translates at speed Γ/(2πd)", 10, 26);
+    text("Pair translation perpendicular to dipole axis", 10, 42);
+    text("Space to add new pair", 10, 58);
+    
+  } else {
+    if (vortices.length < 4) {
+      vortices = [];
+      for (let i = 0; i < 8; i++) {
+        let x = random(0.3, 0.7) * width;
+        let y = random(0.3, 0.7) * height;
+        let circ = random() > 0.5 ? 1 : -1;
+        vortices.push({ x, y, circ, trail: [] });
+      }
+    }
+    updateVortices();
+    drawVortices();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Vortex Cluster — Complex Dynamics", 10, 10);
+    text("Multiple interacting vortices", 10, 26);
+    text("Formation of vortex pairs and streets", 10, 42);
+  }
+  
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Mode " + (mode + 1) + "/3 — cycles automatically", width - 10, 10);
+  
+  t++;
+}
+
+function updateVortices() {
+  for (let i = 0; i < vortices.length; i++) {
+    let v1 = vortices[i];
+    let u = 0, v = 0;
+    
+    for (let j = 0; j < vortices.length; j++) {
+      if (i === j) continue;
+      let v2 = vortices[j];
+      
+      let dx = v1.x - v2.x;
+      let dy = v1.y - v2.y;
+      let r2 = dx * dx + dy * dy;
+      
+      if (r2 < 100) r2 = 100;
+      if (r2 > 1000000) r2 = 1000000;
+      
+      let r = Math.sqrt(r2);
+      let gamma = v2.circ;
+      
+      u += gamma * (-dy) / (2 * Math.PI * r2);
+      v += gamma * dx / (2 * Math.PI * r2);
+    }
+    
+    v1.x += u * 0.5;
+    v1.y += v * 0.5;
+    
+    if (v1.x < 50) v1.x = 50;
+    if (v1.x > width - 50) v1.x = width - 50;
+    if (v1.y < 50) v1.y = 50;
+    if (v1.y > height - 50) v1.y = height - 50;
+    
+    v1.trail.push({ x: v1.x, y: v1.y });
+    if (v1.trail.length > 50) v1.trail.shift();
+  }
+}
+
+function drawVortices() {
+  noStroke();
+  
+  for (let v of vortices) {
+    for (let i = 0; i < v.trail.length; i++) {
+      let alpha = map(i, 0, v.trail.length, 0, 40);
+      let bright = v.circ > 0 ? 70 : 40;
+      fill(5, 60, bright, alpha);
+      let sz = map(i, 0, v.trail.length, 2, 6);
+      ellipse(v.trail[i].x, v.trail[i].y, sz, sz);
+    }
+    
+    let coreSize = 20;
+    let bright = v.circ > 0 ? 85 : 55;
+    let sat = v.circ > 0 ? 70 : 50;
+    fill(5, sat, bright);
+    ellipse(v.x, v.y, coreSize, coreSize);
+    
+    fill(5, sat * 0.3, bright + 10);
+    ellipse(v.x, v.y, coreSize * 0.5, coreSize * 0.5);
+  }
+}
+
+function mousePressed() {
+  let x = mouseX;
+  let y = mouseY;
+  let circ = random() > 0.5 ? 1 : -1;
+  vortices.push({ x, y, circ, trail: [] });
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    vortices = [];
+    let cx = width / 2;
+    let cy = height / 2;
+    let d = 60;
+    vortices.push({ x: cx - d/2, y: cy, circ: 1, trail: [] });
+    vortices.push({ x: cx + d/2, y: cy, circ: -1, trail: [] });
+  }
+}
+</script>
+</body>
+</html>
