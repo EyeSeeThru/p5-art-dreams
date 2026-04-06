@@ -66,7 +66,7 @@ function draw() {
   if (mode === 0 || mode === 2) {
     drawGrid();
     
-    fill(10, 60, 85);
+    fill(255, 140, 0);
     textSize(12);
     textAlign(LEFT, TOP);
     text("Voter Model — Opinion Dynamics", 10, 10);
@@ -77,7 +77,7 @@ function draw() {
   } else {
     drawGrid();
     
-    fill(10, 60, 85);
+    fill(255, 140, 0);
     textSize(12);
     textAlign(LEFT, TOP);
     text("Majority Rule", 10, 10);
@@ -86,7 +86,7 @@ function draw() {
     text("More aggressive consensus", 10, 58);
   }
   
-  fill(10, 50, 70);
+  fill(255, 100, 50);
   textAlign(RIGHT, TOP);
   text("Mode " + (mode + 1) + "/3 — cycles automatically", width - 10, 10);
   
@@ -160,9 +160,9 @@ function drawGrid() {
       
       // Red palette: State 0 = dim, State 1 = bright
       if (state === 0) {
-        fill(5, 40, 30);
+        fill(255, 80, 30);
       } else {
-        fill(5, 70, 85);
+        fill(255, 165, 0);
       }
       rect(i * cellSize, j * cellSize, cellSize, cellSize);
     }
