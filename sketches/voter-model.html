@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voter Model — Opinion Dynamics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Voter Model — Opinion Dynamics on a 2D Lattice
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+// State 0 = dim red, State 1 = bright red
+
+let grid = [];
+let nextGrid = [];
+let gridSize = 100;
+let cellSize;
+let t = 0;
+let numStates = 2;
+let consensusCounts = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cellSize = max(4, floor(width / gridSize));
+  
+  for (let i = 0; i < gridSize; i++) {
+    grid[i] = [];
+    nextGrid[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j] = floor(random(numStates));
+      nextGrid[i][j] = grid[i][j];
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  let mode = floor(t / 200) % 3;
+  
+  if (mode === 0) {
+    evolveVoter();
+  } else if (mode === 1) {
+    evolveMajority();
+  } else {
+    evolveGlauber();
+  }
+  
+  let counts = [0, 0];
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      counts[grid[i][j]]++;
+    }
+  }
+  consensusCounts.push(counts[0]);
+  if (consensusCounts.length > 300) consensusCounts.shift();
+  
+  if (mode === 0 || mode === 2) {
+    drawGrid();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Voter Model — Opinion Dynamics", 10, 10);
+    text("Cell adopts random neighbor's opinion", 10, 26);
+    text("State 0: " + counts[0] + ", State 1: " + counts[1], 10, 42);
+    text("Click to flip random cells, Space to reset", 10, 58);
+    
+  } else {
+    drawGrid();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Majority Rule", 10, 10);
+    text("Cell adopts majority of neighbors", 10, 26);
+    text("State 0: " + counts[0] + ", State 1: " + counts[1], 10, 42);
+    text("More aggressive consensus", 10, 58);
+  }
+  
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Mode " + (mode + 1) + "/3 — cycles automatically", width - 10, 10);
+  
+  t++;
+}
+
+function evolveVoter() {
+  let i = floor(random(gridSize));
+  let j = floor(random(gridSize));
+  
+  let ni = i + floor(random(-1, 2));
+  let nj = j + floor(random(-1, 2));
+  ni = (ni + gridSize) % gridSize;
+  nj = (nj + gridSize) % gridSize;
+  
+  grid[i][j] = grid[ni][nj];
+}
+
+function evolveMajority() {
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let sum = 0;
+      let count = 0;
+      for (let di = -1; di <= 1; di++) {
+        for (let dj = -1; dj <= 1; dj++) {
+          if (di === 0 && dj === 0) continue;
+          let ni = (i + di + gridSize) % gridSize;
+          let nj = (j + dj + gridSize) % gridSize;
+          sum += grid[ni][nj];
+          count++;
+        }
+      }
+      nextGrid[i][j] = sum > count / 2 ? 1 : 0;
+      if (count === 0 || sum === count / 2) {
+        nextGrid[i][j] = grid[i][j];
+      }
+    }
+  }
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j] = nextGrid[i][j];
+    }
+  }
+}
+
+function evolveGlauber() {
+  let i = floor(random(gridSize));
+  let j = floor(random(gridSize));
+  
+  let sum = 0;
+  for (let di = -1; di <= 1; di++) {
+    for (let dj = -1; dj <= 1; dj++) {
+      if (di === 0 && dj === 0) continue;
+      let ni = (i + di + gridSize) % gridSize;
+      let nj = (j + dj + gridSize) % gridSize;
+      sum += grid[ni][nj];
+    }
+  }
+  
+  if (random() < sum / 8) {
+    grid[i][j] = 1 - grid[i][j];
+  }
+}
+
+function drawGrid() {
+  noStroke();
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let state = grid[i][j];
+      
+      // Red palette: State 0 = dim, State 1 = bright
+      if (state === 0) {
+        fill(5, 40, 30);
+      } else {
+        fill(5, 70, 85);
+      }
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+}
+
+function mousePressed() {
+  for (let k = 0; k < 50; k++) {
+    let i = floor(random(gridSize));
+    let j = floor(random(gridSize));
+    grid[i][j] = 1 - grid[i][j];
+  }
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        grid[i][j] = floor(random(numStates));
+      }
+    }
+    consensusCounts = [];
+  }
+}
+</script>
+</body>
+</html>
