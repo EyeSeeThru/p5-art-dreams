@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XY Model — Continuous Spin Symmetry</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// XY Model — Continuous Spin Symmetry Phase Transition
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-20, saturation 70-100, brightness 70-100
+
+let grid = [];
+let gridSize = 40;
+let cellSize;
+let t = 0;
+let temperature = 0.5;
+let couplings = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cellSize = floor(width / gridSize);
+  
+  for (let i = 0; i < gridSize; i++) {
+    grid[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      grid[i][j] = random(TWO_PI);
+    }
+  }
+  
+  for (let i = 0; i < gridSize; i++) {
+    couplings[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      let neighbors = [
+        [(i+1) % gridSize, j],
+        [(i-1+gridSize) % gridSize, j],
+        [i, (j+1) % gridSize],
+        [i, (j-1+gridSize) % gridSize]
+      ];
+      couplings[i][j] = neighbors;
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  let mode = floor(t / 600) % 3;
+  
+  if (mode !== 2) {
+    for (let iter = 0; iter < 50; iter++) {
+      let i = floor(random(gridSize));
+      let j = floor(random(gridSize));
+      
+      let oldAngle = grid[i][j];
+      let newAngle = oldAngle + random(-0.5, 0.5);
+      
+      let oldEnergy = 0;
+      let newEnergy = 0;
+      let neighbors = couplings[i][j];
+      
+      for (let n of neighbors) {
+        let ni = n[0];
+        let nj = n[1];
+        oldEnergy -= Math.cos(grid[ni][nj] - oldAngle);
+        newEnergy -= Math.cos(grid[ni][nj] - newAngle);
+      }
+      
+      let dE = newEnergy - oldEnergy;
+      if (dE < 0 || random() < Math.exp(-dE / temperature)) {
+        grid[i][j] = newAngle;
+      }
+    }
+  }
+  
+  if (mode === 0) {
+    drawSpinField();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("XY Model — O(2) Continuous Spin Symmetry", 10, 10);
+    text("Temperature: " + temperature.toFixed(2), 10, 26);
+    text("Hamiltonian: H = -J Σ cos(θ_i - θ_j)", 10, 42);
+    text("BKT Phase Transition at T ≈ 0.89", 10, 58);
+    text("Click to increase temperature, Space to reset", 10, 74);
+    
+  } else if (mode === 1) {
+    drawVortices();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Vortex Detection — Topological Defects", 10, 10);
+    text("Winding number ±1 at vortex cores", 10, 26);
+    text("Bound vortex-antivortex pairs below BKT transition", 10, 42);
+    text("Unbinding at high temperature destroys order", 10, 58);
+    
+  } else {
+    drawCorrelation();
+    
+    fill(10, 60, 85);
+    textSize(12);
+    textAlign(LEFT, TOP);
+    text("Spin Correlation Function G(r)", 10, 10);
+    text("G(r) = ⟨cos(θ(0) - θ(r))⟩", 10, 26);
+    text("Low T: power law decay (QLRO)", 10, 42);
+    text("High T: exponential decay (paramagnetic)", 10, 58);
+  }
+  
+  fill(10, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Mode " + (mode + 1) + "/3 — cycles automatically", width - 10, 10);
+  
+  t++;
+}
+
+function drawSpinField() {
+  noStroke();
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let angle = grid[i][j];
+      // RED palette: map angle to brightness
+      let bright = map(cos(angle), -1, 1, 40, 90);
+      fill(5, 50, bright);
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+      
+      push();
+      translate(i * cellSize + cellSize/2, j * cellSize + cellSize/2);
+      rotate(angle);
+      stroke(10, 40, 60);
+      strokeWeight(1);
+      line(0, 0, cellSize * 0.3, 0);
+      noStroke();
+      fill(10, 60, 80);
+      triangle(cellSize * 0.3, 0, cellSize * 0.2, -3, cellSize * 0.2, 3);
+      pop();
+    }
+  }
+}
+
+function drawVortices() {
+  let vortices = [];
+  
+  for (let i = 0; i < gridSize - 1; i++) {
+    for (let j = 0; j < gridSize - 1; j++) {
+      let w = windingNumber(i, j);
+      if (Math.abs(w) > 0.5) {
+        vortices.push({x: i, y: j, w: w});
+      }
+    }
+  }
+  
+  noStroke();
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      fill(5, 20, 20);
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+  
+  for (let v of vortices) {
+    let cx = (v.x + 0.5) * cellSize;
+    let cy = (v.y + 0.5) * cellSize;
+    
+    fill(v.w > 0 ? 10 : 15, v.w > 0 ? 60 : 40, v.w > 0 ? 80 : 60);
+    noStroke();
+    ellipse(cx, cy, cellSize * 0.8);
+    
+    fill(10, 60, 90);
+    textSize(10);
+    textAlign(CENTER, CENTER);
+    text(v.w > 0 ? "+" : "-", cx, cy);
+  }
+}
+
+function windingNumber(i, j) {
+  let angles = [
+    grid[i][j],
+    grid[i+1][j],
+    grid[i+1][j+1],
+    grid[i][j+1]
+  ];
+  
+  let sum = 0;
+  for (let k = 0; k < 4; k++) {
+    let d = angles[(k+1) % 4] - angles[k];
+    while (d > Math.PI) d -= TWO_PI;
+    while (d < -Math.PI) d += TWO_PI;
+    sum += d;
+  }
+  
+  return Math.round(sum / TWO_PI);
+}
+
+function drawCorrelation() {
+  let centerI = floor(gridSize / 2);
+  let centerJ = floor(gridSize / 2);
+  
+  let maxR = gridSize / 2;
+  let bins = [];
+  let counts = [];
+  for (let r = 0; r < maxR; r++) {
+    bins[r] = 0;
+    counts[r] = 0;
+  }
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let dx = i - centerI;
+      let dy = j - centerJ;
+      let r = Math.sqrt(dx*dx + dy*dy);
+      let rIdx = floor(r);
+      
+      if (rIdx < maxR) {
+        let corr = Math.cos(grid[i][j] - grid[centerI][centerJ]);
+        bins[rIdx] += corr;
+        counts[rIdx]++;
+      }
+    }
+  }
+  
+  background(0, 0, 0);
+  
+  let graphTop = 100;
+  let graphBottom = height - 100;
+  let graphLeft = 50;
+  let graphRight = width - 50;
+  
+  stroke(10, 40, 60);
+  strokeWeight(1);
+  line(graphLeft, graphBottom, graphRight, graphBottom);
+  line(graphLeft, graphTop, graphLeft, graphBottom);
+  
+  noStroke();
+  fill(10, 60, 85);
+  textSize(11);
+  textAlign(LEFT, BOTTOM);
+  text("G(r)", graphLeft - 5, graphTop);
+  textAlign(CENTER, TOP);
+  text("r (distance)", (graphLeft + graphRight) / 2, graphBottom + 15);
+  
+  noFill();
+  stroke(10, 60, 85);
+  strokeWeight(2);
+  beginShape();
+  for (let r = 1; r < maxR; r++) {
+    if (counts[r] > 0) {
+      let avg = bins[r] / counts[r];
+      let x = map(r, 0, maxR, graphLeft, graphRight);
+      let y = map(avg, -1, 1, graphBottom, graphTop);
+      vertex(x, y);
+    }
+  }
+  endShape();
+  
+  stroke(10, 30, 40);
+  strokeWeight(1);
+  line(graphLeft, map(0, -1, 1, graphBottom, graphTop), graphRight, map(0, -1, 1, graphBottom, graphTop));
+}
+
+function mousePressed() {
+  temperature = min(2.0, temperature + 0.2);
+}
+
+function keyPressed() {
+  if (key === ' ') {
+    temperature = 0.3;
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        grid[i][j] = random(TWO_PI);
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
