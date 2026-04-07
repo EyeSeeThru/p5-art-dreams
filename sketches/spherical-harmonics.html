@@ -13,86 +13,70 @@
 </head>
 <body>
 <script>
-// Spherical Harmonics — Y_l^m Functions Visualized on a Sphere
-// RED AND BLACK VERSION
-// Background: pure black (0,0,0)
-// Elements: vivid red hue 0-15, saturation 70-100, brightness based on Y value
-
 let t = 0;
 let l = 2, m = 1;
 let sphereRadius;
+let paused = false;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  createCanvas(windowWidth, windowHeight, WEBGL);
   sphereRadius = min(width, height) * 0.35;
 }
 
 function draw() {
-  background(0, 0, 0);
-  
+  background(0);
+
+  if (!paused) t++;
+
   let mode = floor(t / 200) % 5;
   if (mode === 0) { l = 0; m = 0; }
   else if (mode === 1) { l = 1; m = 0; }
   else if (mode === 2) { l = 2; m = 0; }
   else if (mode === 3) { l = 2; m = 1; }
   else { l = 3; m = 0; }
-  
-  let rotX = frameCount * 0.003;
-  let rotY = frameCount * 0.005;
-  
-  push();
-  translate(width / 2, height / 2);
-  rotateX(rotX);
-  rotateY(rotY);
-  
+
+  rotateX(frameCount * 0.003);
+  rotateY(frameCount * 0.005);
+
   drawSphere();
-  
-  pop();
-  
+
+  resetMatrix();
   drawUI();
-  
-  t++;
 }
 
 function drawSphere() {
-  let res = 50;
-  
+  let res = 60;
+
   for (let i = 0; i <= res; i++) {
     for (let j = 0; j <= res; j++) {
-      let u = (i / res) * Math.PI * 2;
-      let v = (j / res) * Math.PI;
-      
+      let u = (i / res) * TWO_PI;
+      let v = (j / res) * PI;
+
       let x = sphereRadius * sin(v) * cos(u);
       let y = sphereRadius * sin(v) * sin(u);
       let z = sphereRadius * cos(v);
-      
+
       let theta = acos(z / sphereRadius);
       let phi = atan2(y, x);
-      
+
       let Y = sphericalHarmonic(l, m, theta, phi);
-      
       let col = getColor(Y);
-      
-      noStroke();
-      fill(col.r, col.g, col.b);
-      
+
       let offset = Y * sphereRadius * 0.15;
       let nx = sin(v) * cos(u);
       let ny = sin(v) * sin(u);
       let nz = cos(v);
-      
+
       let finalX = x + nx * offset;
       let finalY = y + ny * offset;
       let finalZ = z + nz * offset;
-      
-      let perspective = 400;
-      let scale = perspective / (perspective + finalZ);
-      let screenX = finalX * scale;
-      let screenY = finalY * scale;
-      
-      let dotSize = map(finalZ, -sphereRadius, sphereRadius, 3, 6) * scale;
-      
-      circle(screenX, screenY, dotSize * 2.5);
+
+      push();
+      translate(finalX, finalY, finalZ);
+      noStroke();
+      fill(col.r, col.g, col.b);
+      sphere(2.2);
+      pop();
     }
   }
 }
@@ -109,49 +93,54 @@ function legendreP(l, m, x) {
 }
 
 function sphericalHarmonic(l, m, theta, phi) {
-  let N = sqrt((2 * l + 1) / (4 * Math.PI) * factorial(l - abs(m)) / factorial(l + abs(m)));
+  let N = sqrt((2 * l + 1) / (4 * PI) * factorial(l - abs(m)) / factorial(l + abs(m)));
   let cosTheta = cos(theta);
   let P = legendreP(l, abs(m), cosTheta);
-  
-  if (m === 0) {
-    return N * P;
-  } else if (m > 0) {
-    return N * sqrt(2) * P * cos(m * phi);
-  } else {
-    return N * sqrt(2) * P * sin(abs(m) * phi);
-  }
+
+  if (m === 0) return N * P;
+  else if (m > 0) return N * sqrt(2) * P * cos(m * phi);
+  else return N * sqrt(2) * P * sin(abs(m) * phi);
 }
 
 function factorial(n) {
-  if (n <= 1) return 1;
   let result = 1;
   for (let i = 2; i <= n; i++) result *= i;
   return result;
 }
 
 function getColor(Y) {
-  // Warm amber/orange palette - visible RGB values
   if (Y > 0) {
     let intensity = map(Y, 0, 1, 120, 255);
-    return { r: intensity, g: intensity * 0.6, b: intensity * 0.2 };
+    return { r: intensity, g: intensity * 0.3, b: intensity * 0.1 };
   } else {
     let intensity = map(Y, -1, 0, 60, 140);
-    return { r: intensity, g: intensity * 0.5, b: intensity * 0.15 };
+    return { r: intensity, g: intensity * 0.2, b: intensity * 0.05 };
   }
 }
 
 function drawUI() {
-  fill(255, 180, 100); // Light orange text
+  push();
+  translate(-width / 2, -height / 2);
+
+  fill(255, 120, 60);
   textSize(12);
   textAlign(LEFT, TOP);
-  text("Spherical Harmonics Y_" + l + "^" + m, 10, 10);
-  text("Degree l=" + l + ", Order m=" + m, 10, 26);
-  text("(l,m) = (" + l + "," + m + ")", 10, 42);
-  
-  fill(255, 140, 80); // Orange text
+  text(`Y_${l}^${m}`, 10, 10);
+  text(`l=${l}, m=${m}`, 10, 26);
+
   textAlign(RIGHT, TOP);
-  text("Mode " + (floor(t / 200) % 5 + 1) + "/5", width - 10, 10);
-  text("Space to pause/resume", width - 10, 26);
+  text(`Mode ${(floor(t / 200) % 5) + 1}/5`, width - 10, 10);
+
+  pop();
+}
+
+function keyPressed() {
+  if (key === ' ') paused = !paused;
+}
+
+// REQUIRED: save canvas
+function keyTyped() {
+  if (key === 's') saveCanvas('spherical-harmonics', 'png');
 }
 </script>
 </body>
