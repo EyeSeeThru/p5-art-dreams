@@ -150,24 +150,25 @@ function drawNeuron(neuron) {
   let Vnorm = map(neuron.V, -80, 40, 0, 1);
   Vnorm = constrain(Vnorm, 0, 1);
   
-  // Red palette
-  let bright = map(Vnorm, 0, 1, 25, 95);
-  let sat = map(Vnorm, 0, 1, 20, 80);
+  // Warm amber/orange palette - visible RGB values
+  let r = map(Vnorm, 0, 1, 80, 255);
+  let g = map(Vnorm, 0, 1, 40, 180);
+  let b = map(Vnorm, 0, 1, 20, 60);
   
   noStroke();
-  fill(5, sat, bright, 220);
+  fill(r, g, b, 230);
   
   let size = 20 + Vnorm * 15;
   circle(neuron.x, neuron.y, size);
   
   // Spike glow
   if (abs(neuron.V - (-65)) > 20) {
-    fill(5, 40, 70, 150);
+    fill(255, 200, 100, 150);
     circle(neuron.x, neuron.y, size + 10 + sin(frameCount * 0.5) * 5);
   }
   
   // Dendrites
-  stroke(5, 20, 40, 100);
+  stroke(180, 100, 50, 100);
   strokeWeight(1);
   for (let i = 0; i < 4; i++) {
     let angle = i * Math.PI / 2 + neuron.index * 0.5;
@@ -190,10 +191,10 @@ function drawConnections() {
       
       if (dist < 150) {
         let activity = (abs(neurons[i].V) + abs(neurons[j].V)) * 0.5;
-        let alpha = map(dist, 0, 150, 80, 20);
-        let bright = map(activity, 0, 50, 15, 50);
+        let alpha = map(dist, 0, 150, 100, 30);
+        let intensity = map(activity, 0, 50, 60, 180);
         
-        stroke(5, 30, bright, alpha);
+        stroke(intensity, intensity * 0.5, intensity * 0.2, alpha);
         line(neurons[i].x, neurons[i].y, neurons[j].x, neurons[j].y);
       }
     }
@@ -205,8 +206,8 @@ function drawWaveform() {
   let scale = 1.5;
   
   noFill();
-  stroke(5, 50, 70, 150);
-  strokeWeight(1);
+  stroke(255, 180, 100, 180);
+  strokeWeight(2);
   
   beginShape();
   for (let i = 0; i < 100; i++) {
@@ -229,7 +230,7 @@ function drawWaveform() {
   }
   endShape();
   
-  fill(5, 40, 60);
+  fill(255, 160, 80);
   textSize(10);
   textAlign(LEFT, CENTER);
   text("+40 mV", width/2 - 100, yBase - (40 + 80) * scale);
@@ -238,14 +239,14 @@ function drawWaveform() {
 }
 
 function drawUI() {
-  fill(5, 60, 85);
+  fill(255, 180, 100); // Light orange text
   textSize(12);
   textAlign(LEFT, TOP);
   text("Hodgkin-Huxley Model", 10, 10);
   text("Action potential in squid giant axon", 10, 26);
   text("Cm dV/dt = -gNa m³h (V-VNa) - gK n⁴ (V-VK) - gL (V-VL) + I", 10, 42);
   
-  fill(5, 50, 70);
+  fill(255, 140, 80); // Orange text
   textAlign(RIGHT, TOP);
   text("Neurons: " + numNeurons + " | t=" + (t * 0.1).toFixed(1) + " ms", width - 10, 10);
   text("Click to stimulate", width - 10, 26);

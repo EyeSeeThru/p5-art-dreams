@@ -130,25 +130,25 @@ function factorial(n) {
 }
 
 function getColor(Y) {
-  // Red palette
+  // Warm amber/orange palette - visible RGB values
   if (Y > 0) {
-    let bright = map(Y, 0, 1, 30, 95);
-    return { r: 5, g: 50, b: bright };
+    let intensity = map(Y, 0, 1, 120, 255);
+    return { r: intensity, g: intensity * 0.6, b: intensity * 0.2 };
   } else {
-    let bright = map(Y, -1, 0, 20, 60);
-    return { r: 5, g: 40, b: bright };
+    let intensity = map(Y, -1, 0, 60, 140);
+    return { r: intensity, g: intensity * 0.5, b: intensity * 0.15 };
   }
 }
 
 function drawUI() {
-  fill(5, 60, 85);
+  fill(255, 180, 100); // Light orange text
   textSize(12);
   textAlign(LEFT, TOP);
   text("Spherical Harmonics Y_" + l + "^" + m, 10, 10);
   text("Degree l=" + l + ", Order m=" + m, 10, 26);
   text("(l,m) = (" + l + "," + m + ")", 10, 42);
   
-  fill(5, 50, 70);
+  fill(255, 140, 80); // Orange text
   textAlign(RIGHT, TOP);
   text("Mode " + (floor(t / 200) % 5 + 1) + "/5", width - 10, 10);
   text("Space to pause/resume", width - 10, 26);

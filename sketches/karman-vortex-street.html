@@ -182,31 +182,36 @@ function drawParticles() {
     let bright = map(speed, 0, flowSpeed * 3, 20, 90);
     let sat = map(speed, 0, flowSpeed * 2, 40, 80);
     
-    fill(5, sat, bright, 180);
+    // Orange/amber palette - visible RGB values
+    let r = map(speed, 0, flowSpeed * 3, 200, 255);
+    let g = map(speed, 0, flowSpeed * 2, 80, 180);
+    let b = map(speed, 0, flowSpeed * 2, 20, 60);
     
-    let sz = map(speed, 0, flowSpeed * 2, 1, 2.5);
+    fill(r, g, b, 200);
+    
+    let sz = map(speed, 0, flowSpeed * 2, 2, 4);
     circle(p.x, p.y, sz);
   }
 }
 
 function drawCylinder() {
   noStroke();
-  fill(15, 0, 10);
+  fill(80, 40, 20); // Dark brown
   circle(cylinderX, cylinderY, cylinderRadius * 2);
   
-  fill(25, 10, 20);
+  fill(120, 60, 30); // Lighter brown
   arc(cylinderX, cylinderY, cylinderRadius * 2, cylinderRadius * 2, -Math.PI * 0.7, -Math.PI * 0.2);
 }
 
 function drawUI() {
-  fill(5, 60, 85);
+  fill(255, 180, 100); // Light orange text
   textSize(12);
   textAlign(LEFT, TOP);
   text("Karman Vortex Street", 10, 10);
   text("Von Karman vortex shedding behind bluff body", 10, 26);
   text("Strouhal number St ≈ 0.2 for cylinder", 10, 42);
   
-  fill(5, 50, 70);
+  fill(255, 140, 80); // Orange text
   textAlign(RIGHT, TOP);
   text("Vortices: " + vortices.length + " | Particles: " + particles.length, width - 10, 10);
   text("Click to add vortex", width - 10, 26);
