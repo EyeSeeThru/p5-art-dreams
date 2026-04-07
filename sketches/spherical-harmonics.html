@@ -90,9 +90,9 @@ function drawSphere() {
       let screenX = finalX * scale;
       let screenY = finalY * scale;
       
-      let dotSize = map(finalZ, -sphereRadius, sphereRadius, 1, 3) * scale;
+      let dotSize = map(finalZ, -sphereRadius, sphereRadius, 3, 6) * scale;
       
-      circle(screenX, screenY, dotSize * 2);
+      circle(screenX, screenY, dotSize * 2.5);
     }
   }
 }
