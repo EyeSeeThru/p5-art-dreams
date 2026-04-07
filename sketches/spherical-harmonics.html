@@ -3,116 +3,155 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spherical Harmonics</title>
+  <title>Spherical Harmonics — Y_l^m Functions</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #0a0a0f; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
     canvas { display: block; }
   </style>
 </head>
 <body>
 <script>
-// Spherical Harmonics Visualization
-// Renders Y_l^m spherical harmonic functions on a sphere surface
-// with animated rotation and color mapping
+// Spherical Harmonics — Y_l^m Functions Visualized on a Sphere
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-15, saturation 70-100, brightness based on Y value
 
 let t = 0;
-const spheres = [];
-const numSpheres = 5;
+let l = 2, m = 1;
+let sphereRadius;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight, WEBGL);
-  colorMode(HSB, 360, 100, 100, 1);
-  
-  for (let i = 0; i < numSpheres; i++) {
-    spheres.push({
-      l: floor(random(2, 8)),      // degree
-      m: 0,                         // order (will vary)
-      phase: random(TWO_PI),
-      speed: random(0.005, 0.015),
-      radius: 80 + i * 45,
-      hueOffset: random(360)
-    });
-  }
+  createCanvas(windowWidth, windowHeight);
+  sphereRadius = min(width, height) * 0.35;
 }
 
 function draw() {
-  background(10, 8, 12);
+  background(0, 0, 0);
   
-  // Ambient glow
-  ambientLight(40);
-  pointLight(255, 255, 255, 0, 0, 400);
+  let mode = floor(t / 200) % 5;
+  if (mode === 0) { l = 0; m = 0; }
+  else if (mode === 1) { l = 1; m = 0; }
+  else if (mode === 2) { l = 2; m = 0; }
+  else if (mode === 3) { l = 2; m = 1; }
+  else { l = 3; m = 0; }
   
-  rotateY(t * 0.15);
-  rotateX(t * 0.1);
+  let rotX = frameCount * 0.003;
+  let rotY = frameCount * 0.005;
   
-  for (let i = 0; i < spheres.length; i++) {
-    drawSphericalHarmonic(spheres[i], i);
-  }
+  push();
+  translate(width / 2, height / 2);
+  rotateX(rotX);
+  rotateY(rotY);
   
-  t += 0.02;
+  drawSphere();
+  
+  pop();
+  
+  drawUI();
+  
+  t++;
 }
 
-function drawSphericalHarmonic(s, index) {
-  push();
+function drawSphere() {
+  let res = 50;
   
-  let hue = (s.hueOffset + t * 30) % 360;
-  let phaseVal = sin(t * 2 + s.phase);
-  
-  // Draw sphere surface with vertex displacement based on Y_l^m
-  noStroke();
-  
-  beginShape(TRIANGLE_STRIP);
-  for (let lat = 0; lat <= PI; lat += PI / 40) {
-    for (let lon = 0; lon <= TWO_PI; lon += TWO_PI / 80) {
+  for (let i = 0; i <= res; i++) {
+    for (let j = 0; j <= res; j++) {
+      let u = (i / res) * Math.PI * 2;
+      let v = (j / res) * Math.PI;
       
-      // Spherical harmonics calculation
-      let theta = lat;
-      let phi = lon + t * s.speed * 50;
+      let x = sphereRadius * sin(v) * cos(u);
+      let y = sphereRadius * sin(v) * sin(u);
+      let z = sphereRadius * cos(v);
       
-      // Simplified spherical harmonic approximation
-      let l = s.l;
-      let m = floor(sin(t * 0.5 + index) * l);
+      let theta = acos(z / sphereRadius);
+      let phi = atan2(y, x);
       
-      // Associated Legendre polynomial approximation
-      let Y = sin(l * theta) * cos(m * phi + phaseVal * PI);
-      Y += cos(l * theta) * sin(m * phi + phaseVal * PI) * 0.5;
+      let Y = sphericalHarmonic(l, m, theta, phi);
       
-      // Displacement
-      let displacement = map(Y, -1, 1, -15, 15);
-      let r = s.radius + displacement;
-      r *= 0.7 + 0.3 * sin(t * 2 + lat * 3 + lon * 2);
+      let col = getColor(Y);
       
-      // Convert to Cartesian
-      let x = r * sin(lat) * cos(lon);
-      let y = r * sin(lat) * sin(lon);
-      let z = r * cos(lat);
+      noStroke();
+      fill(col.r, col.g, col.b);
       
-      // Color based on displacement and position
-      let h = (hue + map(displacement, -15, 15, -60, 60)) % 360;
-      let b = map(sin(lat + lon + t), -1, 1, 50, 100);
-      let alpha = map(r, s.radius * 0.5, s.radius * 1.2, 0.4, 0.9);
+      let offset = Y * sphereRadius * 0.15;
+      let nx = sin(v) * cos(u);
+      let ny = sin(v) * sin(u);
+      let nz = cos(v);
       
-      fill(h, 80, b, alpha);
-      vertex(x, y, z);
+      let finalX = x + nx * offset;
+      let finalY = y + ny * offset;
+      let finalZ = z + nz * offset;
+      
+      let perspective = 400;
+      let scale = perspective / (perspective + finalZ);
+      let screenX = finalX * scale;
+      let screenY = finalY * scale;
+      
+      let dotSize = map(finalZ, -sphereRadius, sphereRadius, 1, 3) * scale;
+      
+      circle(screenX, screenY, dotSize * 2);
     }
   }
-  endShape();
-  
-  // Inner glow sphere
-  push();
-  noFill();
-  stroke(hue, 60, 80, 0.15);
-  strokeWeight(1);
-  sphere(s.radius * 0.65);
-  pop();
-  
-  pop();
 }
 
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+function legendreP(l, m, x) {
+  if (l === 0 && m === 0) return 1;
+  if (l === 1 && m === 0) return x;
+  if (l === 1 && m === 1) return -sqrt(1 - x * x);
+  if (l === 2 && m === 0) return 0.5 * (3 * x * x - 1);
+  if (l === 2 && m === 1) return -3 * x * sqrt(1 - x * x);
+  if (l === 2 && m === 2) return 3 * (1 - x * x);
+  if (l === 3 && m === 0) return 0.5 * (5 * x * x * x - 3 * x);
+  return sin(l * x + m * atan2(sqrt(1 - x * x), x));
+}
+
+function sphericalHarmonic(l, m, theta, phi) {
+  let N = sqrt((2 * l + 1) / (4 * Math.PI) * factorial(l - abs(m)) / factorial(l + abs(m)));
+  let cosTheta = cos(theta);
+  let P = legendreP(l, abs(m), cosTheta);
+  
+  if (m === 0) {
+    return N * P;
+  } else if (m > 0) {
+    return N * sqrt(2) * P * cos(m * phi);
+  } else {
+    return N * sqrt(2) * P * sin(abs(m) * phi);
+  }
+}
+
+function factorial(n) {
+  if (n <= 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= n; i++) result *= i;
+  return result;
+}
+
+function getColor(Y) {
+  // Red palette
+  if (Y > 0) {
+    let bright = map(Y, 0, 1, 30, 95);
+    return { r: 5, g: 50, b: bright };
+  } else {
+    let bright = map(Y, -1, 0, 20, 60);
+    return { r: 5, g: 40, b: bright };
+  }
+}
+
+function drawUI() {
+  fill(5, 60, 85);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text("Spherical Harmonics Y_" + l + "^" + m, 10, 10);
+  text("Degree l=" + l + ", Order m=" + m, 10, 26);
+  text("(l,m) = (" + l + "," + m + ")", 10, 42);
+  
+  fill(5, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Mode " + (floor(t / 200) % 5 + 1) + "/5", width - 10, 10);
+  text("Space to pause/resume", width - 10, 26);
 }
 </script>
 </body>
