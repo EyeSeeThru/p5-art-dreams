@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karman Vortex Street — Vortex Shedding</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Karman Vortex Street — 2D Vortex Shedding Behind a Cylinder
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-15, saturation 70-100, brightness based on velocity
+
+let particles = [];
+let vortices = [];
+let gridSize = 80;
+let cellSize;
+let t = 0;
+let cylinderX, cylinderY;
+let cylinderRadius = 25;
+let flowSpeed = 2;
+
+let velocityField = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  cellSize = max(6, floor(height / gridSize));
+  
+  cylinderX = width * 0.25;
+  cylinderY = height / 2;
+  
+  for (let i = 0; i < 2000; i++) {
+    particles.push({
+      x: random(width),
+      y: random(height),
+      age: floor(random(100))
+    });
+  }
+  
+  for (let i = 0; i < gridSize; i++) {
+    velocityField[i] = [];
+    for (let j = 0; j < gridSize; j++) {
+      velocityField[i][j] = { u: 0, v: 0 };
+    }
+  }
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  updateVelocityField();
+  updateParticles();
+  drawParticles();
+  drawCylinder();
+  drawUI();
+  
+  t++;
+}
+
+function updateVelocityField() {
+  let gridSpacing = width / gridSize;
+  
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      let x = i * gridSpacing;
+      let y = j * gridSpacing;
+      
+      let u = flowSpeed;
+      let v = 0;
+      
+      let dx = x - cylinderX;
+      let dy = y - cylinderY;
+      let r = sqrt(dx * dx + dy * dy);
+      
+      if (r > cylinderRadius) {
+        let R2 = cylinderRadius * cylinderRadius;
+        let r4 = r * r * r * r;
+        u += flowSpeed * R2 * (dx * dx - dy * dy) / r4;
+        v += flowSpeed * R2 * 2 * dx * dy / r4;
+      }
+      
+      for (let vx of vortices) {
+        let dvx = x - vx.x;
+        let dvy = y - vx.y;
+        let dr = sqrt(dvx * dvx + dvy * dvy);
+        if (dr > 5) {
+          let factor = vx.gamma / (2 * Math.PI * dr * dr);
+          u += -dvy * factor;
+          v += dvx * factor;
+        }
+      }
+      
+      velocityField[i][j].u = u;
+      velocityField[i][j].v = v;
+    }
+  }
+  
+  if (t % 30 === 0) {
+    vortices.push({
+      x: cylinderX + cylinderRadius,
+      y: cylinderY - cylinderRadius * 0.8,
+      gamma: flowSpeed * cylinderRadius * 1.5,
+      age: 0
+    });
+    vortices.push({
+      x: cylinderX + cylinderRadius,
+      y: cylinderY + cylinderRadius * 0.8,
+      gamma: -flowSpeed * cylinderRadius * 1.5,
+      age: 15
+    });
+  }
+  
+  vortices = vortices.filter(v => {
+    let gx = floor(v.x / gridSpacing);
+    let gy = floor(v.y / gridSpacing);
+    gx = constrain(gx, 0, gridSize - 1);
+    gy = constrain(gy, 0, gridSize - 1);
+    
+    v.x += velocityField[gx][gy].u * 0.5;
+    v.y += velocityField[gx][gy].v * 0.5;
+    v.age++;
+    
+    return v.age < 300 && v.x < width + 50 && v.x > -50;
+  });
+}
+
+function updateParticles() {
+  for (let p of particles) {
+    let gx = floor(p.x / width * gridSize);
+    let gy = floor(p.y / height * gridSize);
+    gx = constrain(gx, 0, gridSize - 1);
+    gy = constrain(gy, 0, gridSize - 1);
+    
+    let vel = velocityField[gx][gy];
+    
+    p.x += vel.u * 0.8;
+    p.y += vel.v * 0.8;
+    p.age++;
+    
+    let dx = p.x - cylinderX;
+    let dy = p.y - cylinderY;
+    if (dx * dx + dy * dy < cylinderRadius * cylinderRadius) {
+      let angle = atan2(dy, dx);
+      p.x = cylinderX + cos(angle) * (cylinderRadius + 2);
+      p.y = cylinderY + sin(angle) * (cylinderRadius + 2);
+    }
+    
+    if (p.x > width + 5) {
+      p.x = -5;
+      p.y = random(height);
+      p.age = 0;
+    }
+    if (p.x < -5) {
+      p.x = width + 5;
+    }
+    if (p.y < 0 || p.y > height) {
+      p.y = random(height);
+      p.x = random(width * 0.3);
+      p.age = 0;
+    }
+  }
+}
+
+function drawParticles() {
+  noStroke();
+  
+  for (let p of particles) {
+    let gx = floor(p.x / width * gridSize);
+    let gy = floor(p.y / height * gridSize);
+    gx = constrain(gx, 0, gridSize - 1);
+    gy = constrain(gy, 0, gridSize - 1);
+    let speed = sqrt(velocityField[gx][gy].u ** 2 + velocityField[gx][gy].v ** 2);
+    
+    // Red palette
+    let bright = map(speed, 0, flowSpeed * 3, 20, 90);
+    let sat = map(speed, 0, flowSpeed * 2, 40, 80);
+    
+    fill(5, sat, bright, 180);
+    
+    let sz = map(speed, 0, flowSpeed * 2, 1, 2.5);
+    circle(p.x, p.y, sz);
+  }
+}
+
+function drawCylinder() {
+  noStroke();
+  fill(15, 0, 10);
+  circle(cylinderX, cylinderY, cylinderRadius * 2);
+  
+  fill(25, 10, 20);
+  arc(cylinderX, cylinderY, cylinderRadius * 2, cylinderRadius * 2, -Math.PI * 0.7, -Math.PI * 0.2);
+}
+
+function drawUI() {
+  fill(5, 60, 85);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text("Karman Vortex Street", 10, 10);
+  text("Von Karman vortex shedding behind bluff body", 10, 26);
+  text("Strouhal number St ≈ 0.2 for cylinder", 10, 42);
+  
+  fill(5, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Vortices: " + vortices.length + " | Particles: " + particles.length, width - 10, 10);
+  text("Click to add vortex", width - 10, 26);
+}
+
+function mousePressed() {
+  vortices.push({
+    x: mouseX,
+    y: mouseY,
+    gamma: random() > 0.5 ? flowSpeed * cylinderRadius * 2 : -flowSpeed * cylinderRadius * 2,
+    age: 0
+  });
+}
+</script>
+</body>
+</html>
