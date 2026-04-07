@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hodgkin-Huxley Model — Action Potential</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow: hidden; background: #000; width: 100%; height: 100%; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// Hodgkin-Huxley Model — Action Potential in Nerve Fibers
+// RED AND BLACK VERSION
+// Background: pure black (0,0,0)
+// Elements: vivid red hue 0-15, saturation 70-100, brightness based on activity
+
+let neurons = [];
+let numNeurons = 15;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  for (let i = 0; i < numNeurons; i++) {
+    neurons.push(createNeuron(i));
+  }
+}
+
+function createNeuron(index) {
+  return {
+    V: -65,
+    m: 0.05,
+    h: 0.6,
+    n: 0.32,
+    I: 0,
+    x: 0,
+    y: 0,
+    index: index
+  };
+}
+
+function draw() {
+  background(0, 0, 0);
+  
+  let cols = 5;
+  let spacing = min(width, height) * 0.7 / (numNeurons / cols);
+  
+  for (let i = 0; i < numNeurons; i++) {
+    neurons[i].x = width/2 + (i % cols - cols/2) * spacing;
+    neurons[i].y = height/2 + (floor(i / cols) - 1.5) * spacing;
+  }
+  
+  let pulseTime = t % 100;
+  for (let n of neurons) {
+    n.I = 0;
+  }
+  if (pulseTime < 5) {
+    neurons[floor(numNeurons/2)].I = 150;
+    neurons[floor(numNeurons/2) - 1].I = 100;
+    neurons[floor(numNeurons/2) + 1].I = 100;
+  }
+  
+  let dt = 0.1;
+  for (let n of neurons) {
+    updateNeuron(n, dt);
+  }
+  
+  coupleNeurons();
+  
+  drawConnections();
+  
+  for (let n of neurons) {
+    drawNeuron(n);
+  }
+  
+  drawWaveform();
+  
+  drawUI();
+  
+  t++;
+}
+
+function updateNeuron(neuron, dt) {
+  let V = neuron.V;
+  let m = neuron.m;
+  let h = neuron.h;
+  let n = neuron.n;
+  
+  let gNa = 120;
+  let gK = 36;
+  let gL = 0.3;
+  let ENa = 50;
+  let EK = -77;
+  let EL = -54.4;
+  let Cm = 1;
+  
+  let am = (0.1 * (V + 40)) / (1 - exp(-(V + 40) / 10));
+  let bm = 4 * exp(-(V + 65) / 18);
+  let ah = 0.07 * exp(-(V + 65) / 20);
+  let bh = 1 / (1 + exp(-(V + 35) / 10));
+  let an = (0.01 * (V + 55)) / (1 - exp(-(V + 55) / 10));
+  let bn = 0.125 * exp(-(V + 65) / 80);
+  
+  let dmdt = am * (1 - m) - bm * m;
+  let dhdt = ah * (1 - h) - bh * h;
+  let dndt = an * (1 - n) - bn * n;
+  
+  let INa = gNa * m * m * m * h * (V - ENa);
+  let IK = gK * n * n * n * n * (V - EK);
+  let IL = gL * (V - EL);
+  
+  let dVdt = (-INa - IK - IL + neuron.I) / Cm;
+  
+  neuron.V += dVdt * dt;
+  neuron.m += dmdt * dt;
+  neuron.h += dhdt * dt;
+  neuron.n += dndt * dt;
+  
+  neuron.V = constrain(neuron.V, -100, 50);
+  neuron.m = constrain(neuron.m, 0, 1);
+  neuron.h = constrain(neuron.h, 0, 1);
+  neuron.n = constrain(neuron.n, 0, 1);
+}
+
+function coupleNeurons() {
+  let coupling = 2.0;
+  let dx, dy, dist;
+  
+  for (let i = 0; i < numNeurons; i++) {
+    for (let j = i + 1; j < numNeurons; j++) {
+      dx = neurons[j].x - neurons[i].x;
+      dy = neurons[j].y - neurons[i].y;
+      dist = sqrt(dx * dx + dy * dy);
+      
+      if (dist < 150) {
+        let factor = coupling / (1 + dist * 0.05);
+        let deltaV = (neurons[j].V - neurons[i].V) * factor;
+        neurons[i].V += deltaV * 0.1;
+        neurons[j].V -= deltaV * 0.1;
+      }
+    }
+  }
+}
+
+function drawNeuron(neuron) {
+  let Vnorm = map(neuron.V, -80, 40, 0, 1);
+  Vnorm = constrain(Vnorm, 0, 1);
+  
+  // Red palette
+  let bright = map(Vnorm, 0, 1, 25, 95);
+  let sat = map(Vnorm, 0, 1, 20, 80);
+  
+  noStroke();
+  fill(5, sat, bright, 220);
+  
+  let size = 20 + Vnorm * 15;
+  circle(neuron.x, neuron.y, size);
+  
+  // Spike glow
+  if (abs(neuron.V - (-65)) > 20) {
+    fill(5, 40, 70, 150);
+    circle(neuron.x, neuron.y, size + 10 + sin(frameCount * 0.5) * 5);
+  }
+  
+  // Dendrites
+  stroke(5, 20, 40, 100);
+  strokeWeight(1);
+  for (let i = 0; i < 4; i++) {
+    let angle = i * Math.PI / 2 + neuron.index * 0.5;
+    let len = 30 + abs(neuron.m - 0.5) * 20;
+    let x1 = neuron.x + cos(angle) * size * 0.5;
+    let y1 = neuron.y + sin(angle) * size * 0.5;
+    let x2 = neuron.x + cos(angle) * len;
+    let y2 = neuron.y + sin(angle) * len;
+    line(x1, y1, x2, y2);
+  }
+}
+
+function drawConnections() {
+  strokeWeight(0.5);
+  for (let i = 0; i < numNeurons; i++) {
+    for (let j = i + 1; j < numNeurons; j++) {
+      let dx = neurons[j].x - neurons[i].x;
+      let dy = neurons[j].y - neurons[i].y;
+      let dist = sqrt(dx * dx + dy * dy);
+      
+      if (dist < 150) {
+        let activity = (abs(neurons[i].V) + abs(neurons[j].V)) * 0.5;
+        let alpha = map(dist, 0, 150, 80, 20);
+        let bright = map(activity, 0, 50, 15, 50);
+        
+        stroke(5, 30, bright, alpha);
+        line(neurons[i].x, neurons[i].y, neurons[j].x, neurons[j].y);
+      }
+    }
+  }
+}
+
+function drawWaveform() {
+  let yBase = height - 50;
+  let scale = 1.5;
+  
+  noFill();
+  stroke(5, 50, 70, 150);
+  strokeWeight(1);
+  
+  beginShape();
+  for (let i = 0; i < 100; i++) {
+    let V = -65;
+    let tau = i * 0.1;
+    
+    if (tau > 10 && tau < 12) {
+      V = lerp(-65, 40, (tau - 10) / 2);
+    } else if (tau >= 12 && tau < 15) {
+      V = 40;
+    } else if (tau >= 15 && tau < 18) {
+      V = lerp(40, -70, (tau - 15) / 3);
+    } else if (tau >= 18 && tau < 40) {
+      V = lerp(-70, -65, (tau - 18) / 22);
+    }
+    
+    let x = width/2 + (i - 50) * 3;
+    let y = yBase - (V + 80) * scale;
+    vertex(x, y);
+  }
+  endShape();
+  
+  fill(5, 40, 60);
+  textSize(10);
+  textAlign(LEFT, CENTER);
+  text("+40 mV", width/2 - 100, yBase - (40 + 80) * scale);
+  text("-70 mV", width/2 - 100, yBase - (-70 + 80) * scale);
+  text("0 ms", width/2 - 50, yBase + 10);
+}
+
+function drawUI() {
+  fill(5, 60, 85);
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text("Hodgkin-Huxley Model", 10, 10);
+  text("Action potential in squid giant axon", 10, 26);
+  text("Cm dV/dt = -gNa m³h (V-VNa) - gK n⁴ (V-VK) - gL (V-VL) + I", 10, 42);
+  
+  fill(5, 50, 70);
+  textAlign(RIGHT, TOP);
+  text("Neurons: " + numNeurons + " | t=" + (t * 0.1).toFixed(1) + " ms", width - 10, 10);
+  text("Click to stimulate", width - 10, 26);
+}
+
+function mousePressed() {
+  let nearest = 0;
+  let minDist = Infinity;
+  for (let i = 0; i < numNeurons; i++) {
+    let d = dist(mouseX, mouseY, neurons[i].x, neurons[i].y);
+    if (d < minDist) {
+      minDist = d;
+      nearest = i;
+    }
+  }
+  neurons[nearest].I = 150;
+}
+</script>
+</body>
+</html>
