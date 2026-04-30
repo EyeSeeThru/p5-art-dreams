@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>INFORMATION GEOMETRY — Fisher Metric Visualizer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a12; overflow: hidden; }
+    canvas { display: block; }
+    #info {
+      position: fixed; bottom: 18px; left: 50%;
+      transform: translateX(-50%);
+      color: #333; font-family: 'Courier New', monospace;
+      font-size: 11px; letter-spacing: 0.08em;
+      pointer-events: none; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+<div id="info">information geometry — Fisher metric</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// ============================================================
+// INFORMATION GEOMETRY — Statistical Manifold
+// Visualize the Fisher information metric on the space of
+// probability distributions. Geodesics follow KL divergence.
+// ============================================================
+
+// — KL Divergence —
+// KL(p||q) = ∫ p(x) log(p(x)/q(x)) dx
+// For Gaussians: closed-form.
+function klGaussian(m1, s1, m2, s2) {
+  const v1 = s1 * s1;
+  const v2 = s2 * s2;
+  const term1 = Math.log(s2 / s1);
+  const term2 = v1 / (2 * v2);
+  const term3 = (m1 - m2) ** 2 / (2 * v2);
+  return term1 + term2 + term3 - 0.5;
+}
+
+// — Fisher Information —
+// For Gaussian: I(μ, σ²) = [1/σ², 0; 0, 2/σ⁴]
+// Metric g = diag(1/σ², 2/σ⁴)
+function fisherInfo(sigma) {
+  return {
+    g11: 1 / (sigma * sigma),
+    g22: 2 / Math.pow(sigma, 4),
+    g12: 0
+  };
+}
+
+// — Geodesic Path —
+// Approximate geodesic via midpoint interpolation in
+// the natural parameter space (μ/σ², -1/(2σ²))
+function naturalParams(mu, sigma) {
+  return [mu / (sigma * sigma), -1 / (2 * sigma * sigma)];
+}
+
+function naturalToParams(eta, lambda) {
+  // Inverse: σ² = -1/(2λ), μ = ησ²
+  const sigma = Math.sqrt(-1 / (2 * lambda));
+  const mu = eta * sigma * sigma;
+  return { mu, sigma };
+}
+
+// — State —─────────────────────────────────────────────────
+let distributions = [];
+let selectedDist = null;
+let geodesicPaths = [];
+let fieldData = [];
+
+const NUM_DISTS = 24;
+const FIELD_RES = 40;
+
+// — Setup —───────────────────────────────────────────────────
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  frameRate(60);
+  
+  // Initialize distributions on (μ, σ) plane
+  for (let i = 0; i < NUM_DISTS; i++) {
+    const mu = random(-0.8, 0.8);
+    const sigma = random(0.15, 0.9);
+    distributions.push({
+      mu: mu,
+      sigma: sigma,
+      hue: map(i, 0, NUM_DISTS, 180, 280),
+      selected: false
+    });
+  }
+  
+  // Generate pre-computed field
+  generateField();
+  
+  // Calculate geodesics between nearby distributions
+  calculateGeodesics();
+}
+
+// — Pre-compute Field —─────────────────────────────────────────
+function generateField() {
+  fieldData = [];
+  const res = FIELD_RES;
+  for (let i = 0; i < res; i++) {
+    for (let j = 0; j < res; j++) {
+      const mu = map(i, 0, res, -1, 1);
+      const sigma = map(j, 0, res, 0.1, 1);
+      const g = fisherInfo(sigma);
+      const det = g.g11 * g.g22 - g.g12 * g.g12;
+      fieldData.push({ mu, sigma, det, i, j });
+    }
+  }
+}
+
+// — Draw Geodesics —──────────────────────────────────���──────
+function calculateGeodesics() {
+  geodesicPaths = [];
+  for (let i = 0; i < distributions.length; i++) {
+    const d = distributions[i];
+    // Find nearest neighbor
+    let nearest = null;
+    let nearestKL = Infinity;
+    for (let j = 0; j < distributions.length; j++) {
+      if (i === j) continue;
+      const other = distributions[j];
+      const kl = klGaussian(d.mu, d.sigma, other.mu, other.sigma);
+      if (kl < nearestKL && kl > 0) {
+        nearestKL = kl;
+        nearest = other;
+      }
+    }
+    if (nearest) {
+      // Generate path points using natural parameter interpolation
+      const path = interpolateGeodesic(d, nearest, 16);
+      geodesicPaths.push({ from: d, to: nearest, path, kl: nearestKL });
+    }
+  }
+}
+
+function interpolateGeodesic(d1, d2, steps) {
+  const np1 = naturalParams(d1.mu, d1.sigma);
+  const np2 = naturalParams(d2.mu, d2.sigma);
+  const path = [];
+  for (let t = 0; t <= 1; t += 1 / steps) {
+    // Natural param interpolation
+    const eta = lerp(np1[0], np2[0], t);
+    const lambda = lerp(np1[1], np2[1], t);
+    const params = naturalToParams(eta, lambda);
+    path.push(params);
+  }
+  return path;
+}
+
+// — Draw —───────────────────────────────────────────────────
+function draw() {
+  background(240, 30, 4, 28);
+  
+  drawField();
+  drawGeodesics();
+  drawDistributions();
+  drawLegend();
+}
+
+function drawField() {
+  const res = FIELD_RES;
+  const w = width / res;
+  const h = height / res;
+  
+  noStroke();
+  for (let f of fieldData) {
+    const x = map(f.mu, -1, 1, 0, width);
+    const y = map(f.sigma, 0.1, 1, height, 0);
+    const brightness = map(f.det, 0.1, 50, 10, 60);
+    fill(220, 50, brightness, 15);
+    rect(x, y, w + 1, h + 1);
+  }
+}
+
+function drawGeodesics() {
+  for (let gp of geodesicPaths) {
+    const path = gp.path;
+    noFill();
+    for (let i = 0; i < path.length - 1; i++) {
+      const p1 = path[i];
+      const p2 = path[i + 1];
+      const x1 = map(p1.mu, -1, 1, 0, width);
+      const x2 = map(p2.mu, -1, 1, 0, width);
+      const y1 = map(p1.sigma, 0.1, 1, height, 0);
+      const y2 = map(p2.sigma, 0.1, 1, height, 0);
+      
+      // Color by position along path
+      const hue = lerp(160, 260, i / path.length);
+      const alpha = lerp(20, 60, i / path.length);
+      stroke(hue, 60, 80, alpha);
+      strokeWeight(1.5);
+      line(x1, y1, x2, y2);
+    }
+  }
+}
+
+function drawDistributions() {
+  for (let i = 0; i < distributions.length; i++) {
+    const d = distributions[i];
+    const x = map(d.mu, -1, 1, 0, width);
+    const y = map(d.sigma, 0.1, 1, height, 0);
+    
+    // Draw Gaussian curve
+    const curvePoints = [];
+    for (let tx = -1; tx <= 1; tx += 0.05) {
+      const dx = tx - d.mu;
+      const pdf = Math.exp(-dx * dx / (2 * d.sigma * d.sigma)) / (d.sigma * Math.sqrt(2 * Math.PI));
+      curvePoints.push({ x: tx, y: pdf });
+    }
+    
+    // Draw the distribution curve at the point
+    const curveScale = 0.15;
+    noFill();
+    stroke(d.hue, 70, 95, d.selected ? 95 : 70);
+    strokeWeight(d.selected ? 2.5 : 1.5);
+    beginShape();
+    for (let cp of curvePoints) {
+      const px = x + cp.x * width * curveScale;
+      const py = y - cp.y * height * curveScale;
+      vertex(px, py);
+    }
+    endShape();
+    
+    // Draw anchor point
+    noStroke();
+    fill(d.hue, 70, 95, d.selected ? 95 : 85);
+    circle(x, y, d.selected ? 12 : 8);
+    
+    // Selection highlight
+    if (d.selected) {
+      noFill();
+      stroke(d.hue, 40, 100, 60);
+      strokeWeight(1.5);
+      circle(x, y, 22);
+    }
+  }
+}
+
+function drawLegend() {
+  const lx = width - 95;
+  const ly = 28;
+  
+  noStroke();
+  fill(180, 20, 50, 50);
+  textFont('Courier New');
+  textSize(10);
+  textAlign(LEFT);
+  text('μ (mean)', lx, ly);
+  text('σ (std.dev)', lx, ly + 55);
+  
+  // y-axis label
+  push();
+  translate(18, height / 2);
+  rotate(-HALF_PI);
+  fill(180, 20, 50, 50);
+  text('σ →', 0, 0);
+  pop();
+  
+  // x-axis label
+  fill(180, 20, 50, 50);
+  text('μ →', width / 2, height - 18);
+}
+
+function mousePressed() {
+  // Check for distribution click
+  let clicked = null;
+  for (let d of distributions) {
+    const x = map(d.mu, -1, 1, 0, width);
+    const y = map(d.sigma, 0.1, 1, height, 0);
+    const dist = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2);
+    if (dist < 18) {
+      clicked = d;
+      break;
+    }
+  }
+  
+  // Deselect all
+  for (let d of distributions) d.selected = false;
+  
+  // Select clicked
+  if (clicked) {
+    clicked.selected = true;
+    selectedDist = clicked;
+    recalculateGeodesicsFor(clicked);
+  } else {
+    selectedDist = null;
+  }
+}
+
+function recalculateGeodesicsFor(d) {
+  // Recalculate geodesics from selected distribution
+  geodesicPaths = [];
+  const npSelected = naturalParams(d.mu, d.sigma);
+  
+  // Find nearest neighbors and build geodesics
+  const others = distributions.filter(dist => dist !== d);
+  const sorted = others.map(dist => {
+    const kl = klGaussian(d.mu, d.sigma, dist.mu, dist.sigma);
+    return { dist, kl };
+  }).sort((a, b) => a.kl - b.kl).slice(0, 4);
+  
+  for (const { dist, kl } of sorted) {
+    const path = interpolateGeodesic(d, dist, 20);
+    geodesicPaths.push({ from: d, to: dist, path, kl });
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+</body>
+</html>
