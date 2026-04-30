@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LERP-OT — Optimal Transport Visualizer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #070710; overflow: hidden; }
+    canvas { display: block; }
+    #info {
+      position: fixed; bottom: 18px; left: 50%;
+      transform: translateX(-50%);
+      color: #333; font-family: 'Courier New', monospace;
+      font-size: 11px; letter-spacing: 0.08em;
+      pointer-events: none; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+<div id="info">lerp — optimal transport</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// ============================================================
+// LERP-OT — Linear Interpolation Optimal Transport
+// Monge OT: lerp as the transport map. A Gaussian source
+// distribution flows to a bimodal target. Particles interpolate
+// via lerp(sourceX, targetX, t) as t goes 0→1.
+// ============================================================
+
+// ─── OptimalTransportMap ──────────────────────────────────────
+// Monge OT map via bisect-left on cumulative weights.
+// Maps sorted source[i] → sorted target[j] where
+// j = bisect_left(srcCumW, tgtCumW[i])
+class OptimalTransportMap {
+  constructor(sourcePoints, targetPoints) {
+    this.source = sourcePoints.map(p => ({ x: p.x, weight: p.weight ?? 1 }));
+    this.target = targetPoints.map(p => ({ x: p.x, weight: p.weight ?? 1 }));
+    this._cache = null;
+  }
+
+  build() {
+    const src = [...this.source].sort((a, b) => a.x - b.x);
+    const tgt = [...this.target].sort((a, b) => a.x - b.x);
+    this._srcSorted = src;
+    const srcCW = this._cumSum(src);
+    const tgtCW = this._cumSum(tgt);
+
+    this._cache = tgt.map((tgtPt, ti) => {
+      const tgtCum = tgtCW[ti];
+      let lo = 0, hi = src.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (srcCW[mid] <= tgtCum) lo = mid + 1;
+        else hi = mid;
+      }
+      return {
+        sourceIdx: Math.max(0, lo - 1),
+        targetX: tgtPt.x,
+        weight: tgtPt.weight
+      };
+    });
+    return this._cache;
+  }
+
+  mapAt(t) {
+    if (!this._cache) this.build();
+    return this._cache.map(pair => {
+      const srcPt = this._srcSorted[pair.sourceIdx];
+      return { x: lerp(srcPt.x, pair.targetX, t), weight: pair.weight };
+    });
+  }
+
+  transportCost(t) {
+    const pts = this.mapAt(t);
+    const totalW = pts.reduce((s, p) => s + p.weight, 0);
+    const meanX = pts.reduce((s, p) => s + p.x * p.weight, 0) / totalW;
+    return pts.reduce((s, p) => s + p.weight * (p.x - meanX) ** 2, 0);
+  }
+
+  _cumSum(arr) {
+    let s = 0;
+    return arr.map(v => (s += v.weight));
+  }
+}
+
+// ─── State ──────────────────────────────────────────────────
+let otMap;
+let t = 0;
+let direction = 1;
+let phase = 0;
+let phaseTimer = 0;
+let particles = [];
+let _srcDist = [];
+let _tgtDist = [];
+
+const NUM_PARTICLES = 280;
+const SPEED_SLOW = 0.0025;
+const SPEED_FAST = 0.007;
+
+// ─── Setup ────────────────────────────────────────────────────
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  frameRate(60);
+  initParticles();
+  buildOT();
+}
+
+function initParticles() {
+  particles = [];
+  const cx = width / 2;
+  const spread = width * 0.36;
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    const x = cx - spread / 2 + randomGaussian(0, spread * 0.22);
+    particles.push({ x: constrain(x, cx - spread, cx + spread) });
+  }
+}
+
+function buildOT() {
+  const cx = width / 2;
+  const spread = width * 0.36;
+
+  const sources = particles.map(p => ({ x: p.x, weight: 1 }));
+  _srcDist = sources;
+
+  const targets = [];
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    const mode = random() < 0.5 ? -1 : 1;
+    const x = cx + mode * spread * 0.46 + randomGaussian(0, spread * 0.1);
+    targets.push({ x: constrain(x, cx - spread, cx + spread), weight: 1 });
+  }
+  _tgtDist = targets;
+
+  otMap = new OptimalTransportMap(sources, targets);
+  otMap.build();
+}
+
+// ─── Draw ─────────────────────────────────────────────────────
+function draw() {
+  background(0, 0, 3, 28);
+
+  tickPhase();
+  drawPanels();
+  drawTransportArcs();
+  drawMovingParticles();
+  drawProgressBar();
+}
+
+function tickPhase() {
+  phaseTimer++;
+  if (phase === 0) {
+    t += SPEED_SLOW * direction;
+    if (t >= 1) { t = 1; direction = -1; phase = 1; phaseTimer = 0; }
+    if (t <= 0) { t = 0; direction =  1; phase = 1; phaseTimer = 0; }
+  } else if (phase === 1) {
+    if (phaseTimer > 80) { phase = 2; phaseTimer = 0; }
+  } else if (phase === 2) {
+    t += SPEED_FAST * direction;
+    if (phaseTimer > 40) { phase = 0; phaseTimer = 0; direction = 1; initParticles(); buildOT(); }
+  }
+}
+
+// ─── Panels ─────────────────────────────────────────────────
+function drawPanels() {
+  const cx = width / 2;
+  const rw = width * 0.38;
+  const rh = height * 0.52;
+  const top = height * 0.18;
+
+  drawPanel(cx - rw / 2, top, rw, rh, 'SOURCE', 22);
+  drawPanel(cx + rw / 2, top, rw, rh, 'TARGET', 200);
+
+  // Divider line
+  stroke(40, 30, 20, 30);
+  strokeWeight(1);
+  line(cx, top + rh * 0.1, cx, top + rh * 0.9);
+}
+
+function drawPanel(px, py, pw, ph, label, hue) {
+  push();
+  translate(px, py);
+
+  noFill();
+  stroke(hue, 40, 20, 25);
+  strokeWeight(1);
+  rect(0, 0, pw, ph, 4);
+
+  noStroke();
+  fill(hue, 50, 55, 50);
+  textFont('Courier New');
+  textSize(10);
+  textAlign(CENTER);
+  text(label, pw / 2, ph + 20);
+
+  pop();
+}
+
+// ─── Transport Arcs ───────────────────────────────────────────
+function drawTransportArcs() {
+  if (!otMap || !otMap._cache) return;
+  const cx = width / 2;
+  const rw = width * 0.38;
+  const rh = height * 0.52;
+  const top = height * 0.18;
+  const yBot = top + rh * 0.9;
+
+  const srcSorted = [...particles].sort((a, b) => a.x - b.x);
+  const entries = otMap._cache;
+  const step = Math.max(1, Math.floor(entries.length / 36));
+
+  noFill();
+  for (let i = 0; i < entries.length; i += step) {
+    const e = entries[i];
+    const srcPt = srcSorted[e.sourceIdx];
+    const sx = map(srcPt.x, 0, width, -rw / 2, rw / 2);
+    const tx = map(e.targetX, 0, width, -rw / 2, rw / 2);
+
+    const col = lerpColor(color(22, 70, 80, 22), color(200, 70, 80, 22), i / entries.length);
+    stroke(col);
+    strokeWeight(0.7);
+
+    beginShape();
+    vertex(cx + sx, yBot);
+    bezierVertex(cx + sx, yBot + rh * 0.1, cx + tx, yBot + rh * 0.1, cx + tx, yBot);
+    endShape();
+  }
+}
+
+// ─── Moving Particles ───────────────────────────────────────
+function drawMovingParticles() {
+  if (!otMap) return;
+  const positions = otMap.mapAt(t);
+  const cx = width / 2;
+  const rw = width * 0.38;
+  const yMid = height * 0.18 + height * 0.52 / 2;
+
+  noStroke();
+  for (let i = 0; i < positions.length; i++) {
+    const p = positions[i];
+    const px = map(p.x, 0, width, -rw * 1.05, rw * 1.05);
+    const col = lerpColor(color(22, 80, 95, 92), color(200, 75, 90, 92), t);
+    fill(col);
+    const sz = 3 + 2 * sin(i * 0.28 + frameCount * 0.04);
+    circle(cx + px, yMid, sz);
+  }
+}
+
+// ─── Progress Bar ───────────────────────────────────────────
+function drawProgressBar() {
+  const bw = width * 0.28;
+  const bh = 3;
+  const bx = width / 2 - bw / 2;
+  const by = height - 32;
+
+  noFill();
+  stroke(30, 20, 20);
+  strokeWeight(1);
+  rect(bx, by, bw, bh, 2);
+
+  noStroke();
+  fill(lerpColor(color(22, 70, 85), color(200, 70, 80), t));
+  rect(bx, by, bw * t, bh, 2);
+
+  fill(50, 20, 50);
+  textFont('Courier New');
+  textSize(10);
+  textAlign(CENTER);
+  text('t = ' + nf(t, 1, 3), width / 2, by - 9);
+}
+</script>
+</body>
+</html>
